@@ -44,34 +44,16 @@
   .pc-go{margin-top:12px}
   .pc-sso{margin-bottom:12px}
   .pec-ins .pc-ou{margin:0 0 12px}
-  .pc-oubli-l{margin-top:8px;text-align:right}
-  .pc-oubli{border:none;background:none;padding:0;font:inherit;font-size:11.5px;font-weight:700;color:var(--color-primary-dark);cursor:pointer}
-  .pc-login{margin:16px 0 8px}
-  .pc-note{margin:-2px 0 8px;text-align:center;font-size:11px;color:var(--color-muted)}
+  .pc-note{margin:10px 0 0;text-align:center;font-size:12px;color:var(--color-muted)}
   .pc-oubli-bloc{margin:4px 0 8px}
   .pc-hint{font-size:11px;color:var(--color-muted);margin-top:4px}
   .pc-oerr{margin-top:8px;font-size:12px;font-weight:700;color:#b3261e}
-  .pc-lien{display:flex;justify-content:space-between;align-items:center;gap:10px}
-  .pc-lien .g{display:flex;align-items:center;gap:10px;min-width:0}
-  .pc-lien .g .pec-ico{color:var(--color-primary)}
-  .pc-lien .tx{min-width:0}
-  .pc-lien .t{font-weight:700;font-size:13.5px}
-  .pc-lien .s{font-size:11.5px;color:var(--color-muted)}
-  .pc-lien > .pec-ico{color:var(--color-muted)}
-  .pc-lien-inscr{margin:8px 0 0}
-  .pc-lien-bas{margin-bottom:18px}
-  .pc-regle{margin:10px 0 0}
-  .pc-regle .tx{font-size:12.5px;line-height:1.55}
-  .pc-sep{margin:16px 0}
   .pc-actif{color:var(--color-primary-dark)}
   .pc-actif-s{margin:4px 0 0;line-height:1.5}
   /* la carte « mot de passe oublié » garde sa marge serrée sur téléphone ; sur bureau, la feuille partagée donne la sienne */
   @media (max-width:1023.98px){ .pc-oubli-bloc{padding:14px 16px} }
   /* ── LE BUREAU : une colonne de 760 px, l'échelle de lecture d'un écran ── */
   @media (min-width:1024px){
-    .pc-hero{padding:30px 32px 32px;border-radius:22px}
-    .pc-hero h1{font-size:30px;letter-spacing:-.8px}
-    .pc-hero .sub{font-size:15px;max-width:60ch}
     .pc-carte{margin-top:6px;padding:28px 32px}
     .pc-t{font-size:17px}
     .pc-s{font-size:13.5px;margin:6px 0 14px}
@@ -79,17 +61,8 @@
     .pc-err,.pc-oerr{font-size:13.5px}
     .pc-aide,.pc-hint{font-size:12.5px}
     .pc-esp,.pc-esp12{margin-bottom:16px}
-    .pc-oubli{font-size:13.5px}
-    .pc-login{margin:22px 0 10px auto}
-    .pc-note{margin:0 0 10px;text-align:right;font-size:13px}
+    .pc-note{font-size:13px}
     .pc-oubli-bloc{margin:8px 0 12px}
-    .pc-lien{padding:20px 24px}
-    .pc-lien .t{font-size:16px}
-    .pc-lien .s{font-size:13.5px}
-    .pc-lien-inscr{margin-top:14px}
-    .pc-regle{margin-top:16px}
-    .pc-regle .tx{font-size:14px}
-    .pc-sep{margin:24px 0}
   }
 </style>
 </head>
@@ -104,13 +77,12 @@
 
   <div class="pec-body pec-body--scroll">
 
-    <section class="pec-info-hero pc-hero">
-      <!-- (21/09) LA MARQUE — le symbole du métier (Commerce, Coursier, ou Partenaire tant que personne n'est entré), le nom
-           écrit, le slogan — remplace la tuile et « PAYENCASH · PARTENAIRE ». PEC_PART.marque la fait suivre le métier. -->
-      <p class="eyebrow"><span class="pec-marque--grand pec-marque--sombre" data-pec-marque="partenaire" data-pec-marque-part data-slogan></span></p>
-      <h1>Ton espace de partenaire du réseau.</h1>
-      <p class="sub" id="pc-sub">—</p>
-    </section>
+    <!-- (24/09, nuit) LA PAGE D'ENTRÉE COMMUNE (PEC_INSCRIPTION.porte) : la marque et la promesse sont dans le panneau de l'app ;
+         la page dit ce qu'elle fait, « Se connecter », comme chez les marques et dans Mes bons -->
+    <div class="porte-page">
+      <h1 class="porte-titre">Se connecter</h1>
+      <p class="porte-sous" id="pc-sub">—</p>
+    </div>
 
     <div class="pec-info-body">
 
@@ -138,12 +110,11 @@
         <input class="pec-input pc-esp12" id="login-id" type="text" autocomplete="username" placeholder="contact@ton-commerce.fr">
         <label class="pec-input-label" for="login-pass">Mot de passe</label>
         <input class="pec-input" id="login-pass" type="password" placeholder="••••••••">
-        <div class="pc-oubli-l"><button type="button" id="login-oubli" class="pec-tap-confort pc-oubli">Mot de passe oublié ?</button></div>
+        <div class="porte-oubli"><button type="button" id="login-oubli" class="pec-tap-confort">Mot de passe oublié ?</button></div>
+        <!-- la connexion VÉRIFIE la saisie — jamais un simple lien qui ignore les champs ; le bouton vit dans la carte, comme partout -->
+        <a class="pec-cta tap pc-login" href="02-accueil.html" id="login-go">Se connecter</a>
+        <p class="pc-note" id="login-note" hidden>Saisis l'identifiant du point et ton mot de passe.</p>
       </div>
-
-      <!-- la connexion VÉRIFIE la saisie — jamais un simple lien qui ignore les champs -->
-      <a class="pec-cta tap pc-login" href="02-accueil.html" id="login-go" style="opacity:.45;pointer-events:none">Se connecter</a>
-      <p class="pc-note" id="login-note">Saisis l'identifiant du point et ton mot de passe.</p>
 
       <!-- MOT DE PASSE OUBLIÉ — un vrai parcours : compteMotDePasseOublie envoie le code (en maquette : affiché comme code de démo),
            compteMotDePasseReinitialiser le vérifie et pose le nouveau mot de passe. -->
@@ -159,38 +130,10 @@
         <button type="button" class="pec-cta pec-cta--tight tap pc-go" id="oubli-valider">Enregistrer le nouveau mot de passe</button>
       </div>
 
-      <!-- Création du compte du point (protocole comptes 03/09) -->
-      <a class="pec-card tap pc-lien pc-lien-inscr" href="00-inscription.html">
-        <div class="g">
-          <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-plus"/></svg>
-          <div class="tx">
-            <div class="t">Devenir partenaire du réseau</div>
-            <div class="s">Ton compte d’abord (Google, Apple ou e-mail), puis ton activité, ton gérant et tes pièces — tu termines quand tu veux</div>
-          </div>
-        </div>
-        <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
-      </a>
+      <p class="porte-alt">Pas encore de compte ? <a href="00-inscription.html">Créer un compte</a></p>
 
       <!-- Réassurance / règle d'activation -->
-      <div class="pec-mint-banner pc-regle">
-        <div class="tx"><b>La vente s’ouvre à l’activation par PayEnCash</b> — après le contrôle de ton dossier et la signature du contrat de distribution. Tant que ce n’est pas fait, ton espace te le dit : aucune vente avant.</div>
-      </div>
-
-      <div class="pec-sep pc-sep"></div>
-
-      <!-- (23/09 — le grossiste) CE QUE FAIT UN COMMERCE DU RÉSEAU, dit avec les chiffres du référentiel (techRef, techModes) :
-           il achète les bons des marques en les vendant, sa part est sa marge, l'arrêté du soir fait le compte. La page publique
-           (index.html) présente le réseau aux marques ; c'est là qu'on mène. -->
-      <a class="pec-card tap pc-lien pc-lien-bas" href="../../index.html" target="_blank">
-        <div class="g">
-          <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-briefcase"/></svg>
-          <div class="tx">
-            <div class="t">Ce que fait un commerce du réseau</div>
-            <div class="s" id="dev-sub">—</div>
-          </div>
-        </div>
-        <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
-      </a>
+      <p class="porte-note"><b>La vente s’ouvre à l’activation par PayEnCash</b> — après le contrôle de ton dossier et la signature du contrat de distribution.</p>
 
     </div>
   </div><!-- /pec-body -->
@@ -208,28 +151,19 @@
     var MIN_MDP = D0.compteMdpMin('partenaire');
     var NOTE_DEFAUT = 'Saisis ton e-mail et ton mot de passe (' + MIN_MDP + ' caractères minimum).';
     /* LES MOTS DU GLOSSAIRE : l'app sert le commerce du réseau ET le distributeur nomade — chacun sous son nom */
-    if (D0 && D0.terme) document.getElementById('pc-sub').textContent = 'Vends les bons d’achat des marques du réseau, dans ton ' + D0.terme('commerce', 'court') + ' ou comme ' + D0.terme('nomade') + ' ; suis tes bons et tes relevés.';
+    if (D0 && D0.terme) document.getElementById('pc-sub').textContent = 'Ton espace de ' + D0.terme('commerce', 'court') + ' ou de ' + D0.terme('nomade') + ' du réseau : tes ventes, tes bons, tes relevés.';
+    /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers l'inscription, comme chez les marques et dans Mes bons */
+    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'partenaire', marque: 'partenaire', docs: 'partenaire', bascule: { q: 'Pas encore de compte ?', lbl: 'Créer un compte', href: '00-inscription.html' }, retour: { lbl: 'Retour au site', href: '../../index.html' } });
     note.textContent = NOTE_DEFAUT;
-    // (23/09) la part du commerce et l'heure de l'arrêté : du référentiel (techRef, techModes), jamais écrites en page
-    (function () {
-      var R = (D0 && D0.techRef) ? D0.techRef() : null; if (!R || !D0.techModes) return;
-      var ds = document.getElementById('dev-sub');
-      var pct = function (x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; };
-      var parts = D0.techModes().map(function (m) { return m.partPointPct; }).sort(function (a, b) { return a - b; });
-      if (ds && parts.length) ds.textContent = 'Tu vends les bons des marques : tu gardes de ' + pct(parts[0]) + ' à ' + pct(parts[parts.length - 1]) + ' de chaque bon, zéro matériel, tes achats arrêtés à ' + R.paiement.arreteHeure + ' et prélevés — ou payés d’avance si tu te déplaces';
-    })();
-    function maj() {
-      var ok = id.value.trim().length >= 3 && mp.value.length >= MIN_MDP;
-      go.style.opacity = ok ? '1' : '.45'; go.style.pointerEvents = ok ? 'auto' : 'none';
-      // une frappe efface le motif d'échec précédent : texte ET couleur reviennent à la consigne
-      note.hidden = ok; note.style.color = ''; note.textContent = NOTE_DEFAUT;
-    }
+    /* (24/09, nuit) LE BOUTON RESTE ACTIF, COMME DANS LES AUTRES APPS : il vérifie au clic et dit ce qui manque (il était grisé
+       tant que les champs n'étaient pas remplis — la seule connexion à se comporter ainsi) ; une frappe efface l'échec précédent */
+    function maj() { note.hidden = true; note.style.color = ''; note.textContent = NOTE_DEFAUT; }
     id.addEventListener('input', maj); mp.addEventListener('input', maj);
     function echec(msg) { note.hidden = false; note.style.color = '#b3261e'; note.textContent = msg; }
     // CONNEXION RÉELLE : PEC_DATA.compteConnecter('partenaire', id, mdp) vérifie le statut du compte et le mot de passe, puis pose
     // pec-session. La clé pec-partenaire-id = le point rattaché au compte (refId), posée ici — vide si aucun point (le socle le dit).
     go.addEventListener('click', function (ev) {
-      if (go.style.pointerEvents === 'none') return;
+      if (id.value.trim().length < 3 || mp.value.length < MIN_MDP) { ev.preventDefault(); echec(NOTE_DEFAUT); return; }
       var D = window.PEC_DATA; if (!D) return;
       var typed = id.value.trim();
       if (!D.compteConnecter) { ev.preventDefault(); echec('Protocole de compte indisponible — actualise la page.'); return; }

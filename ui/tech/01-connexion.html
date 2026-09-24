@@ -23,7 +23,6 @@
      son app, nommée. Le jeu de démonstration monte la marque de démonstration par le VRAI parcours (compte, puis étapes). -->
 <style>
   /* ce qui est propre à la connexion — le reste (cartes, champs, portes Google / Apple, feuille) vient de payencash-inscription.css */
-  .pec-ins .lien{display:block;margin:12px auto 0;border:0;background:none;padding:6px;font:inherit;font-size:12px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
   .pec-ins .ok{margin:10px 0 0;padding:9px 11px;border-radius:11px;background:var(--color-mint);color:var(--color-mint-ink);font-size:11.5px;font-weight:700;line-height:1.45}
   .pec-ins .demo b{font-size:inherit}
   #tc-demo-ids b{letter-spacing:0;font-size:12px}
@@ -39,15 +38,19 @@
   </div>
   <div class="pec-tech-entete" id="tk-entete"></div>
   <div class="pec-body pec-body--scroll">
-    <div id="tk-hero"></div>
+    <!-- (24/09, nuit) LA PAGE D'ENTRÉE COMMUNE (PEC_INSCRIPTION.porte) : la marque et la promesse sont dans le panneau de l'app -->
+    <div class="porte-page">
+      <h1 class="porte-titre">Se connecter</h1>
+      <p class="porte-sous">Ton espace de marque : tes bons, ton réseau de vente, tes paiements.</p>
+    </div>
     <div class="pec-info-body" style="display:flex;flex-direction:column;gap:14px;padding-bottom:28px">
 
       <section class="carte" id="tc-carte">
-        <h2>Connexion</h2>
-        <div id="tc-sso-boutons" style="margin-top:12px"></div>
+        <div id="tc-sso-boutons"></div>
         <div class="ou">ou avec ton adresse e-mail</div>
         <div class="champ"><label for="tc-email">E-mail</label><input class="pec-input" id="tc-email" type="email" autocomplete="username" inputmode="email"></div>
         <div class="champ"><label for="tc-mdp">Mot de passe</label><input class="pec-input" id="tc-mdp" type="password" autocomplete="current-password"></div>
+        <div class="porte-oubli"><button type="button" class="tap" id="tc-oubli-ouvrir">Mot de passe oublié ?</button></div>
         <p class="err" id="tc-err" role="alert" hidden></p>
         <!-- UNE ADRESSE JAMAIS CONFIRMÉE : le code se saisit ICI, sans renvoyer la personne recommencer son inscription -->
         <div id="tc-code-z" hidden style="margin-top:10px">
@@ -56,7 +59,6 @@
           <div class="actions"><button type="button" class="pec-cta tap" id="tc-code-go">Confirmer et entrer</button></div>
         </div>
         <div class="actions"><button type="button" class="pec-cta tap" id="tc-go">Se connecter</button></div>
-        <button type="button" class="lien tap" id="tc-oubli-ouvrir">Mot de passe oublié ?</button>
         <!-- MOT DE PASSE OUBLIÉ — le code part à l'adresse du compte (le canal qu'il a vérifié), puis le nouveau mot de passe -->
         <div id="tc-oubli" hidden style="margin-top:6px;padding-top:12px;border-top:1px solid var(--color-sep)">
           <div class="champ" style="margin-top:0"><label for="tc-oubli-email">E-mail du compte</label><input class="pec-input" id="tc-oubli-email" type="email" autocomplete="username"></div>
@@ -71,7 +73,7 @@
         </div>
       </section>
 
-      <p style="margin:0;text-align:center;font-size:12px">Pas encore de compte ? <a class="pec-tap-confort" href="00-inscription.html" style="font-weight:800;color:var(--color-primary-dark)">Inscrire ma marque</a></p>
+      <p class="porte-alt">Pas encore de compte ? <a class="pec-tap-confort" href="00-inscription.html">Créer un compte</a></p>
 
       <!-- LE JEU DE DÉMONSTRATION : la chaîne entière d'un geste, et SEULEMENT sur un geste (zéro seed) -->
       <section class="carte">
@@ -91,7 +93,9 @@
 (function () {
   'use strict';
   var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
-  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '01-connexion.html'); T.hero('tk-hero', { teinte: 'porte', titre: 'Ton espace de marque', promesse: 'Tes bons, ton réseau de vente, tes paiements.' }); }
+  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '01-connexion.html'); }
+  /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers l'inscription, comme chez les commerces et dans Mes bons */
+  if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'tech', marque: 'solution', docs: 'marchand', bascule: { q: 'Pas encore de compte ?', lbl: 'Créer un compte', href: '00-inscription.html' }, retour: { lbl: 'Retour au site', href: '../../index.html' } });
   if (!D || !D.techRef || !D.ESPACES_COMPTE.marque) return;
   var esc = D.esc.bind(D);
   function montrer(id, html) { var z = $(id); if (!z) return; z.hidden = !html; z.innerHTML = html || ''; }

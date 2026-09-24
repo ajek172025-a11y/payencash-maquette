@@ -8,11 +8,13 @@
 <link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
 <link rel="stylesheet" href="../assets/payencash-v2.css">
 <link rel="stylesheet" href="../assets/payencash-manager.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css"><!-- (24/09, nuit) la porte commune des pages d'entrée -->
 <script src="../assets/payencash-icons.js"></script>
 <script src="../assets/payencash-data.js"></script>
 <script src="../assets/payencash-docs.js"></script>
 <script src="../assets/payencash-garde.js"></script>
 <script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-inscription.js"></script><!-- (24/09, nuit) la porte commune (PEC_INSCRIPTION.porte) -->
 <!--
   CONNEXION MANAGER — route `/login`.
   Identifiant + mot de passe (`manager_users`), session JWT. Le rôle est vérifié
@@ -29,25 +31,28 @@
      PEC_DATA.compteActiverInvitation(id, mdp) → connexion immédiate.
 -->
 </head>
-<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-ink)">
+<body data-formulaire>
 
-<div style="width:100%;max-width:380px;padding:32px;border-radius:var(--radius-card);background:var(--color-surface);box-shadow:var(--shadow-frame)">
-  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:19px;font-weight:800;color:var(--color-ink)"><span data-pec-marque="manager"></span><!-- (21/09) le P générique et le nom écrit --></div>
-  <p style="margin-bottom:24px;font-size:13.5px;color:var(--color-muted)" id="cx-sub">Espace manager — accès réservé.</p>
+<!-- (24/09, nuit) LA PORTE COMMUNE : le cadre des pages d'entrée de toutes les apps (panneau de l'app au bureau, en-tête sur un téléphone) -->
+<div class="pec-scene">
+<div class="pec-device pec-etroit" id="cx-cadre" style="position:relative">
+<div class="pec-body pec-body--scroll">
+  <div class="porte-page">
+    <h1 class="porte-titre">Se connecter</h1>
+    <p class="porte-sous" id="cx-sub">Espace manager — accès réservé.</p>
+  </div>
 
-  <form id="cx-form">
-    <div class="pec-card" style="margin-bottom:16px">
-      <div style="margin-bottom:14px">
-        <label class="pec-input-label" for="ident">Identifiant</label>
-        <input class="pec-input" id="ident" type="text" autocomplete="username" placeholder="prenom.n">
-      </div>
-      <div>
-        <label class="pec-input-label" for="mdp">Mot de passe</label>
-        <input class="pec-input" id="mdp" type="password" autocomplete="current-password" placeholder="••••••••">
-      </div>
+  <form id="cx-form" class="carte" style="padding:22px">
+    <div style="margin-bottom:14px">
+      <label class="pec-input-label" for="ident">Identifiant</label>
+      <input class="pec-input" id="ident" type="text" autocomplete="username" placeholder="prenom.n">
+    </div>
+    <div style="margin-bottom:16px">
+      <label class="pec-input-label" for="mdp">Mot de passe</label>
+      <input class="pec-input" id="mdp" type="password" autocomplete="current-password" placeholder="••••••••">
     </div>
     <p id="cx-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="cx-err-txt"></span></p>
-    <button class="pec-btn tap" type="submit" style="width:100%">Se connecter</button>
+    <button class="pec-cta tap" type="submit">Se connecter</button>
     <!-- (03/09) plus d'identifiants pré-remplis : le trousseau de démo vit dans
          « Accès & comptes démo » (31) — jamais un mot de passe posé dans un écran. -->
     <p id="cx-demo" style="margin:10px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)">Compte de démo : voir <b>Accès &amp; comptes démo</b> (écran 31).</p>
@@ -82,16 +87,21 @@
       </div>
     </div>
     <p id="act-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="act-err-txt"></span></p>
-    <button class="pec-btn tap" type="submit" style="width:100%" id="act-go">Activer mon compte et me connecter</button>
+    <button class="pec-cta tap" type="submit" id="act-go">Activer mon compte et me connecter</button>
     <p style="margin:10px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)"><a href="01-connexion.html">J’ai déjà un compte — me connecter</a></p>
   </form>
+</div><!-- /pec-body -->
+</div><!-- /pec-device -->
+</div><!-- /pec-scene -->
+
 
   <script>
     (function () {
       var D = window.PEC_DATA;
       var CIBLE = { manager: '02-tableau-de-bord.html', hotline: '../hotline/01-pilotage.html' };
-      // la société qui édite le back-office se lit au référentiel (ref.societe), jamais écrite ici
-      if (D && D.societeLigne && D.societeLigne()) document.getElementById('cx-sub').textContent = 'Espace manager — accès réservé. ' + D.societeLigne() + '.';
+      /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'équipe (ref.portes.manager : sa promesse, la journalisation, la société
+         lue au référentiel) ; pas de bascule : un accès au back-office naît d'une invitation, jamais d'une inscription */
+      if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'manager', marque: 'manager', retour: { lbl: 'Retour au portail', href: '../../portail.html' } });
       function err(id, txt) { var p = document.getElementById(id); p.hidden = !txt; document.getElementById(id + '-txt').textContent = txt || ''; }
       function dateFr(ts) { var d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
 
@@ -162,11 +172,6 @@
     })();
   </script>
 
-  <div class="pec-notice pec-notice--info" style="margin-top:22px">
-    <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
-    <div>Toute action de gestion — validation d'une marque, activation d'un commerce du réseau, remise de prélèvements, paiement d'une marque, modification d'un réglage — est <b>journalisée</b> avec son auteur.</div>
-  </div>
-</div>
 
 </body>
 </html>

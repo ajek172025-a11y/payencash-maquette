@@ -7,11 +7,13 @@
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
 <link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
 <link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css"><!-- (24/09, nuit) la porte commune des pages d'entrée -->
 <script src="../assets/payencash-icons.js"></script>
 <script src="../assets/payencash-data.js"></script>
 <script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : la porte d'un espace ne se ferme pas derrière sa propre garde -->
 <script src="../assets/payencash-bus.js"></script><!-- le journal : chaque tentative de connexion est consignée, réussie ou non -->
 <script src="../assets/payencash-bons.js"></script><!-- (24/09) le socle de l'app : sa barre de navigation -->
+<script src="../assets/payencash-inscription.js"></script><!-- (24/09, nuit) la porte commune (PEC_INSCRIPTION.porte) -->
 <!-- SE CONNECTER (23/09, nuit — l'app « Mes bons » devient autonome : elle ouvre elle-même le compte de son porteur).
      UNE SEULE PORTE, celle du protocole des comptes (03/09) : compteConnecter('client',
      mobile, mot de passe) vérifie le statut du compte et le mot de passe, pose la session (pec-session) et le client
@@ -27,8 +29,6 @@
      jamais une adresse absolue ni un autre protocole qu'on aurait glissé dans un lien). -->
 <style>
   .bc-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
-  h1.bc-h1{margin:14px 0 0;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink)}
-  .bc-sub{margin:4px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
   .bc-note{margin:12px 0 0;border-radius:12px;background:var(--color-bg);padding:9px 11px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
   .bc-note a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
   .bc-offre{padding:12px 14px;border:1.5px solid var(--color-mint)}
@@ -48,24 +48,16 @@
   .bc-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
   .bc-msg.info{background:var(--color-bg);color:var(--color-muted)}
   .bc-msg b{font-family:var(--font-mono);font-size:14px;letter-spacing:.2em;color:var(--color-primary-dark)}
-  .bc-oubli{display:block;margin:10px 0 0 auto;border:none;background:none;padding:0;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
   .bc-t{font-size:14px;font-weight:800;color:var(--color-ink)}
   .bc-s{margin:3px 0 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
   .bc-lien{margin:10px 0 0;text-align:center;font-size:11px;color:var(--color-muted-2)}
   .bc-lien a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
   .bc-code{font-family:var(--font-mono);text-align:center;font-size:20px;letter-spacing:.35em;font-weight:800}
-  .bc-creer{display:flex;align-items:center;gap:10px;padding:13px 14px;text-decoration:none;color:inherit}
-  .bc-creer .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
-  .bc-creer .t{min-width:0;flex:1}
-  .bc-creer .t b{display:block;font-size:13.5px;color:var(--color-ink)}
-  .bc-creer .t small{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
   .bc-rappel{margin:0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
   /* (24/09, soir) la marge du corps est celle du téléphone et de la tablette ; sur bureau, la feuille partagée donne la sienne */
   @media (max-width:1023.98px){ #bc-page{padding:14px 18px 8px} }
   /* ══ (24/09, soir) L'ÉCHELLE DE BUREAU — dans la colonne étroite (pec-etroit) ══ */
   @media (min-width:1024px){
-    h1.bc-h1{margin-top:0;font-size:30px;line-height:1.15}
-    .bc-sub{font-size:15px;margin-top:8px;max-width:62ch}
     .bc-note{font-size:14px;padding:12px 14px}
     .bc-offre{padding:18px 20px} .bc-offre b{font-size:17px} .bc-offre p{font-size:14px}
     .bc-card{padding:24px 26px}
@@ -74,11 +66,9 @@
     .bc-aide{font-size:13px}
     .bc-demo{font-size:13px;padding:11px 14px}
     .bc-msg{font-size:13.5px;padding:12px 14px} .bc-msg b{font-size:16px}
-    .bc-oubli{font-size:13.5px}
     .bc-t{font-size:17px} .bc-s{font-size:14px}
     .bc-lien{font-size:13.5px}
     .bc-code{font-size:24px}
-    .bc-creer{padding:18px 20px} .bc-creer .ic{width:42px;height:42px} .bc-creer .t b{font-size:16px} .bc-creer .t small{font-size:13.5px}
     .bc-rappel{font-size:12.5px;max-width:80ch}
   }
 </style>
@@ -100,8 +90,11 @@
       <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
     </header>
 
-    <h1 class="bc-h1">Se connecter</h1>
-    <p class="bc-sub">Ton e-mail ou ton mobile, et ton mot de passe. Tes bons de marque t’attendent sous ton compte.</p>
+    <!-- (24/09, nuit) LA PAGE D'ENTRÉE COMMUNE (PEC_INSCRIPTION.porte) : même tête que chez les marques et les commerces -->
+    <div class="porte-page">
+      <h1 class="porte-titre">Se connecter</h1>
+      <p class="porte-sous">Ton e-mail ou ton mobile, et ton mot de passe : tes bons de marque t’attendent sous ton compte.</p>
+    </div>
 
     <!-- une session déjà ouverte se dit : on n'invite pas à se reconnecter quelqu'un qui l'est -->
     <div class="bc-note" id="bc-deja" hidden>Tu es déjà connecté·e en tant que <b id="bc-deja-nom" style="color:var(--color-ink)">—</b>. <a id="bc-deja-go" href="01-mes-bons.html">Continuer ›</a> — ou connecte-toi avec un autre compte.</div>
@@ -118,9 +111,9 @@
       <div class="bc-demo" id="bc-demo" hidden>Compte de démonstration <b id="bc-demo-nom"></b> — il n’a jamais choisi de mot de passe : celui de démo est <b id="bc-demo-mdp"></b>.</div>
       <label class="pec-input-label" for="bc-mdp">Mot de passe</label>
       <span class="bc-mdp" style="display:block"><input class="pec-input" id="bc-mdp" type="password" autocomplete="current-password" placeholder="••••••••••"><button type="button" class="voir" id="bc-mdp-voir" aria-label="Afficher le mot de passe">Afficher</button></span>
+      <div class="porte-oubli"><button type="button" class="pec-tap-confort" id="bc-oublie" aria-expanded="false" aria-controls="bc-oublie-panneau">Mot de passe oublié ?</button></div>
       <div class="bc-msg ko" id="bc-err" role="alert" hidden></div>
       <button type="submit" id="bc-go" class="pec-cta tap" style="margin-top:14px">Se connecter</button>
-      <button type="button" class="bc-oubli pec-tap-confort" id="bc-oublie" aria-expanded="false" aria-controls="bc-oublie-panneau">Mot de passe oublié ?</button>
     </form>
 
     <!-- MOT DE PASSE OUBLIÉ — sur le même écran : le code (compteMotDePasseOublie), puis le nouveau mot de passe
@@ -142,12 +135,8 @@
       </div>
     </div>
 
-    <!-- CRÉER SON COMPTE — la porte d'à côté, qui garde le bon proposé -->
-    <a class="pec-card bc-creer tap" id="bc-inscription" href="00-inscription.html">
-      <span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-plus"/></svg></span>
-      <span class="t"><b>Pas encore de compte ? Le créer</b><small>Prénom, nom, e-mail, mobile, mot de passe — puis un code par SMS et un par e-mail.</small></span>
-      <svg class="pec-ico pec-row-go" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
-    </a>
+    <!-- CRÉER SON COMPTE — la porte d'à côté, qui garde le bon proposé ; la même ligne que chez les marques et les commerces -->
+    <p class="porte-alt">Pas encore de compte ? <a id="bc-inscription" href="00-inscription.html">Créer un compte</a></p>
 
     <p class="bc-rappel">Ton compte range les codes des bons d’achat des marques du réseau et porte chaque usage chez sa marque. Il ne détient aucune valeur, n’ouvre aucun compte de paiement et ne fait circuler aucun fonds.</p>
 
@@ -172,6 +161,9 @@
     var CIBLE = RETOUR || (SLUG ? '05-offre.html?o=' + encodeURIComponent(SLUG) : '01-mes-bons.html');
     $('bc-deja-go').href = CIBLE;
     $('bc-inscription').href = '00-inscription.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
+    /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers l'inscription (qui garde le bon proposé) */
+    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'bons', marque: 'bons', docs: 'bons',
+      bascule: { q: 'Pas encore de compte ?', lbl: 'Créer un compte', href: $('bc-inscription').getAttribute('href') }, retour: { lbl: 'Retour à la carte', href: '03-rechercher.html' } });
     // la règle du nouveau mot de passe est celle que compteMotDePasseReinitialiser applique (ref.connexion.motDePasseMin)
     var MIN_MDP = +((((D.ref || {}).connexion || {}).motDePasseMin) || 0);
     var LONG_CODE = +((((D.ref || {}).otp || {}).longueur) || 0);

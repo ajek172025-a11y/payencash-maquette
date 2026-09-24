@@ -7,11 +7,13 @@
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
 <link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
 <link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css"><!-- (24/09, nuit) la porte commune des pages d'entrée -->
 <script src="../assets/payencash-icons.js"></script>
 <script src="../assets/payencash-data.js"></script>
 <script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : une porte ne se ferme pas derrière sa propre garde -->
 <script src="../assets/payencash-bus.js"></script><!-- le journal : compte créé, codes confirmés, connexion — le manager les voit arriver -->
 <script src="../assets/payencash-bons.js"></script><!-- (24/09) le socle de l'app : sa barre de navigation -->
+<script src="../assets/payencash-inscription.js"></script><!-- (24/09, nuit) la porte commune (PEC_INSCRIPTION.porte) -->
 <!-- CRÉER SON COMPTE (23/09, nuit — l'app « Mes bons » devient autonome : elle crée elle-même le compte de son porteur).
      POURQUOI un compte : un bon de MARQUE s'utilise depuis cette app, sous le compte
      de son porteur — c'est ce qui rend chaque usage retraçable (fondatrice 23/09 : « l'app est obligatoire »).
@@ -35,10 +37,6 @@
   .bi-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
   h1.bi-h1{margin:14px 0 0;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink)}
   .bi-sub{margin:4px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
-  .bi-steps{display:flex;align-items:center;gap:6px;margin-top:12px}
-  .bi-steps span{flex:1;height:4px;border-radius:999px;background:var(--color-sep)}
-  .bi-steps span.on{background:var(--color-primary)}
-  .bi-etat{margin-top:6px;font-size:11px;font-weight:700;color:var(--color-primary-dark)}
   .bi-note{margin:10px 0 0;border-radius:12px;background:var(--color-bg);padding:9px 11px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
   .bi-note a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
   .bi-offre{padding:12px 14px;border:1.5px solid var(--color-mint)}
@@ -114,8 +112,6 @@
   @media (min-width:1024px){
     h1.bi-h1{margin-top:0;font-size:30px;line-height:1.15}
     .bi-sub{font-size:15px;margin-top:8px;max-width:62ch}
-    .bi-steps{margin-top:18px;gap:8px} .bi-steps span{height:5px}
-    .bi-etat{font-size:13px;margin-top:8px}
     .bi-note{font-size:14px;padding:12px 14px}
     .bi-offre{padding:18px 20px} .bi-offre b{font-size:17px} .bi-offre p{font-size:14px}
     .bi-card{padding:24px 26px}
@@ -161,10 +157,10 @@
     </header>
 
     <h1 class="bi-h1">Créer mon compte</h1>
-    <p class="bi-sub">Ton compte, c’est ton <b style="color:var(--color-ink)">mobile</b> et un <b style="color:var(--color-ink)">mot de passe</b>. Il range tes bons de marque et porte chaque usage chez la marque.</p>
+    <p class="bi-sub" id="bi-sous">Ton compte, c’est ton <b style="color:var(--color-ink)">mobile</b> et un <b style="color:var(--color-ink)">mot de passe</b>. Il range tes bons de marque et porte chaque usage chez la marque.</p>
 
-    <div class="bi-steps" aria-hidden="true"><span id="bi-step1" class="on"></span><span id="bi-step2"></span><span id="bi-step3"></span></div>
-    <div class="bi-etat" id="bi-etat">Étape 1 sur 3 — tes informations</div>
+    <!-- (24/09, nuit) LE FIL DES ÉTAPES, celui des inscriptions de la marque et du commerce : la porte le range dans son panneau -->
+    <ol class="fil" id="bi-fil" aria-label="Étapes de la création du compte"></ol>
 
     <!-- déjà connecté : on le dit, on ne bloque pas (un second compte reste possible avec un autre mobile) -->
     <div class="bi-note" id="bi-deja" hidden>Tu es déjà connecté·e en tant que <b id="bi-deja-nom" style="color:var(--color-ink)">—</b>. <a id="bi-deja-go" href="01-mes-bons.html">Continuer ›</a></div>
@@ -267,6 +263,12 @@
     var CIBLE = SLUG ? '05-offre.html?o=' + encodeURIComponent(SLUG) : '01-mes-bons.html';
     $('bi-ok-go').href = CIBLE; $('bi-deja-go').href = CIBLE;
     $('bi-connexion').href = '06-connexion.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
+    /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers la connexion, comme chez les marques et les commerces ;
+       la phrase d'ouverture suit le même patron (nombre d'étapes, durée lue au référentiel) */
+    var FIL = ['Tes informations', 'Tes codes', 'Compte prêt'];   // les trois écrans de la page, dans l'ordre
+    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'bons', marque: 'bons', fil: 'bi-fil', docs: 'bons',
+      bascule: { q: 'Déjà un compte ?', lbl: 'Se connecter', href: $('bi-connexion').getAttribute('href') }, retour: { lbl: 'Retour à la carte', href: '03-rechercher.html' } });
+    $('bi-sous').innerHTML = FIL.length + ' étapes, ' + esc((((D.ref || {}).portes || {}).bons || {}).duree || '') + '. Ton compte, c’est ton <b style="color:var(--color-ink)">mobile</b> et un <b style="color:var(--color-ink)">mot de passe</b> : il range tes bons de marque.';
 
     /* LES RÈGLES VIENNENT DU RÉFÉRENTIEL : longueur du mot de passe (celle que compteCreer exige d'un client), longueur
        des codes, documents du porteur (portée `bons`). Sans règle connue, c'est le data-layer qui tranche au refus. */
@@ -281,7 +283,7 @@
     $('bi-cgu-lire-txt').textContent = CGU ? 'Lire les ' + CGU.titre + ' (version ' + CGU.version + ') ›' : 'Aucun document à lire';
     $('bi-cgu-txt').textContent = CGU ? 'J’ai lu et j’accepte les ' + CGU.titre + ' (version ' + CGU.version + ').' : 'Aucun document en vigueur pour l’app.';
     if (!CGU) { $('bi-cgu-lire').hidden = true; $('bi-cgu-aide').hidden = true; }
-    if (AUTRES.length) { $('bi-docs-suite').hidden = false; $('bi-docs-suite').textContent = 'Avant de ranger un premier bon, tu liras et accepteras aussi, dans Compte : ' + AUTRES.map(function (d) { return d.titre; }).join(' · ') + '.'; }
+    if (AUTRES.length) { $('bi-docs-suite').hidden = false; $('bi-docs-suite').textContent = 'Avant de ranger un premier bon, tu liras aussi, dans Compte : ' + AUTRES.map(function (d) { return d.titre; }).join(' · ') + '.'; }
 
     // déjà connecté·e (session client ou client actif) — informatif, ne bloque pas
     (function () {
@@ -388,12 +390,19 @@
     $('bi-cgu-ok').addEventListener('change', function () { $('bi-cgu-bloc').classList.remove('ko'); message($('bi-err'), ''); });
 
     var compte = null, codes = {}, MDP = '';
-    function etape(n, texte) {
+    /* (24/09, nuit) le fil commun : la même allure que les inscriptions de la marque et du commerce */
+    function peindreFil(n) {
+      $('bi-fil').innerHTML = FIL.map(function (l, i) {
+        var k = i + 1, cls = k < n ? 'fait' : (k === n ? 'ici' : '');
+        return '<li class="' + cls + '"><button type="button" disabled aria-current="' + (k === n ? 'step' : 'false') + '"><span class="barre"></span><span class="lbl">' + k + '. ' + esc(l) + '</span></button></li>';
+      }).join('');
+    }
+    function etape(n) {
       ['bi-form', 'bi-etape2', 'bi-ok'].forEach(function (id, i) { $(id).hidden = i !== n - 1; });
-      [1, 2, 3].forEach(function (i) { $('bi-step' + i).classList.toggle('on', i <= n); });
-      $('bi-etat').textContent = 'Étape ' + n + ' sur 3 — ' + texte;
+      peindreFil(n);
       var corps = document.querySelector('.pec-body'); if (corps) corps.scrollTop = 0;
     }
+    peindreFil(1);
     function majCompte() { if (!compte) return; $('bi-compte-id').textContent = compte.id; $('bi-compte-statut').textContent = (D.STATUTS_COMPTE || {})[compte.statut] || compte.statut; }
     function masquerTel(tel) { return tel.slice(0, 2) + ' •• •• •• ' + tel.slice(-2); }
     function masquerMail(m) { var p = m.split('@'); return p[0].slice(0, 2) + '•••@' + (p[1] || ''); }
@@ -426,7 +435,7 @@
       // ② les codes attendus par le data-layer — affichés, jamais devinés
       $('bi-cible-sms').textContent = masquerTel(tel); $('bi-cible-mail').textContent = masquerMail(mail);
       $('bi-demo-sms').textContent = codes.sms || '—'; $('bi-demo-mail').textContent = codes.email || '—';
-      majCompte(); etape(2, 'confirme ton mobile et ton e-mail');
+      majCompte(); etape(2);
       $('bi-code-sms').focus();
     });
 
@@ -464,7 +473,7 @@
       }
       var p = co.compte.profil || {};
       $('bi-ok-txt').textContent = 'Bienvenue ' + (p.prenom || p.nom || co.compte.identifiant) + ' — tu es connecté·e. ' + (SLUG ? 'On t’emmène sur le bon proposé par la marque.' : 'On t’emmène sur tes bons.');
-      etape(3, 'compte créé, connexion ouverte');
+      etape(3);
       setTimeout(function () { location.href = CIBLE; }, 1200);
     }
   })();

@@ -1405,6 +1405,53 @@ codesFournisseur: [
         { cle: 'annexe-grille-prix',           titre: 'Annexe 2 — Grille de prix',                version: '2026-09-07', url: '../../documents/annexe-2-grille-prix.html' }
       ]
     },
+    /* ══ (24/09, nuit — fondatrice : « le manque de cohérence pour créer un compte : applique un design professionnel, inspire-toi
+       de Stancer, Stripe… pour les pages d'inscription, aligne ça de partout ») LA PORTE DE CHAQUE ESPACE ══════════════════════
+       Toutes les pages qui créent un compte ou y font entrer — inscriptions, connexions, invitation — portent le même cadre
+       (PEC_INSCRIPTION.porte) : au bureau, un panneau à gauche avec la marque de l'app, sa promesse, ce qu'on y gagne et les
+       étapes quand il y en a ; sur un téléphone, un en-tête court. Les mots viennent d'ici, une fois pour toutes les pages ;
+       {offres}, {parts}, {commerce}, {nomade} et {societe} se remplacent à l'affichage par le référentiel (offres de paiement,
+       part du commerce selon l'offre, glossaire, ligne de la société). Chaque phrase dit une règle qui existe déjà dans le data-layer — aucune promesse neuve. */
+    portes: {
+      tech: {
+        duree: 'environ dix minutes',
+        titre: 'Tes bons d’achat, vendus par notre réseau.',
+        texte: 'Tu émets tes bons ; les commerces du réseau les achètent au moment où ils les vendent, et nous te payons à l’échéance de ton offre.',
+        avantages: ['Ton paiement arrive à l’échéance de ton offre : {offres}.',
+                    'Le risque d’impayé d’un commerce est pour nous, jamais pour toi.',
+                    'Tes bons ne s’utilisent que chez toi, depuis l’app Mes bons.']
+      },
+      partenaire: {
+        duree: 'environ dix minutes',
+        titre: 'Vends les bons d’achat des marques du réseau.',
+        texte: 'Dans ton {commerce} ou comme {nomade} : le client achète au comptoir, il repart avec son bon.',
+        avantages: ['Ta part sur chaque bon vendu : {parts}, selon l’offre de la marque.',
+                    'Le bon s’édite au moment de la vente : aucun stock à tenir.',
+                    'Ton dossier est contrôlé par notre équipe, ton contrat se signe en ligne.']
+      },
+      bons: {
+        duree: 'environ deux minutes',
+        titre: 'Tes bons d’achat, rangés au même endroit.',
+        texte: 'Range le code de chaque bon, vois ce qu’il te reste, et utilise-le chez la marque qui l’a émis.',
+        avantages: ['Le reste de chaque bon et sa date de fin, toujours à jour.',
+                    'Chaque usage chez la marque passe par ton compte.',
+                    'La carte des commerces qui vendent les bons près de chez toi.']
+      },
+      manager: {
+        titre: 'L’espace de l’équipe AJEK.',
+        texte: 'Les dossiers des marques et des commerces, les prélèvements, les paiements aux marques et la configuration.',
+        avantages: ['Accès réservé aux membres de l’équipe, sur invitation.',
+                    'Toute action de gestion est journalisée avec son auteur.'],
+        pied: '{societe}'
+      },
+      hotline: {
+        titre: 'L’assistance PayEnCash.',
+        texte: 'Les appels, les demandes des marques, des commerces et des utilisateurs, et le planning de l’équipe.',
+        avantages: ['Accès réservé aux conseillers, sur invitation d’un manager.',
+                    'Les mêmes données que le manager, au même instant.'],
+        pied: '{societe}'
+      }
+    },
     invitations: { validiteH: 72, motDePasseMin: 10 },
     otp: { validiteMin: 10, longueur: 6, source: "codes SMS / e-mail : validité annoncée au client" },
     kyc: { paliers: { achats: 3, cumulEuros: 1000, fenetreJours: 7 }, prestataire: "PVID (vérification d'identité à distance)",

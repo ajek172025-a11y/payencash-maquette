@@ -20,6 +20,7 @@
      PEC_INSCRIPTION.pieces({ pre, conteneur, portee, id, garder, onChange }) → { peindre, manquantes }
      PEC_INSCRIPTION.lecteur({ pre, racine, espace, cle, par, onChange, retour }) → { ouvrir(doc), fermer, ouvert }
      PEC_INSCRIPTION.beneficiaires({ pre, conteneur, lire(), dirigeant(), forme() }) → { peindre, lire(), ei(), viser(refus) }
+     PEC_INSCRIPTION.porte({ app, marque, nom, fil, docs, bascule, retour, cadre })   → le cadre commun des pages d'entrée (panneau + bascule)
    ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
 (function () {
   'use strict';
@@ -366,6 +367,84 @@
       if (cible && cible.focus) cible.focus();
     }
     return { peindre: peindre, lire: lire, ei: ei, viser: viser };
+  };
+
+  /* ══ ⑧ LA PORTE — le cadre commun des pages qui créent un compte ou y font entrer (24/09, nuit) ══════════════════════════
+     Fondatrice : « le manque de cohérence pour créer un compte — applique un design professionnel, inspire-toi de Stancer,
+     Stripe… pour les pages d'inscription, aligne ça de partout ». La page garde son formulaire et ses identifiants ; la porte
+     pose autour d'elle, une fois pour toutes les apps :
+       · le PANNEAU de l'app (au bureau, la colonne de gauche ; sur un téléphone, l'en-tête) : la marque de l'app, sa promesse
+         et ce qu'on y gagne (ref.portes), les étapes de l'inscription quand il y en a (le fil de la page y est déplacé : ses
+         identifiants ne changent pas), les documents de l'espace et la société ;
+       · la BASCULE « Déjà un compte ? Se connecter » / « Pas encore de compte ? Créer un compte », en haut à droite ;
+       · la classe `pec-porte` sur le cadre : la navigation de l'app s'efface (on entre, on ne navigue pas) et les champs,
+         boutons et messages prennent l'allure commune (payencash-inscription.css).
+     o = { app: 'tech'|'partenaire'|'bons'|'manager'|'hotline', marque: symbole de l'app (data-pec-marque), nom: nom écrit
+           de l'app (facultatif), fil: id du fil des étapes (facultatif), docs: espace des documents (ref.documents),
+           bascule: { q, lbl, href }, retour: { lbl, href } (facultatif), cadre: élément (défaut : .pec-device) } */
+  I.porte = function (o) {
+    var d = D(); if (!d) return null;
+    var cadre = o.cadre || document.querySelector('.pec-device') || document.body;
+    cadre.classList.add('pec-porte');
+    var P = (((d.ref || {}).portes || {})[o.app]) || {};
+    var offres = (d.techModes ? d.techModes() : []).map(function (m) { return String(m.libelle || '').replace(/^Paiement\s+sous\s+/i, ''); }).filter(Boolean);
+    var offresTxt = offres.length ? 'sous ' + (offres.length > 1 ? offres.slice(0, -1).join(', ') + ' ou ' + offres[offres.length - 1] : offres[0]) : '';
+    var pct = function (x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; };
+    var parts = (d.techModes ? d.techModes() : []).map(function (m) { return +m.partPointPct; }).filter(function (x) { return x > 0; }).sort(function (x, y) { return x - y; });
+    var partsTxt = parts.length ? (parts[0] === parts[parts.length - 1] ? pct(parts[0]) : 'de ' + pct(parts[0]) + ' à ' + pct(parts[parts.length - 1])) : '';
+    function remplir(s) {
+      return String(s || '').split('{offres}').join(offresTxt).split('{parts}').join(partsTxt)
+        .split('{commerce}').join(d.terme ? d.terme('commerce', 'court') : 'commerce')
+        .split('{nomade}').join(d.terme ? d.terme('nomade') : 'distributeur nomade')
+        .split('{societe}').join(d.societeLigne ? d.societeLigne() : '');
+    }
+    var coche = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    var docs = o.docs ? ((((d.ref || {}).documents || {})[o.docs]) || []).filter(function (x) { return /^cgu|confidentialite/.test(x.cle); }) : [];
+    var lienDoc = function (x) { return '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + (/^confidentialite/.test(x.cle) ? 'Confidentialité' : 'Conditions d’utilisation') + '</a>'; };
+    var bascule = o.bascule ? '<span class="q">' + esc(o.bascule.q) + ' </span><a href="' + esc(o.bascule.href) + '">' + esc(o.bascule.lbl) + '</a>' : '';
+    var a = document.createElement('aside');
+    a.className = 'porte-aside';
+    a.innerHTML = '<div class="porte-tete">'
+        + (o.retour ? '<a class="porte-marque" href="' + esc(o.retour.href) + '" aria-label="' + esc(o.retour.lbl) + '">' : '<span class="porte-marque">')
+        + '<span class="pec-marque--sombre" data-pec-marque="' + esc(o.marque) + '"' + (o.nom ? ' data-nom="' + esc(o.nom) + '"' : '') + '></span>'
+        + (o.retour ? '</a>' : '</span>')
+        + (bascule ? '<p class="porte-bascule porte-tel">' + bascule + '</p>' : '')
+      + '</div>'
+      + (P.titre ? '<div class="porte-promesse"><h2>' + esc(remplir(P.titre)) + '</h2>' + (P.texte ? '<p>' + esc(remplir(P.texte)) + '</p>' : '')
+        + ((P.avantages || []).length ? '<ul class="porte-avantages">' + P.avantages.map(function (x) { return '<li><span class="c">' + coche + '</span><span>' + esc(remplir(x)) + '</span></li>'; }).join('') + '</ul>' : '')
+        + '</div>' : '')
+      + '<div class="porte-etapes"></div>'
+      + '<div class="porte-pied">' + (docs.length ? '<p class="liens">' + docs.map(lienDoc).join('<span aria-hidden="true"> · </span>') + '</p>' : '')
+        + (P.pied ? '<p>' + esc(remplir(P.pied)) + '</p>' : '')
+        + (o.retour ? '<p><a href="' + esc(o.retour.href) + '">← ' + esc(o.retour.lbl) + '</a></p>' : '') + '</div>';
+    var sb = cadre.querySelector(':scope > .pec-statusbar');
+    cadre.insertBefore(a, sb ? sb.nextSibling : cadre.firstChild);
+    if (d.marqueAppliquer) d.marqueAppliquer(a);
+    if (o.fil) { var f = el(o.fil); if (f) a.querySelector('.porte-etapes').appendChild(f); }
+    if (bascule) {
+      var h = document.createElement('p'); h.className = 'porte-bascule porte-haut'; h.innerHTML = bascule;
+      var corps = cadre.querySelector(':scope > .pec-body');
+      cadre.insertBefore(h, corps || null);
+    }
+    I.voirMdp(cadre);
+    return a;
+  };
+  /* « AFFICHER » LE MOT DE PASSE, sur chaque champ de mot de passe d'une page d'entrée (24/09, nuit) : Mes bons l'avait, les
+     marques et les commerces non. Un champ qui porte déjà son bouton (.voir) est laissé tel quel. */
+  I.voirMdp = function (racine) {
+    [].forEach.call((racine || document).querySelectorAll('input[type="password"]'), function (i) {
+      if (i.getAttribute('data-voir') || (i.parentElement && i.parentElement.querySelector('.voir'))) return;
+      i.setAttribute('data-voir', '1');
+      var enveloppe = document.createElement('span'); enveloppe.className = 'porte-mdp';
+      i.parentNode.insertBefore(enveloppe, i); enveloppe.appendChild(i);
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'voir tap'; b.textContent = 'Afficher';
+      b.setAttribute('aria-label', 'Afficher le mot de passe'); b.setAttribute('aria-controls', i.id || '');
+      b.addEventListener('click', function () {
+        var vu = i.type === 'text'; i.type = vu ? 'password' : 'text';
+        b.textContent = vu ? 'Afficher' : 'Masquer'; b.setAttribute('aria-label', vu ? 'Afficher le mot de passe' : 'Masquer le mot de passe');
+      });
+      enveloppe.appendChild(b);
+    });
   };
 
   window.PEC_INSCRIPTION = I;

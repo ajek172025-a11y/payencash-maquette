@@ -244,8 +244,9 @@
   var K = (D.ref && D.ref.kyc) || {}, M = D.PARTENAIRE_MODES || {}, esc = D.esc.bind(D);
   var ETAPES = D.PART_INSCRIPTION_ETAPES, CLE = 'pec-inscription-partenaire', CID = null, ici = 'compte', mdpEnCours = null;
 
-  $('pi-promesse').textContent = 'Vends les bons d’achat des marques du réseau, dans ton ' + D.terme('commerce', 'court') + ' ou comme ' + D.terme('nomade') + '. '
-    + ETAPES.length + ' étapes ; tu peux t’arrêter à tout moment, ta candidature est gardée.';
+  /* (24/09, nuit) LA PORTE COMMUNE — la promesse part dans le panneau de l'app ; la phrase d'ouverture est celle des marques */
+  I.porte({ app: 'partenaire', marque: 'partenaire', fil: 'pi-fil', docs: 'partenaire', bascule: { q: 'Déjà un compte ?', lbl: 'Se connecter', href: '01-connexion.html' }, retour: { lbl: 'Retour au site', href: '../../index.html' } });
+  $('pi-promesse').textContent = ETAPES.length + ' étapes, ' + D.ref.portes.partenaire.duree + '. Tu peux t’arrêter à tout moment : ta candidature est gardée.';
   $('pi-mdp-aide').textContent = D.compteMdpMin('partenaire') + ' caractères au moins.';
   $('pi-autre-porte').innerHTML = 'Tu es une marque et tu veux faire vendre tes bons par le réseau ? Ton inscription se fait dans <a href="../tech/00-inscription.html">' + esc(D.techRef ? D.techRef().nom : 'PayEnCash Solution') + '</a>.';
 

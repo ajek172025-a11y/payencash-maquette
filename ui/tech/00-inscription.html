@@ -216,7 +216,10 @@
   var R = D.techRef(), K = (D.ref && D.ref.kyc) || {}, esc = D.esc.bind(D);
   var ETAPES = D.TECH_INSCRIPTION_ETAPES, MID = null, ici = 'compte', compteEnCours = null;
 
-  $('ti-promesse').textContent = ETAPES.length + ' étapes, environ dix minutes. Tu peux t’arrêter à tout moment : ton inscription est gardée.';
+  /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app (marque, promesse, étapes), la bascule vers la connexion ; la même phrase
+     d'ouverture que chez les commerces et dans Mes bons, sa durée lue au référentiel (ref.portes) */
+  I.porte({ app: 'tech', marque: 'solution', fil: 'ti-fil', docs: 'marchand', bascule: { q: 'Déjà un compte ?', lbl: 'Se connecter', href: '01-connexion.html' }, retour: { lbl: 'Retour au site', href: '../../index.html' } });
+  $('ti-promesse').textContent = ETAPES.length + ' étapes, ' + D.ref.portes.tech.duree + '. Tu peux t’arrêter à tout moment : ton inscription est gardée.';
   $('ti-mdp-aide').textContent = D.compteMdpMin('marque') + ' caractères au moins.';
   /* L'AUTRE PORTE, NOMMÉE : celui qui veut VENDRE les bons (en boutique ou en se déplaçant) s'inscrit dans l'app des partenaires */
   $('ti-autre-porte').innerHTML = 'Tu veux vendre les bons des marques, dans ton commerce ou comme ' + esc(D.terme('nomade')) + ' ? Ton inscription se fait dans '
