@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Boutique</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : la boutique se visite sans compte ; « ton code » demande de se connecter -->
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-bons.js"></script>
+<!-- UNE BOUTIQUE (24/09, nuit — fondatrice : « si je clique dessus, ça présente les articles publiés et elle renseigne son code ; si
+     titulaire de l'abonnement, ça renvoie sur le site de la marque » ; « le bon doit être achetable, utilisé uniquement sur le site de
+     la marque, il n'est jamais utilisé sur notre site » ; puis « reprends la présentation de la page, améliore le design de ses
+     articles : ça doit provenir de ses publications sur l'app Solution ou du site de l'abonnement — il sera connecté via API » ;
+     « pour consommer le bon, uniquement sur le site de la marque : ça doit renvoyer automatiquement sur son site s'il n'est pas
+     hébergé par notre partenaire, sinon directement sur la page du site partenaire »).
+     TOUT EST DÉRIVÉ, D'UNE SEULE SOURCE PAR CHOSE (PEC_DATA.techBoutique) :
+       ① LA VITRINE — celle de SON site : la couleur, l'accroche et le domaine posés dans Compte › Abonnement (techMarchandSite) ;
+          et OÙ SON BON SE DÉPENSE (techMarchandDestination) : la page du site hébergé par notre partenaire si son abonnement le
+          comprend, sinon son propre site. Le bouton y mène, dans un nouvel onglet — rien ne se dépense ici ;
+       ② TON CODE — les bons de cette marque rangés sous TON compte (PEC_BONS.bonsDeMarque), voilés jusqu'au geste (le code vaut
+          titre). « Utiliser mon bon » copie le code et ouvre directement son site ; sans compte, on invite à se connecter ; sans
+          bon, son lien de vente et la carte des points de vente ;
+       ③ SES ARTICLES — ses publications dans PayEnCash Solution (celles que son site montre aussi ; l'API du site hébergé est
+          prévue dans ref.tech.siteHebergement, en attente de sa documentation) : photo, remise avec le bon, tailles déclarées,
+          stock qui s'épuise (techArticleStock) ; chacun ouvre sa page de bon d'achat, où « Où acheter ce bon » mène à la carte.
+     Une marque qui ne peut plus travailler avec nous (suspendue, contrat) n'a plus de boutique : la page le dit. -->
+<style>
+  #bt-page{padding:14px 18px 8px;display:flex;flex-direction:column;gap:14px}
+  .bt-retour{align-self:flex-start;display:inline-flex;align-items:center;gap:4px;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .bt-retour .pec-ico{font-size:15px}
+  .bt-cols,.bt-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+  /* ① LA VITRINE — la couleur de SON site (--m, posée par le script), sinon l'encre ; le texte suit la clarté de la couleur (--m-txt) */
+  .bt-tete{position:relative;overflow:hidden;border-radius:20px;background:var(--m,var(--color-ink));color:var(--m-txt,#fff);padding:18px 18px 16px}
+  .bt-tete::after{content:"";position:absolute;right:-70px;top:-70px;width:200px;height:200px;border-radius:50%;background:currentColor;opacity:.07;pointer-events:none}
+  .bt-tete .k{font-size:10.5px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;opacity:.74}
+  .bt-tete h1{margin:6px 0 0;font-size:27px;line-height:1.08;font-weight:800;letter-spacing:-.025em;text-wrap:balance}
+  .bt-tete .acc{margin:8px 0 0;font-size:14px;line-height:1.5;font-weight:650;text-wrap:pretty}
+  .bt-tete .ou{margin:8px 0 0;font-size:12.5px;line-height:1.55;opacity:.84}
+  .bt-tete .stats{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+  .bt-tete .stats span{border-radius:99px;padding:4px 10px;font-size:11.5px;font-weight:800;background:rgba(127,127,127,.2);background:color-mix(in srgb,currentColor 13%,transparent)}
+  .bt-tete .go{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;margin-top:14px;border-radius:999px;background:var(--m-txt,#fff);color:var(--m,var(--color-ink));padding:11px 17px;font-size:13px;font-weight:800;text-decoration:none}
+  .bt-tete .go .pec-ico{font-size:15px}
+  .bt-sec{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin:4px 0 -6px}
+  .bt-sec h2{margin:0;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted)}
+  /* ② TON CODE */
+  .bt-code{border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:14px 15px}
+  .bt-code p{margin:0;font-size:12.5px;line-height:1.55;color:var(--color-muted)}
+  .bt-code p b{color:var(--color-ink)}
+  .bt-bon{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--color-sep)}
+  .bt-bon:first-of-type{border-top:0}
+  .bt-bon .c{flex:1;min-width:0}
+  .bt-bon .c code{display:block;font-family:var(--font-mono);font-size:14.5px;font-weight:800;letter-spacing:.06em;color:var(--color-ink);overflow-wrap:anywhere}
+  .bt-bon .c small{display:block;margin-top:2px;font-size:11px;color:var(--color-muted)}
+  .bt-bon .a{flex:none;display:flex;gap:6px}
+  .bt-bon .a button,.bt-bon .a a{border:1.5px solid var(--color-sep);border-radius:9px;background:var(--color-surface);padding:7px 10px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-ink);cursor:pointer;text-decoration:none;min-height:34px;display:inline-flex;align-items:center}
+  .bt-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+  .bt-actions .pec-cta,.bt-actions .pec-btn-secondary{flex:1 1 auto;text-decoration:none}
+  .bt-copie{margin:8px 0 0 !important;font-weight:700;color:var(--color-primary-dark) !important}
+  /* ③ SES ARTICLES */
+  .bt-prov{margin:0;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .bt-cats{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .bt-cats::-webkit-scrollbar{display:none}
+  .bt-cats button{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-surface);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer;white-space:nowrap}
+  .bt-cats button[aria-pressed="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+  .bt-grille{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .bt-art{display:flex;flex-direction:column;text-decoration:none;color:inherit;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);overflow:hidden;transition:transform .15s ease}
+  .bt-art:hover{transform:translateY(-2px)}
+  .bt-art:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  .bt-art .ph{position:relative;aspect-ratio:4/5;background:var(--color-mint);display:flex;align-items:center;justify-content:center;color:var(--color-primary-dark);font-weight:800;font-size:24px}
+  .bt-art .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+  .bt-art .rem{position:absolute;left:8px;top:8px;border-radius:99px;background:var(--m,var(--color-ink));color:var(--m-txt,#fff);padding:3px 8px;font-size:11px;font-weight:800}
+  .bt-art .peu{position:absolute;right:8px;top:8px;border-radius:99px;background:var(--color-surface);color:var(--color-ink);padding:3px 8px;font-size:10.5px;font-weight:800;box-shadow:var(--shadow-card)}
+  .bt-art .i{flex:1;display:flex;flex-direction:column;gap:3px;padding:10px 11px 12px}
+  .bt-art .cat{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)}
+  .bt-art .n{font-size:13.5px;font-weight:800;line-height:1.3;color:var(--color-ink)}
+  .bt-art .p{display:flex;align-items:baseline;flex-wrap:wrap;gap:0 6px;font-size:14px;font-weight:800;color:var(--color-ink);font-variant-numeric:tabular-nums}
+  .bt-art .p s{font-size:12px;font-weight:600;color:var(--color-muted)}
+  .bt-art .p small{font-size:10.5px;font-weight:700;color:var(--color-muted)}
+  .bt-art .tl{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+  .bt-art .tl span{border:1px solid var(--color-sep);border-radius:6px;padding:1px 6px;font-size:10.5px;font-weight:700;color:var(--color-ink)}
+  .bt-art .b{margin-top:auto;padding-top:8px;font-size:11.5px;font-weight:800;color:var(--color-primary-dark)}
+  .bt-vide{display:flex;flex-direction:column;align-items:center;gap:6px;padding:22px 16px;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);text-align:center;font-size:12.5px;line-height:1.55;color:var(--color-muted)}
+  .bt-vide .pec-ico{font-size:22px;color:var(--color-primary-dark)}
+  .bt-regle{margin:0;font-size:11px;line-height:1.55;color:var(--color-muted)}
+  @media (prefers-reduced-motion:reduce){ .bt-art{transition:none} .bt-art:hover{transform:none} }
+  @media (min-width:640px){ .bt-grille{grid-template-columns:repeat(3,minmax(0,1fr))} }
+  /* SUR ORDINATEUR, LA BOUTIQUE SE LIT EN DEUX COLONNES : sa vitrine et ton code restent sous les yeux, ses articles défilent */
+  @media (min-width:1024px){
+    #bt-page{padding:28px 40px 40px;gap:18px}
+    .bt-retour{font-size:14px}
+    .bt-cols{display:grid;grid-template-columns:minmax(300px,360px) minmax(0,1fr);gap:28px;align-items:start}
+    .bt-col--g{position:sticky;top:0}
+    .bt-tete{padding:26px 26px 22px;border-radius:24px} .bt-tete .k{font-size:12px} .bt-tete h1{font-size:34px} .bt-tete .acc{font-size:16px} .bt-tete .ou{font-size:14px}
+    .bt-tete .stats span{font-size:12.5px} .bt-tete .go{font-size:14.5px;padding:12px 20px}
+    .bt-sec h2{font-size:12px}
+    .bt-code{padding:20px 22px} .bt-code p{font-size:14px} .bt-bon .c code{font-size:16px} .bt-bon .c small{font-size:12.5px}
+    .bt-bon .a button,.bt-bon .a a{font-size:13px;padding:8px 12px}
+    .bt-prov{font-size:13px} .bt-cats{flex-wrap:wrap;gap:8px;overflow:visible} .bt-cats button{font-size:13.5px;padding:9px 15px}
+    .bt-grille{grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px}
+    .bt-art .cat{font-size:11px} .bt-art .n{font-size:15px} .bt-art .p{font-size:15.5px} .bt-art .p s{font-size:13px} .bt-art .p small{font-size:12px}
+    .bt-art .tl span{font-size:12px} .bt-art .b{font-size:13px} .bt-art .rem,.bt-art .peu{font-size:12px}
+    .bt-vide{font-size:14px} .bt-regle{font-size:13px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script>
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+  <div class="pec-body pec-body--scroll" id="bt-page">
+    <a class="bt-retour tap pec-tap-confort" href="07-boutiques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg>Boutiques</a>
+    <div id="bt-corps"></div>
+    <div style="height:6px"></div>
+  </div>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="08-boutique.html"></nav>
+</div>
+</div>
+<script>
+  (function () {
+    'use strict';
+    var D = window.PEC_DATA, B = window.PEC_BONS; if (!D || !D.techBoutique) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function photo(src) { return /^(https?:|data:|blob:)/.test(String(src || '')) ? src : ''; }
+    var ID = new URLSearchParams(location.search).get('m') || '';
+    var vus = {};          // les codes que l'utilisateur a choisi d'afficher (le code vaut titre : voilé jusqu'au geste)
+    var filtre = 'tous';   // la catégorie d'article choisie — un état d'écran, jamais écrit
+    var copie = '';        // le message laissé après « Utiliser mon bon » (code copié, site ouvert)
+    var derniere = null;
+    function masque(code) { return D.bonMasque ? D.bonMasque(code) : String(code || '').replace(/[A-Z0-9](?=[A-Z0-9-]{4})/g, '•'); }
+    /* LE TEXTE SUR LA COULEUR DE LA MARQUE — sa clarté relative (WCAG) décide : l'encre sur une couleur claire, le blanc sur une foncée */
+    function texteSur(hex) {
+      var c = /^#([0-9a-f]{6})$/i.exec(hex || ''); if (!c) return null;
+      var n = parseInt(c[1], 16), v = [n >> 16 & 255, n >> 8 & 255, n & 255].map(function (x) { x /= 255; return x <= 0.03928 ? x / 12.92 : Math.pow((x + 0.055) / 1.055, 2.4); });
+      return (0.2126 * v[0] + 0.7152 * v[1] + 0.0722 * v[2]) > 0.2 ? 'var(--color-ink)' : '#fff';
+    }
+    function pluriel(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+
+    /* ③ UNE CARTE D'ARTICLE — tout vient de sa publication : photo, prix, remise avec le bon, tailles déclarées, stock restant */
+    function carte(a) {
+      var src = photo(a.photo), rem = +a.remise || 0, net = Math.round((a.prix - rem) * 100) / 100, st = D.techArticleStock(a);
+      var tailles = (st.tailles || []).filter(function (t) { return t.qte > 0; }).map(function (t) { return '<span>' + esc(t.taille) + '</span>'; }).join('');
+      return '<a class="bt-art tap" href="' + esc(D.techArticleUrl(a.slug)) + '" data-article="' + esc(a.slug) + '">'
+        + '<div class="ph">' + (src ? '<img src="' + esc(src) + '" alt="" loading="lazy">' : esc(String(a.modele || '?').charAt(0)))
+        + (rem > 0 ? '<span class="rem">−' + esc(D.eur(rem)) + '</span>' : '')
+        + (st.dispo > 0 && st.dispo <= 2 ? '<span class="peu">Plus que ' + st.dispo + '</span>' : '') + '</div>'
+        + '<div class="i">' + (a.categorie ? '<div class="cat">' + esc(a.categorie) + '</div>' : '')
+        + '<div class="n">' + esc(a.modele) + '</div>'
+        + '<div class="p">' + esc(D.eur(net)) + (rem > 0 ? '<s>' + esc(D.eur(a.prix)) + '</s><small>avec le bon</small>' : '') + '</div>'
+        + (tailles ? '<div class="tl" aria-label="Tailles disponibles">' + tailles + '</div>' : '')
+        + '<span class="b">Bon d’achat de ' + esc(D.eur(net)) + ' ›</span></div></a>';
+    }
+
+    function peindre() {
+      var b = D.techBoutique(ID), z = $('bt-corps'), page = $('bt-page');
+      if (!b) {
+        document.title = 'PayEnCash MES BONS — Boutique';
+        page.style.removeProperty('--m'); page.style.removeProperty('--m-txt');
+        z.innerHTML = '<div class="bt-vide"><b style="color:var(--color-ink)">Cette boutique n’est pas (ou plus) dans le réseau.</b>Ses bons déjà achetés restent valables sur son site, jusqu’à leur date de fin. <a href="07-boutiques.html" style="color:var(--color-primary-dark);font-weight:800">Voir les boutiques ›</a></div>';
+        derniere = null;
+        return;
+      }
+      var connecte = !!(B && B.porteurId && B.porteurId());
+      var mes = connecte ? B.bonsDeMarque(b.id).filter(function (r) { return r.etat === 'actif' && r.solde > 0; }) : [];
+      var sig = JSON.stringify([b, mes.map(function (r) { return [r.code, r.solde, r.expireLe]; }), connecte, vus, filtre, copie,
+        b.articles.map(function (a) { return D.techArticleStock(a).dispo; })]);
+      if (sig === derniere) return;
+      derniere = sig;
+      document.title = 'PayEnCash MES BONS — ' + b.nom;
+      var d = b.destination || {}, v = b.vitrine || {};
+      /* ① LA VITRINE — la couleur de son site, sinon l'encre du thème */
+      if (v.couleur) { page.style.setProperty('--m', v.couleur); page.style.setProperty('--m-txt', texteSur(v.couleur)); }
+      else { page.style.removeProperty('--m'); page.style.removeProperty('--m-txt'); }
+      var dehors = d.url ? '<a class="go tap" href="' + esc(d.url) + '" target="_blank" rel="noopener" data-destination="' + esc(d.type) + '">'
+        + (d.type === 'boutique' ? 'Aller sur sa boutique' : 'Aller sur son site') + ' <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg></a>' : '';
+      var stats = ['<span>' + (b.articles.length ? pluriel(b.articles.length, 'article') : 'Aucun article pour l’instant') + '</span>']
+        .concat(b.categories.slice(0, 3).map(function (c) { return '<span>' + esc(c) + '</span>'; }));
+      var tete = '<section class="bt-tete"><div class="k">Boutique' + (b.categorieLbl ? ' · ' + esc(b.categorieLbl) : '') + '</div>'
+        + '<h1>' + esc(b.nom) + '</h1>'
+        + (v.accroche ? '<p class="acc">' + esc(v.accroche) + '</p>' : '')
+        + '<p class="ou">' + (d.type === 'boutique' ? 'Son bon d’achat se dépense sur <b>' + esc(d.lbl) + '</b>, sa boutique.'
+          : d.type === 'site' ? 'Son bon d’achat se dépense sur <b>' + esc(d.lbl) + '</b>, son site.'
+          : 'Son bon d’achat se dépense dans ses propres points de vente.') + '</p>'
+        + '<div class="stats">' + stats.join('') + '</div>' + dehors + '</section>';
+
+      /* ② TON CODE — et, sans bon, de quoi en acheter un : son lien de vente (le montant se choisit, puis le comptoir ou le distributeur
+         nomade) s'il en a un, et la carte des points de vente, où toute enseigne du réseau vend les bons de toutes les marques */
+      var code;
+      if (!connecte) {
+        code = '<p>Connecte-toi pour retrouver <b>ton code ' + esc(b.nom) + '</b> : c’est lui que tu saisis au paiement, sur son site.</p>'
+          + '<div class="bt-actions"><a class="pec-cta tap" href="06-connexion.html?retour=' + encodeURIComponent('08-boutique.html?m=' + b.id) + '">Se connecter</a>'
+          + (b.achat ? '<a class="pec-btn-secondary tap" href="' + esc(b.achat.url) + '" data-achat>Acheter un bon ' + esc(b.nom) + '</a>' : '') + '</div>';
+      } else if (mes.length) {
+        /* « UTILISER MON BON » — le bon ne se dépense que chez la marque : le bouton ouvre DIRECTEMENT la page où il se dépense (son
+           site, ou la page du site hébergé par notre partenaire) et, s'il n'y a qu'un code, le copie pour le coller au paiement */
+        code = '<p>' + (mes.length > 1 ? 'Tes codes' : 'Ton code') + ' <b>' + esc(b.nom) + '</b> — à saisir au paiement, sur ' + esc(d.lbl || 'son site') + '.</p>'
+          + mes.map(function (r) {
+              var vu = !!vus[r.code];
+              return '<div class="bt-bon" data-bon="' + esc(r.code) + '"><div class="c"><code>' + esc(vu ? r.code : masque(r.code)) + '</code>'
+                + '<small>Il te reste ' + esc(D.eur(r.solde)) + (r.expireLe ? ' · jusqu’au ' + esc(B.dateFr(r.expireLe)) : '') + '</small></div>'
+                + '<div class="a"><button type="button" class="tap" data-voir="' + esc(r.code) + '">' + (vu ? 'Masquer' : 'Afficher') + '</button>'
+                + '<button type="button" class="tap" data-copier="' + esc(r.code) + '">Copier</button>'
+                + '<a class="tap" href="02-bon.html?code=' + encodeURIComponent(r.code) + '">Détail</a></div></div>';
+            }).join('')
+          + '<div class="bt-actions">' + (d.url ? '<a class="pec-cta tap" href="' + esc(d.url) + '" target="_blank" rel="noopener" data-utiliser="' + esc(mes.length === 1 ? mes[0].code : '') + '">'
+            + (mes.length === 1 ? 'Utiliser mon bon sur ' : 'Utiliser mes bons sur ') + esc(d.lbl) + '</a>' : '')
+          + (b.achat ? '<a class="pec-btn-secondary tap" href="' + esc(b.achat.url) + '" data-achat>Acheter un autre bon</a>' : '') + '</div>'
+          + (copie ? '<p class="bt-copie" role="status">' + esc(copie) + '</p>' : '');
+      } else {
+        code = '<p>Tu n’as pas encore de bon <b>' + esc(b.nom) + '</b>. Il s’achète au comptoir d’un ' + esc(D.terme('commerce', 'client')) + ', ou auprès d’un ' + esc(D.terme('nomade', 'client')) + ' qui se déplace.</p>'
+          + '<div class="bt-actions">' + (b.achat ? '<a class="pec-cta tap" href="' + esc(b.achat.url) + '" data-achat>Acheter un bon ' + esc(b.nom) + '</a>' : '')
+          + '<a class="' + (b.achat ? 'pec-btn-secondary' : 'pec-cta') + ' tap" href="03-rechercher.html" data-carte>Où acheter un bon ' + esc(b.nom) + '</a></div>';
+      }
+
+      /* ③ SES ARTICLES — ses publications dans PayEnCash Solution, les mêmes que sur son site ; un filtre par catégorie dès qu'il y en a deux */
+      var cats = [];
+      b.articles.forEach(function (a) { if (a.categorie && cats.indexOf(a.categorie) === -1) cats.push(a.categorie); });
+      if (filtre !== 'tous' && cats.indexOf(filtre) === -1) filtre = 'tous';
+      var vue = b.articles.filter(function (a) { return filtre === 'tous' || a.categorie === filtre; });
+      var chips = cats.length > 1 ? '<div class="bt-cats" role="group" aria-label="Catégorie d’article">'
+        + [['tous', 'Tout · ' + b.articles.length]].concat(cats.map(function (c) { return [c, c + ' · ' + b.articles.filter(function (a) { return a.categorie === c; }).length]; }))
+          .map(function (f) { return '<button type="button" class="tap" data-cat="' + esc(f[0]) + '" aria-pressed="' + (filtre === f[0]) + '">' + esc(f[1]) + '</button>'; }).join('') + '</div>' : '';
+      var R = D.techRef();
+      var arts = b.articles.length
+        ? '<p class="bt-prov">Publiés par ' + esc(b.nom) + ' dans ' + esc(R.nom) + (v.siteActif ? ' — les mêmes que sur sa boutique, ' + esc(v.domaine || d.lbl || '') : '') + '.</p>'
+          + chips + '<div class="bt-grille" id="bt-grille">' + vue.map(carte).join('') + '</div>'
+        : '<div class="bt-vide"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg><b style="color:var(--color-ink)">' + esc(b.nom) + ' n’a pas encore publié d’article.</b>'
+          + (d.url ? 'Son catalogue est sur ' + esc(d.lbl) + '.' : '') + '</div>';
+
+      z.innerHTML = '<div class="bt-cols">'
+        + '<div class="bt-col bt-col--g">' + tete
+        + '<div class="bt-sec"><h2>Ton code</h2></div><div class="bt-code" id="bt-code">' + code + '</div></div>'
+        + '<div class="bt-col"><div class="bt-sec"><h2>Ses articles' + (b.articles.length ? ' · ' + b.articles.length : '') + '</h2></div>' + arts
+        + '<p class="bt-regle">Un bon ' + esc(b.nom) + ' ne vaut que chez elle' + (d.lbl ? ', sur ' + esc(d.lbl) : '') + ' : il s’achète au comptoir d’un ' + esc(D.terme('commerce', 'client')) + ' ou auprès d’un ' + esc(D.terme('nomade', 'client')) + ', et se dépense sur le site de la marque — jamais chez PayEnCash, qui le vend sans l’encaisser.</p>'
+        + '</div></div>';
+    }
+    function copier(txt, fini) {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { fini(true); }, function () { fini(false); }); else fini(false);
+    }
+    document.addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target : null; if (!t) return;
+      var f = t.closest('[data-cat]');
+      if (f) { filtre = f.getAttribute('data-cat'); peindre(); return; }
+      var v = t.closest('[data-voir]');
+      if (v) { var c = v.getAttribute('data-voir'); vus[c] = !vus[c]; peindre(); return; }
+      /* le lien s'ouvre de lui-même (nouvel onglet) ; on copie le code au passage, et on le dit */
+      var u = t.closest('[data-utiliser]');
+      if (u) {
+        var cu = u.getAttribute('data-utiliser'), lieu = (D.techBoutique(ID) || {}).destination || {};
+        if (cu) copier(cu, function (ok) { copie = ok ? 'Code copié : colle-le au paiement, sur ' + (lieu.lbl || 'son site') + '.' : 'Ouvre ton code avec « Afficher » pour le saisir au paiement.'; peindre(); });
+        else { copie = 'Copie le code que tu veux utiliser, puis colle-le au paiement sur ' + (lieu.lbl || 'son site') + '.'; setTimeout(peindre, 0); }   // le lien part d'abord
+        return;
+      }
+      var k = t.closest('[data-copier]'); if (!k) return;
+      var txt = k.getAttribute('data-copier'), avant = k.textContent;
+      copier(txt, function (ok) { k.textContent = ok ? 'Copié' : 'Sélectionne-le'; setTimeout(function () { k.textContent = avant; }, 1600); });
+    });
+    peindre();
+    window.addEventListener('pec-bus', peindre);
+    window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+  })();
+</script>
+</body>
+</html>

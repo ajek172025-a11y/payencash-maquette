@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Mon accès</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css"><!-- le bouton « Afficher » des mots de passe -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-inscription.js"></script>
+<script src="../assets/payencash-equipe.js"></script>
+<!-- MON ACCÈS — l'écran du COLLABORATEUR d'un commerce du réseau (24/09, nuit — fondatrice : « un partenaire du réseau, sauf micro,
+     peut ajouter un collaborateur — ça crée une session active pour le salarié qui voit ses ventes exclusivement »).
+     POURQUOI : le collaborateur n'a ni Mon point (contrat, mandat, réglages) ni les relevés — ils sont au titulaire. Il lui faut
+     pourtant savoir pour qui il vend, son identifiant, et pouvoir changer son mot de passe et se déconnecter. C'est tout ce que dit
+     cette page (PEC_EQUIPE.monAcces, commun à l'app des marques). Le titulaire qui l'ouvre est renvoyé à Mon point, où il gère son
+     équipe. -->
+<style>
+  .ma-tete{margin:0 0 14px}
+  @media (min-width:1024px){ .ma-tete{margin-bottom:24px} }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device pec-etroit">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+      <div class="pec-page-tete ma-tete">
+        <div class="tx">
+          <h1>Mon accès</h1>
+          <p class="sous" id="ma-sous">—</p>
+        </div>
+      </div>
+      <div id="ma-acces"></div>
+    </div>
+  </div>
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="10-mon-acces.html"></nav><!-- la barre se pose depuis PEC_PART.menu -->
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, P = window.PEC_PART; if (!D || !P || !window.PEC_EQUIPE) return;
+    // le titulaire gère son équipe et son point dans Mon point : cette page est celle du collaborateur
+    if (!P.collab()) { location.replace('07-mon-point.html'); return; }
+    var pt = P.point();
+    document.getElementById('ma-sous').textContent = 'Ton accès ' + D.terme('collaborateur') + (pt ? ' au comptoir de ' + pt.enseigne : '') + ' : ton identifiant, ton mot de passe.';
+    PEC_EQUIPE.monAcces('ma-acces', { compte: P.compteSession(), onSortir: function () { P.deconnexion(); } });
+  })();
+</script>
+</body>
+</html>

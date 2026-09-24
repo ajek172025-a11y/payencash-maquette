@@ -53,6 +53,11 @@
     if (T && T.session) {
       var s = T.session('marchand'), m = s && D.techMarchand ? D.techMarchand(s.id) : null;
       var nom = (D.techRef ? D.techRef().nom : 'PayEnCash Solution').replace(/^PayEnCash\s*/i, '');
+      /* (24/09, nuit) LE COLLABORATEUR D'UNE MARQUE : son nom, pour qui il travaille, et sa porte de sortie à lui */
+      var kc = T.collab ? T.collab() : null;
+      if (kc) return { marque: 'solution', nom: nom, accueil: '12-promouvoir.html', qui: kc.vue.nomAffiche,
+        role: (D.terme ? D.terme('collaborateur', 'nom', true) : 'Collaborateur') + ' · ' + kc.marque.raisonSociale, entree: '01-connexion.html',
+        sortir: function () { T.deconnecter('collaborateur'); var s2 = D.session(); if (s2 && String(s2.identifiant || '').toLowerCase() === String(kc.compte.identifiant).toLowerCase()) D.deconnecter(); location.href = '01-connexion.html'; } };
       return { marque: 'solution', nom: nom, accueil: s ? '02-espace.html' : '../../index.html',
         qui: m ? (m.raisonSociale || m.email) : null, role: m ? (D.terme ? D.terme('marque', 'nom', true) : 'Marque') + (m.statut === 'validated' ? ' · validée' : m.statut === 'draft' ? ' · inscription en cours' : ' · en vérification') : null,
         entree: '01-connexion.html',
@@ -61,8 +66,10 @@
     if (P && P.point) {
       var pt = P.point(), c = P.compteSession ? P.compteSession() : null, mode = pt && D.partenaireMode ? D.partenaireMode(pt) : null;
       var logo = mode ? (P.LOGOS || {})[mode] || 'partenaire' : 'partenaire';
+      var kp = P.collab ? P.collab() : null;   // (24/09, nuit) un collaborateur : son nom, et le point pour qui il vend
       return { marque: logo, nom: (D.MARQUE_NOMS || {})[logo] || 'Partenaire', accueil: pt ? '02-accueil.html' : '01-connexion.html',
-        qui: pt ? pt.enseigne : (c ? c.identifiant : null), role: pt ? (D.partenaireModeLbl ? D.partenaireModeLbl(pt) : '') + (pt.ville ? ' · ' + pt.ville : '') : null,
+        qui: kp ? kp.nomAffiche : (pt ? pt.enseigne : (c ? c.identifiant : null)),
+        role: kp ? (D.terme ? D.terme('collaborateur', 'nom', true) : 'Collaborateur') + (pt ? ' · ' + pt.enseigne : '') : (pt ? (D.partenaireModeLbl ? D.partenaireModeLbl(pt) : '') + (pt.ville ? ' · ' + pt.ville : '') : null),
         entree: '01-connexion.html', sortir: function () { P.deconnexion(); } };
     }
     if (B && B.porteurId) {

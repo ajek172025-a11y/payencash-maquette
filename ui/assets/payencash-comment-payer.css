@@ -1,7 +1,6 @@
 /* ══ PAYENCASH — LE STYLE DU CHOIX « COMMENT VEUX-TU PAYER ? » (20/09, soir) ═══════════════════════════════
    Écrit une fois, pour toute page qui monte le choix (la page d'un bon proposé, la fenêtre du widget) et pour la
    carte du réseau de l'espace d'une marque (.mk-pt). Le composant qu'il habille est dans payencash-comment-payer.js. ══ */
-  .pane{display:none}.pane.active{display:block}
   /* (20/09 — « révérifie les formulaires : aide à la saisie, champs obligatoires ») UN CHAMP DIT TROIS CHOSES :
      ce qu'il attend (son intitulé), s'il est obligatoire (.req) ou non (.opt), et comment le remplir (.aide).
      Un champ en faute porte .ko : le bord rougit, et le message nomme le champ — jamais « formulaire invalide ». */
@@ -11,9 +10,11 @@
   .pec-input.ko{border-color:#C0463A;box-shadow:0 0 0 2px rgba(192,70,58,.13)}
   /* (20/09, soir — « ça doit être TOUJOURS la même animation ») LE VOLET DU CHEMIN CHOISI S'OUVRE comme
      celui de la page d'un lien PayEnCash Solution, et comme la modale du widget : socle, pecVolet. */
-  /* (21/09, fondatrice : « es-tu sûre d'avoir intégré ce que je t'ai dit ?? ») LES TROIS CHEMINS, PAS DEUX :
-     « En ligne » apparaissait d'un coup, quand les deux autres glissaient — la même question, deux gestes. */
-  #voie-jai-z.on, #ach-carte-commerce:not([hidden]), #ach-carte-agent:not([hidden]){animation:pecVolet .24s cubic-bezier(.22,.8,.3,1) both}
+  /* (21/09 ; 24/09, nuit — « supprime en ligne ») LES DEUX CHEMINS S'OUVRENT PAREIL : le même geste, la même animation. */
+  #ach-carte-commerce:not([hidden]), #ach-carte-agent:not([hidden]){animation:pecVolet .24s cubic-bezier(.22,.8,.3,1) both}
+  /* (24/09, nuit) LES RAYONS DU RÉFÉRENTIEL — une rangée qui défile sous son libellé, comme sur la carte de Mes bons */
+  .ach-rayons::-webkit-scrollbar{display:none}
+  .ach-rayons .pec-pill{flex:none}
   /* (20/09, soir) LE RÉCAP DU VOLET AGENT — même idiome que les règles du bas de page : une icône, une
      ligne, un filet. Trois paragraphes de tailles différentes ne se lisaient pas comme un tout. */
   .agt-lig{display:flex;gap:10px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--color-sep);font-size:12.5px;line-height:1.55;color:var(--color-muted)}
@@ -117,23 +118,45 @@
   .pec-rappel li{margin:0 0 4px}
   .pec-rappel li:last-child{margin-bottom:0}
   .vide{border-radius:14px;background:var(--color-amber-well);padding:12px 13px;margin-top:10px;font-size:12px;line-height:1.55;color:var(--color-amber-text)}
-  /* LE CHOIX — des cartes de même poids, empilées ; le trio (.duo3) les pose côte à côte. */
+  /* LE CHOIX — des cartes de même poids ; le duo (.duo2, plus bas) les pose côte à côte. */
   .choix2{display:flex;flex-direction:column;gap:10px;margin-top:14px}
-  .agtc{display:flex;align-items:center;gap:10px;border-radius:13px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:11px 12px;margin-top:8px}
-  .agtc .nm{font-size:13px;font-weight:800;color:var(--color-ink)}
-  .agtc .zn{font-size:11px;color:var(--color-muted);line-height:1.45}
-  /* (19/09, soir) LE TRIO : en ligne · chez un partenaire · un agent se déplace — trois cartes de même poids. */
-  .choix2.duo3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;align-items:stretch}
-  .choix2.duo3 [role="tab"]{flex-direction:column;align-items:flex-start;gap:7px;padding:12px 10px;height:100%}
-  .choix2.duo3 [role="tab"] .txt2{flex:1}
-  .choix2.duo3 [role="tab"] b{font-size:12.5px;line-height:1.25}
-  .choix2.duo3 [role="tab"] small{font-size:10.5px;line-height:1.4}
-  @media (max-width:400px){ .choix2.duo3{grid-template-columns:1fr} .choix2.duo3 [role="tab"]{flex-direction:row;align-items:flex-start} }
-  .choix2 [role="tab"]{display:flex;align-items:flex-start;gap:11px;width:100%;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:13px 14px;text-align:left}
-  .choix2 [role="tab"] .ic2{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;background:var(--color-mint);color:var(--color-primary-dark)}
-  .choix2 [role="tab"] .txt2{min-width:0;flex:1}
-  .choix2 [role="tab"] b{display:block;font-size:14px;color:var(--color-ink)}
-  .choix2 [role="tab"] small{display:block;font-size:10.5px;font-weight:600;color:var(--color-muted);line-height:1.4;margin-top:2px}
+  .choix2 [role="tab"],.choix2 > a{display:flex;align-items:flex-start;gap:11px;width:100%;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:13px 14px;text-align:left;text-decoration:none;color:inherit}
+  .choix2 > a .ic2,.choix2 [role="tab"] .ic2{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .choix2 [role="tab"] .txt2,.choix2 > a .txt2{min-width:0;flex:1}
+  .choix2 [role="tab"] b,.choix2 > a b{display:block;font-size:14px;color:var(--color-ink)}
+  .choix2 > a small,.choix2 [role="tab"] small{display:block;font-size:10.5px;font-weight:600;color:var(--color-muted);line-height:1.4;margin-top:2px}
   .choix2 [role="tab"][aria-selected="true"]{box-shadow:0 0 0 2px var(--color-primary), var(--shadow-card);background:var(--color-mint)}
   .choix2 [role="tab"][aria-selected="true"] .ic2{background:var(--color-primary);color:#fff}
 
+
+/* ══ (24/09, nuit — fondatrice : « aligne les cartes : dans un point de vente / un distributeur se déplace, partout ; prends le meilleur de
+   chaque version ») LE DUO ET LA LISTE DES DISTRIBUTEURS NOMADES — un seul dessin pour la carte de Mes bons et la page d'un bon proposé
+   (donc la fenêtre du site de la marque) : les deux cartes du choix, les tris, une ligne par distributeur avec SON tarif. ══ */
+  .choix2.duo2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:0}
+  .choix2.duo2 [role="tab"],.choix2.duo2 > a{flex-direction:column;align-items:flex-start;gap:8px;padding:13px 12px;height:100%;cursor:pointer;border:0;font:inherit}
+  .choix2.duo2 [role="tab"] b,.choix2.duo2 > a b{font-size:13px;line-height:1.25}
+  .choix2.duo2 [role="tab"] small,.choix2.duo2 > a small{font-size:10.5px;line-height:1.4}
+  .nm-tris{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+  .nm-tris::-webkit-scrollbar{display:none}
+  .nm-tris button{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-surface);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer;white-space:nowrap}
+  .nm-tris button[aria-checked="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+  .nm-liste{display:flex;flex-direction:column;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);overflow:hidden}
+  .nm-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 11px;align-items:start;padding:13px 14px}
+  .nm-row + .nm-row{box-shadow:inset 0 1px 0 var(--color-sep)}
+  .nm-row .ic{grid-row:span 2;display:inline-flex;align-items:center;justify-content:center;width:38px;height:38px;border-radius:12px;background:#FFF1DC;color:#9A5B00}
+  .nm-row .ic .pec-ico{font-size:17px}
+  .nm-row .t b{display:block;font-size:14px;color:var(--color-ink)}
+  .nm-row .t small{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
+  .nm-row .t .m{color:var(--color-ink);font-style:italic}
+  .nm-row .px{text-align:right}
+  .nm-row .px b{display:block;font-size:17px;font-weight:800;color:var(--color-ink);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+  .nm-row .px small{display:block;font-size:10.5px;color:var(--color-muted);white-space:nowrap}
+  .nm-row .go{grid-column:2 / -1;justify-self:stretch;margin-top:6px;border:0;border-radius:11px;background:var(--color-primary);color:#fff;padding:10px 12px;font:inherit;font-size:12.5px;font-weight:800;cursor:pointer}
+  .nm-row .go[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+  @media (max-width:340px){ .choix2.duo2{grid-template-columns:1fr} }
+  @media (min-width:1024px){
+    .choix2.duo2 [role="tab"]{padding:15px 14px} .choix2.duo2 [role="tab"] b{font-size:14.5px} .choix2.duo2 [role="tab"] small{font-size:12px}
+    .nm-tris button{font-size:13.5px;padding:9px 15px}
+    .nm-row{padding:15px 16px} .nm-row .t b{font-size:15.5px} .nm-row .t small{font-size:12.5px} .nm-row .px b{font-size:19px} .nm-row .px small{font-size:12px}
+    .nm-row .go{justify-self:start;padding:10px 18px;font-size:13.5px}
+  }

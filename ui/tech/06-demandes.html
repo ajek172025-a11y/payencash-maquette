@@ -203,7 +203,7 @@
     var R = D.techRef();
     $('td-aide').textContent = 'Le montant de sa commande, de son devis, d’un cadeau — le lien reste valable ' + R.lienValiditeJours + ' jours ; au-delà il expire tout seul.';
     $('td-note').innerHTML = 'Un lien transmis fait savoir que ton bon <b>' + esc(m.raisonSociale) + '</b> s’achète au comptoir d’un commerce du réseau ' + esc(R.nom) + ' — ou qu’un ' + esc(D.terme('nomade')) + ' l’apporte — et nous te l’achetons à ce moment-là. '
-      + 'Il s’utilise chez toi depuis l’app Mes bons, un seul bon ou plusieurs ; aucun fonds ne transite par la plateforme.';
+      + 'Il se dépense chez toi, sur ton site, en un seul bon ou plusieurs ; aucun fonds ne transite par la plateforme.';
 
     var l = D.techLiens({ marchandId: m.id }).slice().sort(function (a, b) { return (b.creeLe || 0) - (a.creeLe || 0); });
     var att = l.filter(function (x) { return x.etat === 'open' || x.etat === 'partial'; });

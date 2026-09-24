@@ -13,6 +13,7 @@
 <script src="../assets/payencash-garde.js"></script>
 <script src="../assets/payencash-bus.js"></script><!-- (23/09, nuit — APP·551) le journal : ranger et UTILISER un bon de marque se tracent avec le compte du porteur — sans le bus, l'app agissait en silence ; (24/09, soir) et la demande de rappel part par lui vers la hotline -->
 <script src="../assets/payencash-bons.js"></script>
+<script src="../assets/payencash-qr.js"></script><!-- (24/09, nuit) le flashcode « ordre de vente » d'un bon proposé reçu -->
 <!-- MES BONS — LA LISTE (fondatrice 23/09 : « app ultra simple pour conserver et stocker ses bons d'achat / cartes
      cadeaux » ; puis, l'après-midi : « ce sont LES BONS DES MARQUES — attention au juridique : il gère LEURS bons,
      utilisables UNIQUEMENT chez la marque émettrice ; PayEnCash est secondaire, elle a vendu le bon à travers son
@@ -43,6 +44,42 @@
      son compte, son mobile et le sujet. Le délai annoncé est celui du référentiel (ref.hotline.rappelDelaiMin) ; une
      demande encore à faire se relit dans PEC_BUS.appels() et s'affiche à la place du bouton. -->
 <style>
+  /* ══ (24/09, nuit) LES BONS PROPOSÉS REÇUS — une carte par lien de la marque (un montant précis), et sa feuille : le
+     flashcode à présenter au comptoir et ce qu'il faut retenir. Fond blanc sous le flashcode dans les deux thèmes. ══ */
+  .mb-prop{display:flex;flex-direction:column;align-items:stretch;gap:6px;width:100%;text-align:left;border:1.5px solid var(--color-mint);font:inherit;color:inherit;cursor:pointer}
+  .mb-prop:hover{border-color:var(--color-mint-soft)}
+  .mb-prop .h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .mb-prop .m{min-width:0;font-size:14px;font-weight:800;color:var(--color-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .mb-prop .v{font-size:24px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--color-ink)}
+  .mb-prop .v small{font-size:13px;font-weight:800;color:var(--color-muted)}
+  .mb-prop .s{font-size:12px;line-height:1.45;color:var(--color-muted)}
+  .mb-prop .go{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:800;color:var(--color-primary-dark)}
+  .mb-prop.ferme{border-color:var(--color-sep);opacity:.78}
+  .mb-voile{position:fixed;inset:0;z-index:80;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,42,36,.45)}
+  .mb-voile[hidden]{display:none}
+  .mb-feuille{width:100%;max-width:520px;max-height:92vh;overflow:auto;box-sizing:border-box;background:var(--color-surface);border-radius:22px 22px 0 0;padding:18px 18px 22px;box-shadow:0 -12px 32px -14px rgba(15,42,36,.3)}
+  .mb-feuille .hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .mb-feuille .hd .l{font-size:10.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)}
+  .mb-feuille .hd b{display:block;margin-top:3px;font-size:18px;font-weight:800;color:var(--color-ink)}
+  .mb-feuille .x{flex:none;width:36px;height:36px;border:0;border-radius:50%;background:var(--color-bg);font:inherit;font-size:20px;line-height:1;color:var(--color-ink);cursor:pointer}
+  .mb-feuille .mt{margin-top:10px;font-size:30px;font-weight:800;letter-spacing:-.02em;font-variant-numeric:tabular-nums;color:var(--color-ink)}
+  .mb-feuille .mt small{font-size:14px;color:var(--color-muted)}
+  .mb-feuille .pec-ordre{margin-top:12px;border:1px solid var(--color-sep);border-radius:16px}
+  .mb-feuille .pec-ordre-qr{width:148px;height:148px}
+  .mb-retenir{margin:14px 0 0;padding:12px 14px;border-radius:14px;background:var(--color-bg)}
+  .mb-retenir .t{font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted)}
+  .mb-retenir ul{margin:8px 0 0;padding:0;list-style:none;display:grid;gap:7px}
+  .mb-retenir li{display:flex;justify-content:space-between;gap:12px;font-size:13px;line-height:1.45;color:var(--color-ink)}
+  .mb-retenir li span:first-child{color:var(--color-muted)}
+  .mb-retenir li span:last-child{font-weight:700;text-align:right}
+  .mb-feuille .etat{margin-top:12px;border-radius:12px;padding:10px 12px;background:var(--color-bg);font-size:13px;line-height:1.5;color:var(--color-muted)}
+  .mb-feuille .actes{display:grid;gap:8px;margin-top:14px}
+  .mb-feuille .retirer{border:0;background:none;padding:8px;font:inherit;font-size:12.5px;font-weight:800;color:var(--color-danger);cursor:pointer}
+  @media (min-width:1024px){
+    .mb-voile{align-items:center}
+    .mb-feuille{border-radius:22px;padding:24px 26px 26px}
+    .mb-feuille .pec-ordre-qr{width:168px;height:168px}
+  }
   .mb-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
   .mb-hdr-ico{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:var(--color-surface);border:1px solid var(--color-sep);color:var(--color-ink);text-decoration:none}
   .mb-hdr-ico .pec-ico{font-size:17px}
@@ -166,7 +203,7 @@
          référentiel (data-slogan) : rien n'est écrit ici. (24/09, soir) pec-entete-app : sur bureau, la colonne de navigation
          porte déjà la marque, et son pied l'utilisateur connecté et la déconnexion — cet en-tête s'efface, le rond « compte » avec lui. -->
     <header class="mb-hdr pec-entete-app">
-      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+      <span data-pec-marque="bons" data-slogan></span>
       <a href="04-compte.html" class="tap mb-hdr-ico" aria-label="Mon compte"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-user"/></svg></a>
     </header>
 
@@ -223,6 +260,15 @@
 
     <!-- LA LISTE — chaque carte est RELUE chez la marque à chaque peinture ; (24/09, soir) une grille de cartes sur bureau
          (.pec-grille-cartes : deux ou trois par ligne selon la place), une colonne sur téléphone -->
+    <!-- (24/09, nuit — fondatrice : « dans l'app utilisateur, les bons partagés sont visibles dans la page Mes bons : une section
+         dédiée au lien partagé avec un montant précis » ; « si l'utilisateur clique dessus, il voit le flashcode pour le scanner,
+         avec les informations à rappeler » ; « un utilisateur ne voit que ses bons et les liens reçus ») LES BONS PROPOSÉS REÇUS —
+         ceux que CE compte a ouverts (PEC_BONS.propositions), relus chez la marque à chaque peinture ; un clic ouvre la feuille. -->
+    <section id="mb-props" hidden>
+      <p class="pec-section-label" id="mb-props-titre">Bons proposés par les marques</p>
+      <div id="mb-props-liste" class="pec-grille-cartes"></div>
+    </section>
+
     <p class="pec-section-label mb-liste-titre" id="mb-liste-titre">Mes bons</p>
     <div id="mb-liste" class="pec-grille-cartes"></div>
 
@@ -257,6 +303,14 @@
 
     <div style="height:10px"></div>
   </div><!-- /pec-body -->
+
+  <!-- LA FEUILLE D'UN BON PROPOSÉ : le flashcode à présenter au comptoir, et ce qu'il faut retenir (posée par rendreFeuille) -->
+  <div class="mb-voile" id="mb-prop-voile" hidden>
+    <div class="mb-feuille" id="mb-prop-feuille" role="dialog" aria-modal="true" aria-labelledby="mb-prop-titre" tabindex="-1">
+      <div class="hd"><div><div class="l">Bon d’achat proposé par</div><b id="mb-prop-titre">—</b></div><button type="button" class="x tap" id="mb-prop-fermer" aria-label="Fermer">×</button></div>
+      <div id="mb-prop-corps"></div>
+    </div>
+  </div>
 
   <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="01-mes-bons.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
 
@@ -340,7 +394,7 @@
       // bandeau : il dit alors par où commencer
       $('mb-vide-s').textContent = $('mb-form').hidden
         ? 'Commence par ce que demande le bandeau ci-dessus ; ensuite, le code du ticket de ton bon de marque se saisit ici.'
-        : 'Saisis ci-dessus le code imprimé sur le ticket de ton bon de marque — acheté au comptoir d’un commerce du réseau, ou reçu en cadeau — pour le retrouver ici.';
+        : 'Saisis ci-dessus le code imprimé sur le ticket de ton bon de marque — acheté dans un ' + D.terme('commerce', 'client') + ' ou auprès d’un ' + D.terme('nomade', 'client') + ', ou reçu en cadeau — pour le retrouver ici.';
       $('mb-liste-titre').textContent = 'Mes bons · ' + l.length;
       // on ne redessine que si quelque chose a changé : un redessin perd la confirmation de retrait en cours
       var emp = l.map(function (r) { return r.code + '|' + r.etat + '|' + r.solde; }).join(';');
@@ -389,7 +443,61 @@
       rendreRappel();
     });
 
-    function rendre() { rendreOffre(); rendreBloque(); rendreTotal(); rendreListe(); rendreRappel(); $('mb-rappel').textContent = B.RAPPEL; }
+    /* ⑤ LES BONS PROPOSÉS REÇUS (24/09, nuit) — une carte par lien que CE compte a ouvert (PEC_BONS.propositions : sa clé
+       seulement). La marque, le montant, ce qui reste à acheter, l'état et la date de fin se relisent chez la marque
+       (techOrdreVente) ; celles qui s'achètent encore d'abord. Un clic ouvre la feuille : le flashcode et ce qu'il faut retenir. */
+    var propEmpreinte = '', propOuverte = null;
+    function propCarte(p) {
+      var ferme = !p.vendable, pill = p.etat === 'partial' ? 'pec-pill--wait' : ferme ? 'pec-pill--off' : 'pec-pill--live';
+      var s = ferme ? p.etatLbl + (p.etat === 'expired' && p.expireLe ? ' le ' + B.dateFr(p.expireLe) : '')
+        : 'À acheter avant le ' + B.dateFr(p.expireLe) + (p.etat === 'partial' ? ' · reste sur ' + D.eur(p.montantDemande) : '');
+      return '<button type="button" class="pec-card mb-prop tap' + (ferme ? ' ferme' : '') + '" data-proposition="' + esc(p.slug) + '">'
+        + '<span class="h"><span class="m">' + esc(p.marchand) + '</span><span class="pec-pill ' + pill + '">' + esc(p.etatLbl) + '</span></span>'
+        + '<span class="v">' + esc(D.eurNombre ? D.eurNombre(p.montant) : String(p.montant)) + ' <small>€</small></span>'
+        + '<span class="s">' + esc(s) + (p.reference ? ' · réf. ' + esc(p.reference) : '') + '</span>'
+        + (ferme ? '' : '<span class="go"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-scan"/></svg>Voir le flashcode à présenter</span>')
+        + '</button>';
+    }
+    function rendrePropositions() {
+      var l = B.propositions ? B.propositions() : [];
+      $('mb-props').hidden = !l.length;
+      $('mb-props-titre').textContent = 'Bons proposés par les marques · ' + l.length;
+      var emp = l.map(function (p) { return p.slug + '|' + p.etat + '|' + p.montant; }).join(';');
+      if (emp !== propEmpreinte) { propEmpreinte = emp; $('mb-props-liste').innerHTML = l.map(propCarte).join(''); }
+      if (propOuverte) rendreFeuille(propOuverte);   // un bon proposé couvert, annulé ou expiré pendant qu'on le regarde le dit
+    }
+    function rendreFeuille(slug) {
+      var p = (B.propositions ? B.propositions() : []).filter(function (x) { return x.slug === slug; })[0];
+      if (!p) { fermerFeuille(); return; }
+      var R = D.techRef ? D.techRef() : {};
+      $('mb-prop-titre').textContent = p.marchand;
+      var ret = [['Montant à acheter', D.eur(p.montant)]];
+      if (p.etat === 'partial') ret.push(['Proposé au départ', D.eur(p.montantDemande)]);
+      var refP = D.techLienRefClient ? D.techLienRefClient(D.techLien(p.slug) || p) : p.reference;   // (24/09, nuit) jamais la trace interne d'un lien de vente
+      if (refP) ret.push(['Référence', refP]);
+      if (p.vendable) ret.push(['À acheter avant le', B.dateFr(p.expireLe)]);
+      ret.push(['Utilisable', 'uniquement chez ' + p.marchand + (p.site ? ' (' + String(p.site).replace(/^https?:\/\//, '') + ')' : '')]);
+      $('mb-prop-corps').innerHTML = '<div class="mt">' + esc(D.eurNombre ? D.eurNombre(p.montant) : String(p.montant)) + ' <small>€</small></div>'
+        + (p.vendable && p.flashcode
+          ? '<div class="pec-ordre" data-url="' + esc(p.flashcode) + '">' + D.ordreVenteBlocHTML({ url: p.flashcode, entite: 'bon ' + p.marchand + ' de ' + D.eur(p.montant), code: p.code || p.slug, ref: refP }) + '</div>'
+          : '<div class="etat">Ce bon proposé est ' + esc(p.etatLbl.toLowerCase()) + ' : il n’a plus de flashcode à présenter.</div>')
+        + '<div class="mb-retenir"><div class="t">À retenir</div><ul>' + ret.map(function (r) { return '<li><span>' + esc(r[0]) + '</span><span>' + esc(r[1]) + '</span></li>'; }).join('') + '</ul></div>'
+        + '<div class="actes">'
+        + (p.vendable ? '<a class="pec-cta tap" href="05-offre.html?o=' + encodeURIComponent(p.slug) + '">Où l’acheter, et le code du ticket</a>' : '')
+        + '<button type="button" class="retirer tap" data-prop-retirer="' + esc(p.slug) + '">Retirer de ma liste</button></div>';
+    }
+    function ouvrirFeuille(slug) { propOuverte = slug; rendreFeuille(slug); $('mb-prop-voile').hidden = false; try { $('mb-prop-feuille').focus(); } catch (e) {} }
+    function fermerFeuille() { propOuverte = null; $('mb-prop-voile').hidden = true; }
+    $('mb-props-liste').addEventListener('click', function (ev) { var b = ev.target.closest ? ev.target.closest('[data-proposition]') : null; if (b) ouvrirFeuille(b.getAttribute('data-proposition')); });
+    $('mb-prop-fermer').addEventListener('click', fermerFeuille);
+    $('mb-prop-voile').addEventListener('click', function (ev) {
+      if (ev.target === this) { fermerFeuille(); return; }
+      var r = ev.target.closest ? ev.target.closest('[data-prop-retirer]') : null;
+      if (r) { var x = B.propositionRetirer(r.getAttribute('data-prop-retirer')); if (x.ok) { fermerFeuille(); rendrePropositions(); } }
+    });
+    document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape' && !$('mb-prop-voile').hidden) fermerFeuille(); });
+
+    function rendre() { rendreOffre(); rendreBloque(); rendreTotal(); rendrePropositions(); rendreListe(); rendreRappel(); $('mb-rappel').textContent = B.RAPPEL; }
 
     /* LA SAISIE prend la forme de son réseau (bonSaisieFormater via PEC_BONS.formater) pendant qu'on tape */
     $('mb-code').addEventListener('input', function () { this.value = B.formater(this.value); message($('mb-err'), ''); message($('mb-ok'), ''); });

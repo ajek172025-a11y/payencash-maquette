@@ -25,10 +25,9 @@
   L'ORDRE DE VENTE — le flashcode qu'un client présente (techOrdreVenteUrl mène ici, ?vendre=<slug>) — OUVRE LE COMPTOIR :
   cette page le fait suivre à 03-vendre avec sa référence, elle ne vend pas elle-même. Un client qui n'a pas de flashcode
   peut dicter la référence de son bon proposé : le champ ci-dessous l'accepte, ou l'adresse entière.
-  LES RENCONTRES — pour le DISTRIBUTEUR NOMADE seulement : un client d'une marque peut demander qu'un distributeur nomade se
-  déplace (techRencontreDemander, depuis la page du bon proposé). La demande arrive ici, chez les nomades de sa commune
-  (techRencontresRevendeur) : il la prend (techRencontreAccepter), il appelle, il y va, il la sert depuis le comptoir
-  (03-vendre?rdv=… → techRencontreServir), ou il l'annule (techRencontreAnnuler). Un commerce ne se déplace pas.
+  LES MISES EN RELATION — pour le DISTRIBUTEUR NOMADE seulement (24/09, nuit — « beaucoup de doublons ») : elles se traitent sur
+  l'ACCUEIL, une seule fois (appeler, valider, servir, décliner) ; cette page n'en garde qu'un renvoi, avec leur nombre. Un
+  commerce ne se déplace pas.
   DEUX QUALIFICATIONS JURIDIQUES, ET CE NE SONT PAS DEUX VARIANTES D'AFFICHAGE :
     ① le POINT PHYSIQUE (sédentaire) est REVENDEUR POUR SON PROPRE COMPTE : il nous achète le bon au moment où il le vend,
        à la valeur faciale diminuée de sa part, et le revend au prix qu'il affiche (la valeur faciale est le prix conseillé)
@@ -144,13 +143,7 @@
     </div>
   </div>
 
-  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
-    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
-    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
-    <a class="pec-tab" aria-current="page" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
-    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
-    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
-  </nav>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="09-marques.html"></nav><!-- (24/09, nuit) la barre se pose depuis PEC_PART.menu : écrite une fois, celle du titulaire ou du collaborateur -->
 
 </div>
 </div>
@@ -168,11 +161,8 @@
   var slug0 = (new URLSearchParams(location.search)).get('vendre');
   if (slug0) { location.replace('03-vendre.html?vendre=' + encodeURIComponent(slug0)); return; }
 
-  /* Ce qui survit au repeint du bus : le refus qu'on vient de lire sous une rencontre, ou sous la référence dictée. */
-  var rdvErreur = null, ordreErreur = null;
-  /* Le canal que le client préfère, dit en clair. Le data-layer ne porte que les clés (techRencontreDemander : appel, whatsapp,
-     facetime) : leurs libellés restent ici tant qu'il ne les porte pas. */
-  var CANAUX = { appel: 'un appel', whatsapp: 'WhatsApp', facetime: 'la visio' };
+  /* Ce qui survit au repeint du bus : le refus qu'on vient de lire sous la référence dictée. */
+  var ordreErreur = null;
 
   /* (24/09, soir) une section = un titre et une carte ; la marge intérieure n'est posée que sur téléphone (.mq-carte) —
      sur bureau, la feuille partagée donne la sienne */
@@ -191,27 +181,6 @@
   /* UNE RENCONTRE, TELLE QUE LE DISTRIBUTEUR NOMADE LA LIT : avant de la prendre, la commune, le montant, la rue — le numéro
      et l'étage ne se découvrent qu'en acceptant (règle du data-layer). Prise : le client à appeler, le canal qu'il préfère,
      la porte du comptoir pour la servir, et « je ne peux pas y aller ». */
-  function rdvLigne(x, r) {
-    var mien = x.revendeurId === r.id, min = x.expireTs ? Math.max(0, Math.round((x.expireTs - Date.now()) / 60000)) : null;
-    var tete = '<span class="nm">' + esc(x.ref) + ' · ' + esc(D.eur(x.montant)) + ' · ' + esc(x.marchand) + '</span>';
-    var err = rdvErreur && rdvErreur.id === x.id ? '<div class="err">' + esc(rdvErreur.txt) + '</div>' : '';
-    if (!mien) return '<div class="rowl"><span class="tx">' + tete
-      + '<span class="sb">' + esc([x.adresse.voie, [x.adresse.cp, x.adresse.ville].filter(Boolean).join(' ')].filter(Boolean).join(', '))
-      + (min != null ? ' · expire dans ' + min + ' min' : '') + '</span>' + err + '</span>'
-      + '<button type="button" class="pec-pill tap mq-geste" data-rdv-ok="' + esc(x.id) + '">Accepter</button></div>';
-    if (x.statut === 'acceptee') {
-      return '<div class="rowl mq-rdv-pris"><div>' + tete + '</div>'
-        + '<div class="sb mq-lieu"><b>' + esc(x.lieu) + '</b>' + (x.aide ? '<br>' + esc(x.aide) : '') + (x.note ? '<br>« ' + esc(x.note) + ' »' : '') + '</div>'
-        + '<a class="pec-pill tap mq-geste mq-appel" href="tel:' + esc(x.tel || '') + '">Appeler le client · ' + esc(D.telFrLbl(x.tel)) + '</a>'
-        + '<span class="sb">Il préfère : ' + esc(CANAUX[x.canal] || CANAUX.appel) + '. Appelle-le pour convenir du moment avant de partir.</span>'
-        + '<a class="pec-cta tap mq-servir" href="03-vendre.html?rdv=' + encodeURIComponent(x.id) + '">Servir — émettre le bon de ' + esc(D.eur(x.montant)) + '</a>'
-        + '<button type="button" class="pec-btn-secondary tap mq-annuler" data-rdv-annuler="' + esc(x.id) + '">Je ne peux pas y aller — annuler</button>'
-        + err + '</div>';
-    }
-    return '<div class="rowl"><span class="tx">' + tete + '<span class="sb">' + esc(D.rencontreStatutLbl(x.statut))
-      + (x.codes && x.codes.length ? ' · bon ' + esc(x.codes[0]) : '') + '</span></span></div>';
-  }
-
   /* UNE MARQUE, UNE CARTE (24/09, soir) — son nom, son site, son offre de paiement, TA part et le geste : sur bureau, une carte
      de la grille (la part en grand, « Vendre » au pied) ; sur téléphone, la même carte redevient une ligne de la liste. Validée
      et prête (documents acceptés, contrat-cadre signé, déclaration validée), elle se vend ; sinon l'écran dit ce qui la ferme. */
@@ -255,14 +224,19 @@
     var saisie = $('mq-ordre'), gardee = saisie ? saisie.value : '', focus = !!(saisie && document.activeElement === saisie);
 
     /* ① LE PANNEAU — ce qui se fait au comptoir : l'ordre de vente dicté, puis (nomade) les rencontres */
-    var panneau = carte('Un client te présente un bon proposé ?', '<p class="mq-aide">Scanne son flashcode — il ouvre le comptoir avec la marque et le montant. Sans scanner, saisis la référence du bon proposé qu’il te dicte, ou colle l’adresse.</p>'
-      + '<div class="mq-ordre-l"><input class="pec-input" id="mq-ordre" type="text" autocomplete="off" placeholder="boutique-…-a1b2c3" aria-label="Référence ou adresse du bon proposé"><button type="button" class="pec-cta pec-cta--tight tap" id="mq-ordre-go">Ouvrir</button></div>'
+    /* (24/09, nuit — fondatrice : « si le scan n'est pas reconnu, la réf du bon à acheter ») LA RÉFÉRENCE est écrite sous chaque
+       flashcode (OV-…) : elle se tape ici, avec ou sans son préfixe, et ouvre le même ordre de vente que le scan */
+    var exRef = String(R.prefixeOrdre || '') + 'ABCDEFGHJK'.slice(0, +R.refOrdreLongueur || 6);
+    var panneau = carte('Un client te présente un bon proposé ?', '<p class="mq-aide">Scanne son flashcode — il ouvre le comptoir avec la marque et le montant. Si le scan ne passe pas, saisis la <b>référence écrite sous le flashcode</b> (' + esc(exRef) + '), ou colle l’adresse.</p>'
+      + '<div class="mq-ordre-l"><input class="pec-input" id="mq-ordre" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="' + esc(exRef) + '" aria-label="Référence du bon à acheter, écrite sous le flashcode"><button type="button" class="pec-cta pec-cta--tight tap" id="mq-ordre-go">Ouvrir</button></div>'
       + (ordreErreur ? '<p class="err">' + esc(ordreErreur) + '</p>' : ''));
     if (nomade && r) {
-      var rl = D.techRencontresRevendeur(r.id).filter(function (x) { return x.statut === 'demandee' || x.statut === 'acceptee' || (x.revendeurId === r.id && x.statut === 'servie' && (x.servieTs || 0) > Date.now() - 86400000); });
-      panneau += carte('Rencontres demandées', rl.length
-        ? rl.map(function (x) { return rdvLigne(x, r); }).join('')
-        : '<p class="vide">Aucune demande pour l’instant. Quand un client d’une marque demande qu’un ' + esc(D.terme('nomade')) + ' se déplace' + (r.ville ? ' à ' + esc(r.ville) : '') + ', elle arrive ici — tu la prends, tu l’appelles, tu y vas, tu la sers depuis « Vendre ».</p>');
+      /* LES MISES EN RELATION SE TRAITENT SUR L'ACCUEIL — ici, leur nombre et le chemin */
+      var rl = D.techRencontresRevendeur(r.id).filter(function (x) { return x.statut === 'demandee' || x.statut === 'acceptee'; });
+      panneau += carte('Tes mises en relation', '<p class="mq-aide">' + (rl.length
+        ? '<b>' + rl.length + ' demande' + (rl.length > 1 ? 's' : '') + ' en cours</b> : appelle, valide le rendez-vous, puis sers le bon depuis « Vendre ».'
+        : 'Aucune demande en cours. Un client te choisit sur la carte de Mes bons, ou depuis la page d’un bon proposé : tu es prévenu, tu l’appelles, tu valides.')
+        + '</p><a class="pec-cta pec-cta--tight tap" href="02-accueil.html#pb-rdv" style="margin-top:10px">Voir sur l’accueil</a>');
     }
 
     /* ② LES MARQUES — validées ; celles qui ne sont pas prêtes sont dites « Bientôt », elles ne s'ouvrent pas */
@@ -305,27 +279,16 @@
   }
 
   document.addEventListener('click', function (e) {
-    var el = e.target.closest ? e.target.closest('#mq-ordre-go,[data-rdv-ok],[data-rdv-annuler]') : null;
+    var el = e.target.closest ? e.target.closest('#mq-ordre-go') : null;
     if (!el) return;
     var r = P.revendeur();
     if (el.id === 'mq-ordre-go') {
       var s = slugDe(($('mq-ordre') || {}).value);
       ordreErreur = null;
-      if (!s) { ordreErreur = 'Saisis la référence du bon proposé, ou colle son adresse.'; peindreEtGarder(); return; }
-      if (!D.techOrdreVente(s)) { ordreErreur = 'Aucun bon proposé ne porte cette référence sur cet appareil — vérifie ce que le client te dicte.'; peindreEtGarder(); return; }
-      location.href = '03-vendre.html?vendre=' + encodeURIComponent(s); return;
-    }
-    if (!r) return;
-    /* LES GESTES D'UNE RENCONTRE — la couche de données tient les règles (distributeur nomade, demande encore ouverte) et son
-       refus s'affiche sous la ligne, tel quel. */
-    if (el.hasAttribute('data-rdv-ok')) {
-      var i1 = el.getAttribute('data-rdv-ok'), x1 = D.techRencontreAccepter(i1, r.id);
-      rdvErreur = x1.ok ? null : { id: i1, txt: x1.motif }; peindreEtGarder(); return;
-    }
-    if (el.hasAttribute('data-rdv-annuler')) {
-      /* le motif est journalisé et lu par la hotline : le mot du glossaire (24/09, soir) */
-      var i3 = el.getAttribute('data-rdv-annuler'), x3 = D.techRencontreAnnuler(i3, 'le ' + D.terme('nomade') + ' ne peut pas s’y rendre', r.id);
-      rdvErreur = x3.ok ? null : { id: i3, txt: x3.motif }; peindreEtGarder(); return;
+      if (!s) { ordreErreur = 'Saisis la référence écrite sous le flashcode, ou colle son adresse.'; peindreEtGarder(); return; }
+      var ovS = D.techOrdreVente(s);
+      if (!ovS) { ordreErreur = 'Aucun bon proposé ne porte cette référence sur cet appareil — vérifie celle écrite sous le flashcode.'; peindreEtGarder(); return; }
+      location.href = '03-vendre.html?vendre=' + encodeURIComponent(ovS.slug); return;   // la référence saisie mène au même ordre que le scan
     }
   });
   document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'mq-ordre') { var b = $('mq-ordre-go'); if (b) b.click(); } });

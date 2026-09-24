@@ -6,9 +6,11 @@
    et payencash-bus.js, AVANT les scripts de page.
 
    API :
-     PEC_TECH.session(type)    → { id, type:'marchand', at } ou null — la session de la marque connectée
-     PEC_TECH.entrer(id,type)  → ouvre la session de la marque (après compteConnecter : jamais sans compte)
+     PEC_TECH.session(type)    → { id, type:'marchand'|'collaborateur', at, compte? } ou null — la session de la marque connectée,
+                                 ou celle d'un de ses collaborateurs (24/09, nuit)
+     PEC_TECH.entrer(id,type,o)→ ouvre la session (après compteConnecter : jamais sans compte) ; o.compte : le compte du collaborateur
      PEC_TECH.deconnecter(t)   → la ferme
+     PEC_TECH.collab()         → { compte, vue, marque } : le collaborateur connecté et la marque pour qui il travaille, ou null
      PEC_TECH.aFaire(id)       → ce qui manque à une marque (vendre, être payée, intégrer), DÉRIVÉ, dans l'ordre où
                                  il faut le faire — chaque ligne { txt, href } mène à la carte du compte où agir
      PEC_TECH.origine()        → l'origine du site, pour composer un bout de code d'intégration copiable
@@ -31,9 +33,12 @@
   /* (24/09) UNE SEULE SESSION : celle de la marque. Le point de vente avait la sienne ici (19/09) ; depuis que son comptoir,
      son mandat et ses relevés vivent dans SON app, avec SA connexion, personne n'ouvrait plus cette seconde session —
      les écrans gardaient pour elle des branches que rien n'atteignait. */
-  T.CLES = { marchand: 'pec-tech-session-marchand' };
+  /* (24/09, nuit — fondatrice : « une marque peut également ajouter une session collaborateur : il peut promouvoir la marque et
+     consulter uniquement ses actions ») LA SESSION D'UN COLLABORATEUR EST À PART : les écrans de la marque (bons, paiement, outils,
+     compte) lisent `session('marchand')` et ne l'ouvrent donc jamais à un collaborateur ; les siens lisent `session('collaborateur')`. */
+  T.CLES = { marchand: 'pec-tech-session-marchand', collaborateur: 'pec-tech-session-collaborateur' };
   T.session = function (type) {
-    var l = type ? [type] : ['marchand'];
+    var l = type ? [type] : ['marchand', 'collaborateur'];
     for (var i = 0; i < l.length; i++) {
       try {
         var s = JSON.parse(localStorage.getItem(T.CLES[l[i]]) || 'null');
@@ -42,16 +47,27 @@
     }
     return null;
   };
-  T.entrer = function (id, type) {
+  T.entrer = function (id, type, o) {
     if (!id || !T.CLES[type]) return null;
     var s = { id: id, type: type, at: Date.now() };
+    if (type === 'collaborateur') { if (!o || !o.compte) return null; s.compte = o.compte; }
+    // une seule personne à la fois dans l'espace : entrer comme marque ferme la session de collaborateur, et l'inverse
+    Object.keys(T.CLES).forEach(function (k) { if (k !== type) { try { localStorage.removeItem(T.CLES[k]); } catch (e0) {} } });
     try { localStorage.setItem(T.CLES[type], JSON.stringify(s)); } catch (e) {}
     return s;
   };
   T.deconnecter = function (type) {
-    (type ? [type] : ['marchand']).forEach(function (t) {
+    (type ? [type] : Object.keys(T.CLES)).forEach(function (t) {
       try { localStorage.removeItem(T.CLES[t]); } catch (e) {}
     });
+  };
+  /* LE COLLABORATEUR CONNECTÉ — son compte doit être ACTIF et appartenir à la marque de la session : un accès suspendu ou retiré
+     pendant qu'il travaille ferme ses écrans au prochain repeint. */
+  T.collab = function () {
+    var D = T.D(), s = T.session('collaborateur'); if (!D || !s) return null;
+    var c = D.compte(s.compte), m = D.techMarchand(s.id);
+    if (!c || !m || !D.estCollaborateur(c) || c.collab.type !== 'marque' || c.collab.parentId !== m.id || c.statut !== 'actif') return null;
+    return { compte: c, vue: D.collaborateur(c.id), marque: m };
   };
 
   /* CE QUI RESTE À FAIRE — dérivé de l'état réel, jamais une liste écrite dans un écran. L'ordre compte :
@@ -111,6 +127,13 @@
       { href: '09-outils.html',      lbl: 'Outils',      ico: 'i-file' },
       { href: '10-compte.html',      lbl: 'Compte',      ico: 'i-user' }
     ],
+    /* (24/09, nuit) LE COLLABORATEUR D'UNE MARQUE : il fait connaître la marque (ses liens, ses bons proposés), il voit ce qu'il a
+       produit, et son accès — rien de ce qui engage la marque (paiement, contrat, clés, abonnement). */
+    collaborateur: [
+      { href: '12-promouvoir.html',  lbl: 'Promouvoir',  ico: 'i-share' },
+      { href: '13-mes-ventes.html',  lbl: 'Mes ventes',  ico: 'i-receipt' },
+      { href: '14-mon-acces.html',   lbl: 'Mon accès',   ico: 'i-user' }
+    ],
     /* PERSONNE N'EST CONNECTÉ : on ne montre que les deux portes, et la documentation qui est publique. */
     /* (23/09) LE VISITEUR ARRIVE MAINTENANT QUELQUE PART : la page principale de PayEnCash Solution dit à quelles
        marques nous nous adressons et ce que nous leur achetons. Avant elle, une marque qui entendait parler de
@@ -132,7 +155,7 @@
     /* ELLE RAMÈNE CHEZ SOI : dans l'espace de la marque, ou à la porte si personne n'est entré.
        (21/09) SAUF SUR LA PAGE DU CLIENT FINAL ({ lien: false }) : il n'a pas d'espace chez nous, et la marque
        le menait à la porte des PROFESSIONNELS — ou, dans la fenêtre du widget, faisait quitter son paiement. */
-    var chez = s ? '02-espace.html' : '01-connexion.html';
+    var chez = s ? (s.type === 'collaborateur' ? '12-promouvoir.html' : '02-espace.html') : '01-connexion.html';
     /* (21/09, fondatrice : « le logo P … dans le style de départ », « intègre le logo sur PayEnCash Technologie ; tu
        utilises le P avec le shop », puis « les slogans unifiés sur toutes les apps ») LA MARQUE DES AUTRES APPS : le P au
        sac (détouré de son fond noir) remplace le bouclier, le nom s'écrit comme partout, le slogan vient dessous. */
@@ -172,18 +195,14 @@
       videTxt: function (filtre) {
         return filtre
           ? '<b>Aucun ' + esc(D.terme('commerce', 'client')) + ' pour cette recherche</b> — efface le filtre, ou choisis une autre ville.'
-          : '<b>' + esc(m.raisonSociale) + ' n’a pas encore de ' + esc(D.terme('commerce', 'client')) + ' qui vend ses bons ici.</b> Si tu as déjà un de ses bons, l’app Mes bons l’utilise tout de suite.';
+          : '<b>' + esc(m.raisonSociale) + ' n’a pas encore de ' + esc(D.terme('commerce', 'client')) + ' qui vend ses bons ici.</b> Si tu as déjà un de ses bons, tu le dépenses sur son site.';
       },
-      trio: function () {
+      /* (24/09, nuit — fondatrice : « aligne les cartes : dans un point de vente / un distributeur se déplace, partout ; supprime en
+         ligne ») DEUX CHEMINS, LES MÊMES QUE LA CARTE DE MES BONS : où acheter son bon. « En ligne » est parti — un bon se dépense sur
+         le site de la marque, pas ici. Les deux s'ouvrent toujours : un volet vide dit la vérité, personne ici pour l'instant. */
+      duo: function () {
         var k = {}; D.techChemins(marchandId).forEach(function (c) { k[c.cle] = c; });
-        return {
-          enligne: 'Tu as déjà un bon ' + m.raisonSociale + ' : utilise-le depuis l’app Mes bons.',
-          /* (21/09, fondatrice : « ça doit être pareil, sauf que c'est la boutique, ses infos ») LES TROIS CHEMINS
-             S'OUVRENT TOUJOURS. Grisé, « chez un partenaire » cachait sa carte et sa recherche à qui voulait voir ;
-             ouvert, son volet dit la vérité — personne ici pour l'instant. */
-          partenaire: { t: k.partenaire.titre, s: k.partenaire.aide },
-          agent: { t: k.agent.titre, s: k.agent.aide }
-        };
+        return { partenaire: { t: k.partenaire.titre, s: k.partenaire.aide }, agent: { t: k.agent.titre, s: k.agent.aide } };
       },
       /* ══ (23/09, fondatrice : « pour la modale de paiement, ajoute pour API et lien envoyé, modale qui s'ouvre : notre
          réseau accepte espèces, pièces et CB ; ses bons d'achat sont utilisés sur le site de l'émetteur ; une fois
@@ -213,27 +232,34 @@
         if (B.validiteMois) l.push('<li>Valable <b>' + esc(String(B.validiteMois)) + ' mois</b>.</li>');
         return '<b class="t"' + (E.consommation ? ' title="' + esc(E.consommation) + '"' : '') + '>Ce qu’il faut savoir</b><ul>' + l.join('') + '</ul>';
       },
+      /* (24/09, nuit — « prends celui qui est le plus complet ») LA RENCONTRE D'UN BON PROPOSÉ EST CELLE DE LA CARTE : le client dit où,
+         voit les distributeurs nomades DISPONIBLES qui viennent jusque-là (nomadesAutour), chacun avec SON tarif pour cette distance, en
+         choisit un ; la demande part à lui seul (techMiseEnRelationDemander, avec ce bon proposé : marque et montant verrouillés). */
       rencontre: !slug ? null : {
         titre: function () { return 'Un bon ' + m.raisonSociale + ' à te remettre'; },
-        montantHTML: function (montant) { return 'Bon ' + esc(m.raisonSociale) + ' de <b>' + esc(D.eur(montant)) + '</b> — tu le lui paies en main propre, aucun frais.'; },
-        garantieHTML: 'Il te vend un <b style="color:var(--color-ink)">bon ' + esc(m.raisonSociale) + '</b> et en reçoit le prix pour son propre compte : ni lui ni nous n’encaissons ta commande.',
-        joignables: function (ville) { return D.techRevendeursMobilesVille(marchandId, ville); },
-        /* (24/09) LES MOTS DU GLOSSAIRE, VUS DU CLIENT : « point de vente », « distributeur nomade » — jamais « revendeur » */
-        personneTxt: function (ville) { return 'Aucun ' + D.terme('nomade', 'client') + ' ne se déplace à ' + ville + ' pour l’instant — cherche plutôt « ' + ((D.PARTENAIRE_MODES.sedentaire || {}).clientLbl || '') + ' », ou utilise un bon que tu as déjà depuis l’app Mes bons.'; },
-        cta: 'Rechercher un ' + D.terme('nomade', 'client'),
+        montantHTML: function (montant) { return 'Un bon ' + esc(m.raisonSociale) + ' de <b>' + esc(D.eur(montant)) + '</b> — tu l’achètes sur place, à la personne qui vient.'; },
+        garantieHTML: 'Le ' + esc(D.terme('nomade', 'client')) + ' te vend un <b style="color:var(--color-ink)">bon ' + esc(m.raisonSociale) + '</b> et en reçoit le prix pour son propre compte : ni lui ni nous n’encaissons ta commande.',
+        nomades: function (pos) { return D.nomadesAutour({ pos: pos }); },
+        personneTxt: 'Aucun ' + D.terme('nomade', 'client') + ' disponible ne vient jusqu’ici pour l’instant — choisis « ' + ((D.PARTENAIRE_MODES.sedentaire || {}).clientLbl || '') + ' ».',
         enCours: function () { return D.techRencontresLien(slug).filter(function (r) { return r.statut === 'demandee' || r.statut === 'acceptee'; })[0] || null; },
         /* SERVIE, ET SON BON PAS ENCORE UTILISÉ : une fois le bon proposé couvert par lui, on ne le relance plus. */
         servie: function () {
           var x = D.techLien(slug), pris = {}; ((x && x.usages) || []).forEach(function (p) { pris[p.code] = 1; });
           return D.techRencontresLien(slug).filter(function (r) { return r.statut === 'servie' && (r.codes || []).some(function (c) { return !pris[c]; }); })[0] || null;
         },
-        verifier: function (b) { return D.techRencontreVerifier({ slug: slug, adresse: b.adresse, note: b.note }); },
-        demander: function (b) { return D.techRencontreDemander({ slug: slug, adresse: b.adresse, note: b.note, tel: b.tel, canal: b.canal, consentement: b.consentement }); },
-        annuler: function (id) { return D.techRencontreAnnuler(id, 'annulée par le client', 'client'); },
-        popupHTML: 'Le ' + esc(D.terme('nomade', 'client')) + ' qui prend ta demande <b style="color:var(--color-ink)">t’appelle pour confirmer le rendez-vous</b>. '
-          + '<b style="color:var(--color-ink)">Il ne part qu’après cet appel</b> — c’est la règle, pour toi comme pour lui.',
-        recapHTML: function (montant) { return 'Un bon ' + esc(m.raisonSociale) + ' de <b>' + esc(D.eur(montant)) + '</b>, dont tu lui paies le prix en main propre'; },
-        accordSuffixe: 'Mon numéro n’est lu que par le ' + D.terme('nomade', 'client') + ' qui prend la demande, et il s’efface quand elle se ferme.'
+        verifier: function (b) { return D.techMiseEnRelationVerifier({ slug: slug, partenaireId: b.partenaireId, adresse: b.adresse, clientId: (D.clientActifGet && D.clientActifGet()) || null }); },
+        demander: function (b) {
+          var cl = D.clientCourant ? D.clientCourant() : null;
+          return D.techMiseEnRelationDemander({ slug: slug, partenaireId: b.partenaireId, adresse: b.adresse, note: b.note, tel: b.tel, consentement: b.consentement,
+            clientId: cl ? cl.id : null, prenom: cl ? cl.prenom : null });
+        },
+        annuler: function (id) { return D.techRencontreAnnuler(id, 'tu as annulé ta demande', 'client'); },
+        popupHTML: function (nom) { return esc(nom) + ' reçoit ta demande tout de suite — une notification et un SMS — et <b style="color:var(--color-ink)">t’appelle pour valider le rendez-vous</b>. Sans appel dans les ' + D.nomadeRef().reponseMin + ' min, elle se ferme, et tu en choisis un autre.'; },
+        recapHTML: function (a, montant) {
+          return '<b>Tarif de déplacement : ' + esc(a.tarifTxt) + '</b> — ' + esc(a.palier.lbl) + ', à ' + esc(a.distTxt) + ' de son départ ; fixé par ' + esc(a.enseigne) + ', facturé en son nom.'
+            + '<br>Sur place, un bon ' + esc(m.raisonSociale) + ' de <b>' + esc(D.eur(montant)) + '</b> — tu l’achètes à la personne qui vient.';
+        },
+        accordTxt: function (nom, tel) { return 'J’accepte que ' + nom + ' m’appelle ' + (tel ? 'au ' + D.telFrLbl(tel) : 'au numéro ci-dessus') + ' pour convenir de ce rendez-vous. Mon numéro ne lui sert qu’à cela, et s’efface quand la demande se ferme.'; }
       }
     };
   };

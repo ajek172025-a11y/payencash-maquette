@@ -400,7 +400,9 @@
     }
     var coche = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.2 4.2L19 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     var docs = o.docs ? ((((d.ref || {}).documents || {})[o.docs]) || []).filter(function (x) { return /^cgu|confidentialite/.test(x.cle); }) : [];
-    var lienDoc = function (x) { return '<a href="' + esc(x.url) + '" target="_blank" rel="noopener">' + (/^confidentialite/.test(x.cle) ? 'Confidentialité' : 'Conditions d’utilisation') + '</a>'; };
+    /* (24/09, nuit — audit de mise en page, format bureau) les liens du pied sont seuls dans leur ligne : on les vise du doigt ou de la
+       souris, ils prennent la zone sensible de 32 px de la maison (pec-tap-confort) — leur ligne faisait 17 px */
+    var lienDoc = function (x) { return '<a class="pec-tap-confort" href="' + esc(x.url) + '" target="_blank" rel="noopener">' + (/^confidentialite/.test(x.cle) ? 'Confidentialité' : 'Conditions d’utilisation') + '</a>'; };
     var bascule = o.bascule ? '<span class="q">' + esc(o.bascule.q) + ' </span><a href="' + esc(o.bascule.href) + '">' + esc(o.bascule.lbl) + '</a>' : '';
     var a = document.createElement('aside');
     a.className = 'porte-aside';
@@ -416,7 +418,7 @@
       + '<div class="porte-etapes"></div>'
       + '<div class="porte-pied">' + (docs.length ? '<p class="liens">' + docs.map(lienDoc).join('<span aria-hidden="true"> · </span>') + '</p>' : '')
         + (P.pied ? '<p>' + esc(remplir(P.pied)) + '</p>' : '')
-        + (o.retour ? '<p><a href="' + esc(o.retour.href) + '">← ' + esc(o.retour.lbl) + '</a></p>' : '') + '</div>';
+        + (o.retour ? '<p><a class="pec-tap-confort" href="' + esc(o.retour.href) + '">← ' + esc(o.retour.lbl) + '</a></p>' : '') + '</div>';
     var sb = cadre.querySelector(':scope > .pec-statusbar');
     cadre.insertBefore(a, sb ? sb.nextSibling : cadre.firstChild);
     if (d.marqueAppliquer) d.marqueAppliquer(a);
@@ -433,7 +435,10 @@
      marques et les commerces non. Un champ qui porte déjà son bouton (.voir) est laissé tel quel. */
   I.voirMdp = function (racine) {
     [].forEach.call((racine || document).querySelectorAll('input[type="password"]'), function (i) {
-      if (i.getAttribute('data-voir') || (i.parentElement && i.parentElement.querySelector('.voir'))) return;
+      /* (24/09, nuit) un champ qui porte DÉJÀ son bouton : le sien, juste à côté — pas celui d'un autre champ du même bloc (le second
+         mot de passe d'un formulaire, « Confirme-le », restait sans bouton parce que le premier en avait un) */
+      var voisin = i.nextElementSibling;
+      if (i.getAttribute('data-voir') || (voisin && voisin.classList && voisin.classList.contains('voir'))) return;
       i.setAttribute('data-voir', '1');
       var enveloppe = document.createElement('span'); enveloppe.className = 'porte-mdp';
       i.parentNode.insertBefore(enveloppe, i); enveloppe.appendChild(i);

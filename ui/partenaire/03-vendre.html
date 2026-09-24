@@ -228,13 +228,7 @@
     </div>
   </div><!-- /pec-body -->
 
-  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
-    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
-    <a class="pec-tab" aria-current="page" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
-    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
-    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
-    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
-  </nav>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="03-vendre.html"></nav><!-- (24/09, nuit) la barre se pose depuis PEC_PART.menu : écrite une fois, celle du titulaire ou du collaborateur -->
 
 </div>
 </div>
@@ -253,6 +247,7 @@
        le DIT, et la vente redevient libre. */
     var rdvId = Q.get('rdv') || null, slug = rdvId ? null : (Q.get('vendre') || null), marqueVoulue = Q.get('marque') || null;
     var verrou = null;   // { marchandId, montant, source:'ordre'|'rdv', slug } : ce que la porte a posé, qui ne se ressaisit pas
+    var carteRemplie = false;   // (24/09, nuit) la marque et le montant d'une mise en relation ne se pré-remplissent qu'une fois
 
     /* L'ADRESSE ABSOLUE DE L'APP MES BONS — le ticket quitte l'écran (imprimé, photographié) : son flashcode doit mener
        quelque part depuis n'importe où, jamais un chemin relatif à cette page. Un bon né d'un bon proposé s'ouvre SUR ce bon
@@ -269,7 +264,7 @@
       var url = urlApp(b);
       var qr = (window.PEC_QR && PEC_QR.svg) ? PEC_QR.svg(url, { size: 112 }) : '';
       return '<div class="pec-ordre v-flash"><div class="pec-ordre-qr">' + (qr || '<span>Flashcode indisponible sur cet appareil — le code suffit.</span>') + '</div>'
-        + '<div class="pec-ordre-txt"><b>À scanner avec l’app Mes bons</b><span>Le bon s’y range au nom de son utilisateur et s’utilise chez ' + esc(b.marchand) + ' — et nulle part ailleurs.</span><span class="ref">' + esc(b.code) + '</span></div></div>';
+        + '<div class="pec-ordre-txt"><b>À scanner avec l’app Mes bons</b><span>Le bon s’y range au nom de son utilisateur, et se dépense sur le site de ' + esc(b.marchand) + ' — nulle part ailleurs.</span><span class="ref">' + esc(b.code) + '</span></div></div>';
     }
 
     // GARDE POINT (socle) : rejouée sur le bus — un point suspendu puis réactivé rouvre l'écran sans rechargement ;
@@ -292,9 +287,9 @@
       s.innerHTML = l.length ? l.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.raisonSociale) + ' — ' + esc(String(m.siteUrl || '').replace(/^https?:\/\//, '')) + '</option>'; }).join('')
         : '<option value="">Aucune marque ne vend encore ses bons dans le réseau</option>';
       if (cur && l.some(function (m) { return m.id === cur; })) s.value = cur;
-      s.disabled = !!verrou || !l.length;
+      s.disabled = !!(verrou && !verrou.carte) || !l.length;
       $('v-marque-aide').textContent = l.length
-        ? (verrou ? 'La marque est celle que le client présente.' : 'Le client choisit la marque : son bon ne vaudra que sur le site de celle-ci.')
+        ? (verrou && !verrou.carte ? 'La marque est celle que le client présente.' : 'Le client choisit la marque : son bon ne vaudra que sur le site de celle-ci.')
         : 'Dès qu’une marque du réseau est prête à vendre, elle apparaît ici.';
     }
 
@@ -309,6 +304,12 @@
          porterait l'encours du commerce au-delà de son plafond, et la règle unique (techPeutVendre) le chiffre. */
       var v = P.vente(m.id, mt), depasse = !avance && !v.ok && v.refus === 'encours';
       z.hidden = false;
+      /* (24/09, nuit) LE COLLABORATEUR vend au prix conseillé ; ce que le point garde et ce qui lui est prélevé regardent le titulaire */
+      if (P.collab()) {
+        z.innerHTML = (depasse ? '<div class="r" style="color:#B3372B"><span>' + esc(v.motif) + ' Préviens le titulaire du point.</span><span></span></div>' : '')
+          + '<div class="r tot"><span>Valeur faciale du bon (prix conseillé au client)</span><span>' + esc(D.eur(d.montant)) + '</span></div>';
+        return;
+      }
       z.innerHTML = (depasse ? '<div class="r" style="color:#B3372B"><span>' + esc(v.motif) + '</span><span></span></div>' : '')
         + (!d.valide ? '<div class="r" style="color:#B3372B"><span>Répartition impossible sur ce montant.</span><span></span></div>' : '')
         + '<div class="r"><span>Valeur faciale du bon (prix conseillé au client)</span><span>' + esc(D.eur(d.montant)) + '</span></div>'
@@ -326,7 +327,11 @@
       var v = P.vente(m ? m.id : null, montantSaisi());
       var ferme = !v.ok && v.refus !== 'encours';   // un encours dépassé se dit sur la vente, pas en fermant la caisse
       z.hidden = !ferme;
-      if (ferme) {
+      if (ferme && P.collab()) {
+        $('v-ferme-txt').textContent = v.motif + ' Seul le titulaire du point peut le régler : préviens-le.';
+        $('v-ferme-cta').hidden = true;
+      } else if (ferme) {
+        $('v-ferme-cta').hidden = false;
         $('v-ferme-txt').textContent = v.motif;
         var href = { mandat: '07-mon-point.html#sepa', garantie: '07-mon-point.html#avance', solde: '07-mon-point.html#avance', impaye: '05-releves.html', suspendu: '05-releves.html', non_valide: '08-notifications.html', documents: '07-mon-point.html#acceptations', aucun: '07-mon-point.html#fiche' }[v.refus] || '07-mon-point.html';
         $('v-ferme-cta').href = href;
@@ -352,6 +357,23 @@
                            : '<b>Rencontre introuvable.</b> Saisis la marque et le montant à la main.';
           rdvId = null; verrou = null; $('v-montant').readOnly = false; majMarques(); return;
         }
+        if (rv.origine === 'carte') {
+          /* (24/09, nuit) UNE MISE EN RELATION DE LA CARTE : la marque et le montant se sont dits au téléphone — ceux de la demande
+             pré-remplis une fois s'ils y sont, jamais verrouillés : c'est le client, devant toi, qui décide de ce qu'il achète. */
+          verrou = { marchandId: rv.marchandId || null, montant: rv.montant || null, source: 'rdv', carte: true, slug: null };
+          z.hidden = false; z.style.background = 'var(--color-mint)'; z.style.color = 'var(--color-mint-ink)';
+          z.innerHTML = '<b>Mise en relation ' + esc(rv.ref) + '</b> — ' + esc(rv.prenom || 'ton client') + (rv.lieu ? ', ' + esc(rv.lieu) : '') + (rv.rdvHeure ? ' · ' + esc(rv.rdvHeure) : '')
+            + '<br>Vends-lui le bon de son choix' + (rv.marchand ? ' (au téléphone : <b>' + esc(rv.marchand) + '</b>' + (rv.montant ? ' de <b>' + esc(D.eur(rv.montant)) + '</b>' : '') + ')' : '') + ', encaisse-le, puis émets.'
+            + '<span class="v-demande-note">Ton déplacement (' + esc(rv.tarif === 0 ? 'sans frais' : D.eur(rv.tarif)) + ', ' + esc((rv.palier || {}).lbl || '') + ') ne passe pas par ici : tu le factures à ton client, en ton nom.</span>';
+          majMarques();
+          if (!carteRemplie) {
+            carteRemplie = true;
+            if (verrou.marchandId) $('v-marque').value = verrou.marchandId;
+            if (verrou.montant) $('v-montant').value = String(verrou.montant).replace('.', ',');
+          }
+          $('v-montant').readOnly = false;
+          return;
+        }
         verrou = { marchandId: rv.marchandId, montant: rv.montant, source: 'rdv', slug: rv.lienSlug };
         z.hidden = false; z.style.background = 'var(--color-mint)'; z.style.color = 'var(--color-mint-ink)';
         z.innerHTML = '<b>Rencontre ' + esc(rv.ref) + '</b> — ' + esc(rv.lieu) + '<br>Tu lui remets un bon <b>' + esc(rv.marchand) + '</b> de <b>' + esc(D.eur(rv.montant)) + '</b>. Encaisse-le, puis émets.';
@@ -359,15 +381,17 @@
         var ov2 = D.techOrdreVente(slug);
         if (!ov2 || !ov2.vendable) {
           z.hidden = false; z.style.background = 'var(--color-amber-well)'; z.style.color = 'var(--color-amber-text)';
-          z.innerHTML = ov2 ? '<b>Ce bon proposé est ' + esc(ov2.etatLbl.toLowerCase()) + '</b> — il n’y a plus rien à vendre dessus. Saisis la marque et le montant à la main pour une vente libre.'
+          z.innerHTML = ov2 ? (ov2.bonsVendus && (ov2.etat === 'open' || ov2.etat === 'partial')
+              ? '<b>Ce bon proposé est déjà acheté (' + esc(D.eur(ov2.vendu)) + ')</b> — il ne se vend pas deux fois. Saisis la marque et le montant à la main pour une vente libre.'
+              : '<b>Ce bon proposé est ' + esc(ov2.etatLbl.toLowerCase()) + '</b> — il n’y a plus rien à vendre dessus. Saisis la marque et le montant à la main pour une vente libre.')
                             : '<b>Ordre de vente inconnu.</b> Ce flashcode ne correspond à aucun bon proposé par une marque — saisis la marque et le montant à la main.';
           slug = null; verrou = null; $('v-montant').readOnly = false; majMarques(); return;
         }
         verrou = { marchandId: ov2.marchandId, montant: ov2.montant, source: 'ordre', slug: ov2.slug };
         z.hidden = false; z.style.background = 'var(--color-mint)'; z.style.color = 'var(--color-mint-ink)';
-        z.innerHTML = '<b>Ordre de vente · ' + esc(ov2.reference || ov2.slug) + '</b><br>Vends-lui un bon <b>' + esc(ov2.marchand) + '</b> de <b>' + esc(D.eur(ov2.montant)) + '</b>'
+        z.innerHTML = '<b>Ordre de vente · ' + esc(ov2.code) + '</b>' + (ov2.reference ? ' <span class="v-demande-note" style="display:inline">(' + esc(ov2.reference) + ')</span>' : '') + '<br>Vends-lui un bon <b>' + esc(ov2.marchand) + '</b> de <b>' + esc(D.eur(ov2.montant)) + '</b>'
           + (ov2.montantDemande !== ov2.montant ? ' (ce qui manque encore sur ' + esc(D.eur(ov2.montantDemande)) + ' proposés)' : '') + ' : c’est ce que son flashcode demande. Encaisse-le, puis émets.'
-          + '<span class="v-demande-note">Le bon ne vaut que sur ' + esc(ov2.site || 'le site de cette marque') + ' — un réseau limité. Le client l’utilise depuis l’app Mes bons.</span>';
+          + '<span class="v-demande-note">Le bon ne vaut que sur ' + esc(ov2.site || 'le site de cette marque') + ' — un réseau limité : le client le dépense sur ce site, son code rangé dans l’app Mes bons.</span>';
       } else { verrou = null; }
       if (verrou) {
         majMarques();
@@ -384,7 +408,7 @@
          qu'il a payé d'avance — la phrase suit le mode */
       $('v-sous').textContent = 'Le client choisit une marque du réseau et un montant. '
         + (avance ? 'Tu vends le bon pour le compte de ' + R.nom + ', sur l’avance que tu as payée' : 'Tu nous achètes le bon en le vendant')
-        + ', et il l’utilise depuis l’app Mes bons.';
+        + ', et il le dépense sur le site de la marque.';
       $('v-limites').textContent = 'Le montant que le client demande. Le bon est valable ' + D.bonsRef().validiteMois + ' mois, en une ou plusieurs fois, uniquement sur le site de la marque.';
       $('v-annul-txt').textContent = 'dans les ' + R.annulationMinutes + ' min';
       /* (24/09, soir — relecture juridique) le nomade PAIE D'AVANCE la valeur des bons (jamais « avance les fonds » ni « se
@@ -410,14 +434,16 @@
       if (!zj || !ze) return;
       if (!p || !r) { zj.innerHTML = ze.innerHTML = '<p class="v-note-p">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</p>'; return; }
       var jour0 = new Date(); jour0.setHours(0, 0, 0, 0);
-      var l = D.techVentes({ revendeurId: r.id, mois: D.techPeriodeCourante() }).filter(function (v) { return v.statut !== 'annulee' && (v.at || 0) >= jour0.getTime(); });
+      var k = P.collab(), q = { revendeurId: r.id, mois: D.techPeriodeCourante() }; if (k) q.par = k.identifiant;   // (24/09, nuit) le collaborateur : ses ventes
+      var l = D.techVentes(q).filter(function (v) { return v.statut !== 'annulee' && (v.at || 0) >= jour0.getTime(); });
       var page = +((D.techRef().logiciel || {}).pageBons) || l.length, tot = l.reduce(function (a, v) { return a + (v.montant || 0); }, 0);
+      zt.hidden = ze.hidden = !!k;   // l'encours et le plafond sont ceux du point : ils regardent le titulaire
       zj.innerHTML = l.length
         ? l.slice(0, page).map(function (v) {
             return '<div class="v-vj"><span class="h">' + esc(heure(v.at)) + '</span><span class="m">' + esc(v.marchand) + '</span>'
               + '<span class="pec-pill ' + esc(D.techVenteStatutPill(v.statut)) + '">' + esc(D.techVenteStatutLbl(v.statut)) + '</span><span class="n">' + esc(D.eur(v.montant)) + '</span></div>';
           }).join('')
-          + '<p class="v-note-p">' + l.length + ' bon' + (l.length > 1 ? 's' : '') + ' · ' + esc(D.eur(r2(tot))) + (l.length > page ? ' · tout dans <a href="04-bons.html">Bons vendus</a>' : '') + '</p>'
+          + '<p class="v-note-p">' + l.length + ' bon' + (l.length > 1 ? 's' : '') + ' · ' + esc(D.eur(r2(tot))) + (l.length > page ? ' · tout dans <a href="04-bons.html">' + (k ? 'Mes ventes' : 'Bons vendus') + '</a>' : '') + '</p>'
         : '<p class="v-note-p">Aucun bon vendu aujourd’hui — le premier s’inscrira ici dès qu’il sera émis.</p>';
       if (D.techPaieParAvance(r)) {
         var av = D.avanceSolde('revendeur', r.id), A = D.techRef().avance;
@@ -467,11 +493,12 @@
       var moyen = (document.querySelector('input[name="v-moyen"]:checked') || {}).value || null;
       var res;
       if (verrou && verrou.source === 'rdv') {
-        var sv = D.techRencontreServir(rdvId, { revendeurId: r.id, prixRecu: true });
+        var sv = D.techRencontreServir(rdvId, { revendeurId: r.id, prixRecu: true, marchandId: m.id, montant: $('v-montant').value, moyen: moyen, par: P.par() });
         if (!sv.ok) { erreur(sv.motif, sv.champ); majCaisse(); return; }
         res = { bon: sv.bon, ticket: sv.ticket, vente: sv.bon && sv.bon.venteRef ? D.techVente(sv.bon.venteRef) : null, rdv: true };
       } else {
-        var em = D.techBonEmettre({ marchandId: m.id, revendeurId: r.id, montant: $('v-montant').value, par: P.par(), moyen: moyen });
+        var em = D.techBonEmettre({ marchandId: m.id, revendeurId: r.id, montant: $('v-montant').value, par: P.par(), moyen: moyen,
+          ordre: (verrou && verrou.source === 'ordre') ? verrou.slug : null });   // (24/09, nuit) le bon né d'un ordre de vente le garde
         if (!em.ok) { erreur(em.motif, em.champ); majCaisse(); return; }
         var vd = D.techBonVendu(em.bon.code);
         res = { bon: (vd.ok && vd.bon) || em.bon, ticket: em.ticket, vente: em.vente };
@@ -479,9 +506,13 @@
       var b = res.bon, v = res.vente;
       $('v-ticket').innerHTML = (res.ticket || D.techBonTicketHTML(b)) + flashHTML(b);
       $('v-ok').innerHTML = '✓ Bon ' + esc(b.code) + ' émis — ' + esc(D.eur(b.montant)) + ' · ' + esc(b.marchand)
-        + (res.rdv ? '<br>Rencontre servie : remets le ticket à ton client, il pourra l’utiliser depuis son app.' : '');
+        + (res.rdv ? '<br>Rencontre servie : remets le ticket à ton client — il range son code dans l’app Mes bons, et dépense son bon sur le site de la marque.' : '');
       var zf = $('v-fait');
-      if (v) {
+      if (v && P.collab()) {
+        zf.hidden = false;
+        zf.innerHTML = '<div class="r tot"><span>Valeur faciale du bon (prix conseillé au client)</span><span>' + esc(D.eur(v.montant)) + '</span></div>'
+          + '<div class="sub">Vente ' + esc(v.reference) + ' — à ton nom : elle s’ajoute à Mes ventes.</div>';
+      } else if (v) {
         zf.hidden = false;
         /* (24/09, soir — relecture juridique) la valeur faciale est le prix CONSEILLÉ : le commerce revend au prix qu'il affiche */
         zf.innerHTML = '<div class="r"><span>Valeur faciale du bon (prix conseillé au client)</span><span>' + esc(D.eur(v.montant)) + '</span></div>'

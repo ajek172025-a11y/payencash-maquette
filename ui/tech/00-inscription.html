@@ -95,6 +95,11 @@
             <p class="reg" id="ti-reg" hidden></p></div>
           <div class="champ"><label for="ti-raison">Raison sociale</label>
             <input class="pec-input" id="ti-raison" type="text" autocomplete="organization"></div>
+          <!-- (24/09, nuit — fondatrice : « vérifie dans Solution si la catégorie d'activité est présente ») LA CATÉGORIE D'ACTIVITÉ : la
+               liste vient du référentiel (techCategoriesActivite) — c'est elle qui range la boutique dans le filtre de Mes bons -->
+          <div class="champ"><label for="ti-categorie">Catégorie d’activité</label>
+            <select class="pec-input" id="ti-categorie"><option value="">Choisis…</option></select>
+            <p class="aide">Elle range ta boutique dans l’app Mes bons, là où tes clients cherchent une marque.</p></div>
           <div class="champ" id="ti-site-z"><label for="ti-site">Adresse de ton site</label>
             <input class="pec-input" id="ti-site" type="text" inputmode="url" autocomplete="url" autocapitalize="none" spellcheck="false" placeholder="ta-marque.fr">
             <p class="aide" id="ti-site-aide">Avec ou sans « https:// » ni « www » : nous la rangeons pour toi.</p></div>
@@ -313,8 +318,11 @@
     var l = I.registreLigne(e); registreInfo(l.html, l.cls);
   }
   I.registre({ champ: $('ti-cherche'), liste: $('ti-sugg'), onChoix: function (e) { appliquerRegistre(e, true, true); if (!$('ti-sans-site').checked) $('ti-site').focus(); } });
+  /* les catégories d'activité, lues au référentiel une fois : aucune n'est écrite ici */
+  $('ti-categorie').innerHTML = '<option value="">Choisis…</option>' + D.techCategoriesActivite().map(function (c) { return '<option value="' + D.esc(c.id) + '">' + D.esc(c.lbl) + '</option>'; }).join('');
   PEINTRES.entreprise = function () {
     var x = m() || {};
+    if (x.categorie && !$('ti-categorie').value) $('ti-categorie').value = x.categorie;
     if (x.siret && !val('ti-siret')) $('ti-siret').value = x.siret;
     if (x.raisonSociale && !val('ti-raison')) $('ti-raison').value = x.raisonSociale;
     if (x.siteUrl && !val('ti-site')) $('ti-site').value = String(x.siteUrl).replace(/^https:\/\//, '');
@@ -342,10 +350,11 @@
   $('ti-entreprise-go').addEventListener('click', function () {
     montrer('ti-entreprise-err', '');
     var e = registre || {};
+    if (!$('ti-categorie').value) { montrer('ti-entreprise-err', 'Choisis ta catégorie d’activité : c’est elle qui range ta boutique dans l’app Mes bons.'); $('ti-categorie').focus(); return; }
     var r = D.techMarchandEntrepriseSet(MID, { raisonSociale: val('ti-raison'), siret: val('ti-siret'), siteUrl: val('ti-site'), sansSite: $('ti-sans-site').checked,
       tel: val('ti-tel'), formeJuridique: e.forme || null, adresse: e.adresse ? [e.adresse, e.codePostal, e.ville].filter(Boolean).join(' ') : null, naf: e.naf || null,
-      tauxUnique: $('ti-tva-unique').checked, franceSeule: $('ti-tva-france').checked }, MID);
-    if (!r.ok) { montrer('ti-entreprise-err', r.motif); var f = { raisonSociale: 'ti-raison', siret: 'ti-siret', siteUrl: 'ti-site' }[r.champ]; if (f) $(f).focus(); return; }
+      tauxUnique: $('ti-tva-unique').checked, franceSeule: $('ti-tva-france').checked, categorie: $('ti-categorie').value }, MID);
+    if (!r.ok) { montrer('ti-entreprise-err', r.motif); var f = { raisonSociale: 'ti-raison', siret: 'ti-siret', siteUrl: 'ti-site', categorie: 'ti-categorie' }[r.champ]; if (f) $(f).focus(); return; }
     aller('dirigeant');
   });
 

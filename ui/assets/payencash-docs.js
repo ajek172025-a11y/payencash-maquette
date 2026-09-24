@@ -1201,9 +1201,9 @@
           "chaque vente. Sa commission est forfaitaire et couvre l'ensemble de ses frais. L'application rend compte de chaque vente, opération",
           "par opération. Il ne supporte aucun risque de mévente.",
           /* (24/09 — relecture juridique, décision fondatrice) LE TARIF EST LIBRE, AFFICHÉ PAR LE NOMADE ET CONVENU AVEC LE CLIENT :
-             un seul texte pour le HTML et le modèle signé. Il l'affiche depuis Mon point (« Mon tarif de déplacement », partenaireTarifSet)
-             et le client le lit avant de demander la rencontre (techRevendeursMobiles().tarifLbl) ; le client ne choisit pas entre des « propositions » : l'application n'organise
-             aucune mise en concurrence. */
+             un seul texte pour le HTML et le modèle signé. Il l'affiche depuis Mon point (« Mon tarif de déplacement » : son départ et ses
+             prix par palier, partenaireDeplacementSet) et le client le lit avant de le choisir (carte de Mes bons, nomadesAutour) ; chacun
+             affiche le sien et le client choisit — l'application n'organise aucune enchère, ni « propositions » à départager. */
           "6.5 Tarif de déplacement. Il fixe librement le tarif de son déplacement, l'affiche dans l'application et le convient avec son",
           "client, au cas par cas. " + Nous + " ne fixe ni plancher, ni plafond, ni tarif conseillé. Il facture ce tarif en son nom propre, au",
           "client, sur sa propre facture.",

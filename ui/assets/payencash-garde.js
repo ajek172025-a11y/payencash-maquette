@@ -30,7 +30,7 @@
        sont publiques par nature (une page de connexion derrière sa propre garde, c'est une porte qui mène à elle-même).
        Seule la recherche d'une marque ou d'un commerce l'est aussi — un annuaire se consulte sans compte ; la liste
        des bons, le détail d'un bon, le bon proposé par une marque et le compte du porteur sont personnels. */
-    bons: ['03-rechercher', '00-inscription', '06-connexion']
+    bons: ['03-rechercher', '00-inscription', '06-connexion', '07-boutiques', '08-boutique']   // (24/09, nuit) les boutiques se consultent sans compte, comme la carte ; seul « ton code » demande de se connecter
   };
   // Les back-offices : TOUJOURS une session (aucune page publique, hors leurs pages d'entrée).
   // (18/09) `partenaire` : le commerce qui VEND les bons au comptoir — sédentaire ou nomade.

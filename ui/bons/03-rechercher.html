@@ -7,25 +7,34 @@
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
 <link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
 <link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-comment-payer.css"><!-- les deux cartes du choix (.choix2), la fenêtre de mise en relation (.scrim, .popup, .rgpdrow) : écrites une fois -->
 <link rel="stylesheet" href="../assets/vendor/maplibre-gl.css">
 <script src="../assets/payencash-icons.js"></script>
 <script src="../assets/vendor/maplibre-gl.js"></script><!-- la carte (MapLibre) : montée par PEC_GEO.carte, le seul montage de carte de la maquette -->
 <script src="../assets/payencash-data.js"></script>
 <script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : on voit où acheter un bon sans avoir de compte -->
-<script src="../assets/payencash-bus.js"></script><!-- (23/09, nuit — APP·551) le journal : ranger et UTILISER un bon de marque se tracent avec le compte du porteur — sans le bus, l'app agissait en silence -->
+<script src="../assets/payencash-bus.js"></script><!-- (23/09, nuit — APP·551) le journal : ranger un bon, demander une mise en relation se tracent avec le compte -->
 <script src="../assets/payencash-bons.js"></script>
 <!-- LA CARTE — L'ÉCRAN PRINCIPAL DE « MES BONS » (24/09, fondatrice : « sur l'app utilisateur, page principale : la carte avec les
-     points de vente et les agents mobiles ; utilise le vocabulaire adapté, la terminologie qu'on doit employer exclusivement pour
-     les parties prenantes »).
+     points de vente et les agents mobiles ; utilise le vocabulaire adapté »).
+     (24/09, nuit — fondatrice : « je veux la carte, et en dessous ce design : la tab filtre la carte ; si distributeur nomade, affiche
+     la liste des distributeurs nomades dans un rayon de 20 km et la mise en relation ; chacun affiche son propre prix de déplacement ;
+     libre concurrence ; prise de contact téléphonique à valider : c'est lui qui appelle ; notification lorsqu'il reçoit une demande ;
+     flux complet » ; puis « par défaut la carte pointe sur les points de vente ; les nomades apparaissent sous forme de chiffre — le
+     nombre de distributeurs dans ton secteur ; enlève le filtre, on utilise la tab point physique / distributeur nomade »).
      CE QU'ELLE MONTRE, TOUT DÉRIVÉ, RIEN DE SEMÉ :
-     · les POINTS DE VENTE (pointsBons) — les commerces du réseau qui peuvent vendre aujourd'hui, épinglés à leur adresse ;
-     · les DISTRIBUTEURS NOMADES (agentsMobiles) — ils n'ont pas d'adresse : on n'épingle pas un point où ils ne sont pas. La
-       carte montre la ville de leur ZONE (et le cercle de leur rayon quand ils en ont posé un) : c'est là qu'ils se déplacent ;
-     · les MARQUES validées (techMarchands) — leurs bons ne s'utilisent que sur leur site, et chaque ligne le dit.
-     Les noms sont ceux du glossaire vus du client (ref.parties : « point de vente », « distributeur nomade », « marque ») —
-     l'écran n'écrit aucun mot à lui. La position n'est demandée qu'au geste (« Me localiser »), jamais au chargement, et
-     elle reste sur l'appareil (PEC_GEO.phraseRetention). Sans carte (hors ligne, sans WebGL), la liste reste juste.
-     Le nom du fichier est resté (03-rechercher) : c'est l'adresse publique de l'app, celle que la garde ouvre sans compte. -->
+     · LA CARTE, puis SOUS ELLE les deux onglets du choix (le même dessin que « Comment veux-tu payer ? ») — ils filtrent la carte et la
+       liste. Par défaut : « Dans un point de vente ». Plus de filtre « Tout / Points de vente / Distributeurs nomades » ;
+     · LES POINTS DE VENTE (pointsBons) — épinglés à leur adresse, du plus proche au plus loin quand on sait où tu es ;
+     · LES DISTRIBUTEURS NOMADES — ils n'ont pas d'adresse : la carte ne les épingle pas, elle en dit le NOMBRE dans ton secteur (le
+       rayon du réseau, nomadeRef). Leur onglet les liste (nomadesAutour), chacun avec SON tarif pour TA distance, triés comme tu veux
+       — le moins cher, le plus proche, le mieux noté : libre concurrence, la page ne classe personne d'office ;
+     · LA MISE EN RELATION (techMiseEnRelationDemander) — tu en choisis un ; ta demande part à lui seul, il est prévenu (notification
+       et SMS), il t'appelle, et c'est l'appel qui valide le rendez-vous ; tu suis ta demande ici jusqu'au bon remis, puis tu le notes.
+     La position n'est demandée qu'au geste (« Me localiser »), jamais au chargement, et elle reste sur l'appareil (PEC_GEO) ; une
+     adresse cherchée ou une ville tapée la remplacent. Sans carte (hors ligne, sans WebGL), la liste reste juste. Les marques ont
+     leur page, Boutiques (07) : la carte dit où ACHETER un bon. Le nom du fichier est resté (03-rechercher) : c'est l'adresse
+     publique de l'app, celle que la garde ouvre sans compte. -->
 <style>
   .rc-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
   .rc-hdr-ico{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:var(--color-surface);border:1px solid var(--color-sep);color:var(--color-ink);text-decoration:none}
@@ -34,11 +43,6 @@
   .rc-form{display:flex;align-items:center;gap:9px;border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:3px 5px 3px 13px}
   .rc-form input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:13.5px;color:var(--color-ink);padding:11px 0;outline:none}
   .rc-form button{flex:none;border:0;border-radius:9px;background:var(--color-primary);color:#fff;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-  .rc-filtres{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
-  .rc-filtres::-webkit-scrollbar{display:none}
-  .rc-filtres button{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-surface);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer;white-space:nowrap}
-  .rc-filtres button[aria-checked="true"]{border-color:var(--color-primary);background:var(--color-mint)}
-  .rc-filtres .n{font-weight:700;color:var(--color-muted)}
   /* la carte : un cadre à hauteur fixe dans l'écran — la toile MapLibre mesure son conteneur */
   .rc-carte{position:relative;height:300px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card)}
   .rc-carte #mb-carte{position:absolute;inset:0}
@@ -47,6 +51,9 @@
   .rc-legende{position:absolute;left:10px;top:10px;z-index:3;display:flex;flex-direction:column;gap:4px;border-radius:12px;background:rgba(255,255,255,.92);padding:7px 9px;font-size:10.5px;font-weight:700;color:var(--color-ink);box-shadow:var(--shadow-card)}
   .rc-legende span{display:flex;align-items:center;gap:6px}
   .rc-legende i{display:inline-block;width:10px;height:10px;border-radius:50%}
+  /* LES DISTRIBUTEURS NOMADES SUR LA CARTE : un NOMBRE, pas des épingles — ils n'ont pas d'adresse. La pastille ouvre leur onglet. */
+  .rc-nb{position:absolute;left:10px;bottom:10px;z-index:3;display:inline-flex;align-items:center;gap:7px;border:0;border-radius:99px;background:#FFF1DC;box-shadow:var(--shadow-card);padding:7px 12px 7px 7px;font:inherit;font-size:11.5px;font-weight:800;color:#7A4700;cursor:pointer;max-width:calc(100% - 150px);text-align:left}
+  .rc-nb .n{flex:none;display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 6px;border-radius:99px;background:#E7A64A;color:#fff;font-size:12px;font-variant-numeric:tabular-nums}
   .rc-aide{margin:0;font-size:11px;line-height:1.55;color:var(--color-muted)}
   .rc-msg{margin:0;padding:9px 11px;border-radius:11px;background:var(--color-amber-well);color:var(--color-amber-text);font-size:11.5px;font-weight:700;line-height:1.45}
   .rc-sec{margin:4px 0 -6px}
@@ -54,47 +61,83 @@
   .rc-row + .rc-row{box-shadow:inset 0 1px 0 var(--color-sep)}
   .rc-row[aria-current="true"]{background:var(--color-mint)}
   .rc-row .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
-  .rc-row .ic.nomade{background:#FFF1DC;color:#9A5B00}
   .rc-row .ic .pec-ico{font-size:17px}
   .rc-row .t{min-width:0;flex:1}
   .rc-row .t b{display:block;font-size:13.5px;color:var(--color-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .rc-row .t small{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
-  .rc-row .t small .url{color:var(--color-primary-dark);font-weight:700;word-break:break-all}
   .rc-row .dist{flex:none;font-size:11px;font-weight:800;color:var(--color-primary-dark);font-variant-numeric:tabular-nums}
   .rc-plus{padding:9px 14px;font-size:11px;color:var(--color-muted-2)}
-  /* les marqueurs : le point de vente (vert, à son adresse), la zone des distributeurs nomades (ambre, à la ville), toi */
+  /* (24/09, nuit) LE RAYON, EN MÈTRES ET EN KILOMÈTRES — il ne s'offre que si l'on sait où tu es */
+  .rc-rayons{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin:0 0 8px}
+  .rc-rayons::-webkit-scrollbar{display:none}
+  .rc-rayons button{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-surface);padding:6px 11px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-ink);cursor:pointer;white-space:nowrap}
+  .rc-rayons button[aria-checked="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+  .rc-row .dist small{display:block;font-size:10px;font-weight:700;color:var(--color-muted);text-align:right}
+  /* ── L'ONGLET DES DISTRIBUTEURS NOMADES (les deux cartes du choix et la liste .nm-* vivent dans payencash-comment-payer.css) ── */
+  .nm-ou{border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:14px 15px}
+  .nm-ou .t{font-size:14px;font-weight:800;color:var(--color-ink)}
+  .nm-ou p{margin:5px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
+  .nm-ou .pec-cta{margin-top:11px}
+  .nm-ou .adr{position:relative;margin-top:10px}
+  .nm-ou .adr input{width:100%}
+  .nm-tete{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .nm-tete p{margin:0;font-size:12px;line-height:1.5;color:var(--color-muted)}
+  .nm-tete p b{color:var(--color-ink)}
+  .nm-tete button{border:0;background:none;padding:0;font:inherit;font-size:12px;font-weight:800;color:var(--color-primary-dark);text-decoration:underline;cursor:pointer}
+  .nm-regle{margin:0;font-size:11px;line-height:1.55;color:var(--color-muted)}
+  /* ── TA DEMANDE — le suivi, de l'envoi au bon remis ── */
+  .mer{border-radius:16px;background:var(--color-surface);box-shadow:0 0 0 2px var(--color-primary),var(--shadow-card);padding:14px 15px}
+  .mer.ferme{box-shadow:var(--shadow-card)}
+  .mer .h{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+  .mer .h b{font-size:14px;color:var(--color-ink)}
+  .mer .h .pec-pill{flex:none;font-size:10px}
+  .mer p{margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)}
+  .mer p b{color:var(--color-ink)}
+  .mer .code{margin-top:8px;font-family:var(--font-mono);font-size:15px;font-weight:800;letter-spacing:.08em;color:var(--color-ink);overflow-wrap:anywhere}
+  .mer .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+  .mer .acts .pec-cta,.mer .acts .pec-btn-secondary{flex:1 1 auto;text-decoration:none}
+  .mer .etoiles{display:flex;gap:4px;margin-top:8px}
+  .mer .etoiles button{border:0;background:var(--color-bg);border-radius:10px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;color:#C98A1B;font-size:19px}
+  .mer .etoiles button:hover,.mer .etoiles button:focus-visible{background:#FFF1DC}
+  .mer .err{margin:8px 0 0;font-size:11.5px;font-weight:700;color:#8E2A1E}
+  /* ── LA FENÊTRE DE MISE EN RELATION (la mise en page du socle : .scrim, .popup.lg, .recap, .tel, .rgpdrow) ── */
+  #merpop select,#merpop #merpop-montant{width:100%}
+  #merpop .pec-input-label{display:block;margin-top:11px}
+  #merpop .pec-input.ko{border-color:#C0463A;box-shadow:0 0 0 2px rgba(192,70,58,.13)}
+  /* les marqueurs : le point de vente (à son adresse), toi */
   .mb-mk-pt{display:flex;align-items:center;gap:5px;background:var(--color-ink);color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:5px 9px;box-shadow:0 4px 10px rgba(15,42,36,.3);white-space:nowrap;cursor:pointer;max-width:150px;overflow:hidden;text-overflow:ellipsis}
   .mb-mk-pt .pec-ico{font-size:12px;color:var(--color-bright)}
   .mb-mk-pt.ici{background:var(--color-primary)}
-  .mb-mk-zone{display:flex;align-items:center;gap:5px;background:#FFF1DC;color:#7A4700;border:1.5px solid #E7A64A;font-size:10.5px;font-weight:800;border-radius:999px;padding:4px 9px;white-space:nowrap;cursor:pointer}
   .mb-mk-user{width:18px;height:18px;border-radius:50%;background:var(--color-primary);box-shadow:0 0 0 5px rgba(16,160,106,.25),0 2px 6px rgba(15,42,36,.3)}
-  button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
-  /* (24/09) SUR BUREAU, LA CARTE À GAUCHE, TOUTE LA HAUTEUR ; la recherche, les filtres et la liste à droite — comme un site
-     de cartographie. Sur téléphone et tablette, l'ordre reste celui de l'écran : recherche, filtres, carte, liste. */
+  button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  /* (24/09) SUR BUREAU, LA CARTE À GAUCHE, TOUTE LA HAUTEUR ; la recherche, les onglets et la liste à droite — comme un site
+     de cartographie. Sur téléphone et tablette, l'ordre reste celui de l'écran : recherche, carte, onglets, liste. */
   #mb-page{padding:14px 18px 8px;display:flex;flex-direction:column;gap:12px}
   @media (min-width:1024px){
-    #mb-page{padding:28px 40px 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,420px);column-gap:28px;row-gap:12px;align-content:start}
+    #mb-page{padding:28px 40px 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,440px);column-gap:28px;row-gap:12px;align-content:start}
     #mb-page > *{grid-column:2;max-width:none;margin:0;width:auto}
     #mb-page > .rc-hdr,#mb-page > .rc-titre{grid-column:1 / -1}
-    #mb-page > .rc-filtres{flex-wrap:wrap;overflow:visible}
     #mb-page > .rc-carte{grid-column:1;grid-row:3 / span 8;align-self:start;position:sticky;top:0;height:calc(100dvh - 170px);min-height:420px}
     /* (24/09, soir) l'en-tête de téléphone effacé par la colonne ne prend plus de rang : la carte part juste sous le titre */
     .pec-device:has(> .pec-tabbar.pec-nav-complete) #mb-page > .rc-carte{grid-row:2 / span 8;height:calc(100dvh - 130px)}
   }
-  /* ══ (24/09, soir) L'ÉCHELLE DE BUREAU — la recherche, les filtres et la liste lus à 60 cm ══ */
+  /* ══ (24/09, soir) L'ÉCHELLE DE BUREAU — la recherche, les onglets et la liste lus à 60 cm ══ */
   @media (min-width:1024px){
     .rc-titre{font-size:30px;line-height:1.15}
     .rc-form{padding:4px 6px 4px 16px} .rc-form input{font-size:15px;padding:13px 0} .rc-form button{width:44px;height:44px}
-    .rc-filtres{gap:8px} .rc-filtres button{font-size:13.5px;padding:9px 15px}
     .rc-legende{font-size:12px;padding:9px 11px}
-    .rc-loc{font-size:13px;padding:10px 14px}
+    .rc-loc{font-size:13px;padding:10px 14px} .rc-nb{font-size:13px}
     .rc-aide{font-size:13px} .rc-msg{font-size:13.5px;padding:12px 14px}
     .rc-row{padding:14px 16px;gap:13px}
     .rc-row .ic{width:42px;height:42px}
     .rc-row .t b{font-size:15px} .rc-row .t small{font-size:13px}
-    .rc-row .dist{font-size:13px}
+    .rc-row .dist{font-size:13px} .rc-row .dist small{font-size:11.5px}
+    .rc-rayons button{font-size:13px;padding:8px 13px}
     .rc-plus{font-size:13px;padding:11px 16px}
-    .mb-mk-pt,.mb-mk-zone{font-size:12px}
+    .nm-ou .t{font-size:16px} .nm-ou p,.nm-tete p,.nm-tete button{font-size:13.5px}
+    .nm-regle{font-size:13px}
+    .mer .h b{font-size:15.5px} .mer p{font-size:13.5px}
+    .mb-mk-pt{font-size:12px}
   }
 </style>
 <script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
@@ -112,7 +155,7 @@
 
     <!-- (24/09, soir) pec-entete-app : sur bureau, la colonne porte la marque, et son pied l'utilisateur et la déconnexion -->
     <header class="rc-hdr pec-entete-app">
-      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+      <span data-pec-marque="bons" data-slogan></span>
       <a href="04-compte.html" class="tap rc-hdr-ico" aria-label="Mon compte"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-user"/></svg></a>
     </header>
 
@@ -126,17 +169,28 @@
     <!-- (24/09, nuit) la loupe sur un champ vide ne restait pas muette : elle dit quoi taper -->
     <p id="rc-aide" role="status" hidden style="margin:6px 4px 0;font-size:12px;line-height:1.45;color:var(--color-muted)"></p>
 
-    <div class="rc-filtres" id="mb-filtres" role="radiogroup" aria-label="Ce que montre la carte"></div>
-
     <div class="rc-carte pec-map-canvas" id="mb-carte-cadre">
       <div id="mb-carte" role="region" aria-label="Carte"></div>
       <div class="rc-legende" id="mb-legende" aria-hidden="true"></div>
+      <button type="button" class="rc-nb tap" id="mb-nb" hidden></button>
       <button type="button" class="rc-loc tap" id="mb-localiser"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-locate"/></svg>Me localiser</button>
     </div>
     <p class="rc-msg" id="mb-geo-msg" role="status" hidden></p>
     <p class="rc-aide" id="mb-geo-retention" data-geo-retention="tu" hidden></p>
 
-    <div id="mb-resultats" style="display:flex;flex-direction:column;gap:14px"></div>
+    <!-- LES DEUX ONGLETS, SOUS LA CARTE : ils la filtrent, et la liste avec. Leurs noms viennent du glossaire (PARTENAIRE_MODES). -->
+    <div class="choix2 duo2" role="tablist" id="mb-onglets" aria-label="Où acheter ton bon">
+      <button type="button" class="tap" role="tab" id="mb-ong-points" data-onglet="points" aria-selected="true" aria-controls="mb-resultats">
+        <span class="ic2"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-store"/></svg></span>
+        <span class="txt2"><b id="mb-ong-points-t">—</b><small id="mb-ong-points-s">—</small></span>
+      </button>
+      <button type="button" class="tap" role="tab" id="mb-ong-nomades" data-onglet="nomades" aria-selected="false" aria-controls="mb-resultats">
+        <span class="ic2"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-map-pin"/></svg></span>
+        <span class="txt2"><b id="mb-ong-nomades-t">—</b><small id="mb-ong-nomades-s">—</small></span>
+      </button>
+    </div>
+
+    <div id="mb-resultats" role="tabpanel" style="display:flex;flex-direction:column;gap:14px"></div>
 
     <p class="rc-aide" id="mb-rappel">—</p>
     <div style="height:6px"></div>
@@ -144,217 +198,497 @@
 
   <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="03-rechercher.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
 
+  <!-- (24/09, nuit — fondatrice : « ajoute la modale d'autorisation de position ») L'ACCORD DE POSITION — la fenêtre dit à quoi la
+       position sert AVANT que le téléphone ne la demande ; jamais deux fois ; jamais quand le navigateur l'a déjà bloquée. -->
+  <div class="scrim" id="geopop" hidden>
+    <div class="popup" role="dialog" aria-modal="true" aria-labelledby="geopop-t">
+      <span class="pic"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:22px"><use href="#i-locate"/></svg></span>
+      <h3 id="geopop-t">Autoriser PayEnCash à utiliser ta position ?</h3>
+      <p id="geopop-p">—</p>
+      <button type="button" class="allow tap" id="geopop-ok">Autoriser ma position</button>
+      <button type="button" class="deny tap" id="geopop-non">Continuer sans — je cherche une ville ou une adresse</button>
+      <p class="err" id="geopop-err" role="alert" hidden></p>
+    </div>
+  </div>
+
+  <!-- LA MISE EN RELATION : avant d'envoyer, on dit ce qui va se passer et à quel tarif, on demande le numéro où il t'appelle, et on
+       ne part qu'avec ton accord — la phrase cochée est celle qu'on enregistre. -->
+  <div class="scrim" id="merpop" hidden>
+    <div class="popup lg" role="dialog" aria-modal="true" aria-labelledby="merpop-t">
+      <span class="pic"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:22px"><use href="#i-headset"/></svg></span>
+      <h3 id="merpop-t">—</h3>
+      <p id="merpop-p">—</p>
+      <div class="recap" id="merpop-recap">—</div>
+      <label class="pec-input-label" for="merpop-marque">La marque de ton bon <span class="opt">· facultatif</span></label>
+      <select class="pec-input" id="merpop-marque"></select>
+      <label class="pec-input-label" for="merpop-montant">Son montant <span class="opt">· facultatif</span></label>
+      <input class="pec-input" id="merpop-montant" type="text" inputmode="decimal" autocomplete="off" placeholder="ex. 40">
+      <p class="aide" id="merpop-bon-aide">Tu peux aussi le lui dire au téléphone.</p>
+      <div id="merpop-prenom-z">
+        <label class="pec-input-label" for="merpop-prenom">Ton prénom <span class="opt">· facultatif</span></label>
+        <input class="pec-input" id="merpop-prenom" type="text" autocomplete="given-name" maxlength="40" style="width:100%">
+      </div>
+      <div class="tel">
+        <label class="k" for="merpop-tel">Le numéro où t’appeler</label>
+        <input class="pec-input" id="merpop-tel" type="tel" inputmode="tel" autocomplete="tel" placeholder="06 12 34 56 78" style="width:100%;margin-top:6px;background:var(--color-card)">
+      </div>
+      <label class="rgpdrow" for="merpop-rgpd">
+        <input type="checkbox" id="merpop-rgpd">
+        <span id="merpop-rgpd-txt">—</span>
+      </label>
+      <p class="err" id="merpop-err" role="alert" hidden></p>
+      <button type="button" class="allow tap" id="merpop-ok" style="margin-top:12px;opacity:.45" aria-disabled="true">Envoyer ma demande</button>
+      <button type="button" class="deny tap" id="merpop-non">Revenir en arrière</button>
+    </div>
+  </div>
+
 </div>
 </div>
 <script>
   (function () {
     'use strict';
-    var D = window.PEC_DATA; if (!D) return;
+    var D = window.PEC_DATA, B = window.PEC_BONS; if (!D) return;
     function $(id) { return document.getElementById(id); }
     function esc(v) { return D.esc(v); }
     function T(partie, forme, maj) { return D.terme(partie, forme, maj); }
-    var LIMITE = 40;   // au-delà, on invite à préciser plutôt que de faire défiler un annuaire entier
-    var q0 = new URLSearchParams(location.search).get('q') || '';
-    if (q0) $('mb-q').value = q0;
-    $('mb-q').placeholder = 'Une marque, un ' + T('commerce', 'client') + ', une ville…';
-    $('mb-rappel').textContent = window.PEC_BONS ? PEC_BONS.RAPPEL : '';
-
     function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
-    function pluriel(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+    function pluriel(n, mot, mots) { return n + ' ' + (n > 1 ? (mots || mot + 's') : mot); }
+    function heure(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    function de(ville) { return /^[aeiouyhàâéèêëîïôöûü]/i.test(String(ville || '')) ? 'd’' + ville : 'de ' + ville; }   // « part d’Aubagne »
+    function noteTxt(n) { return (Math.round(n * 10) / 10).toFixed(1).replace('.', ','); }
+    var LIMITE = 40;   // au-delà, on invite à préciser plutôt que de faire défiler un annuaire entier
+    var Q = new URLSearchParams(location.search);
+    if (Q.get('q')) $('mb-q').value = Q.get('q');
+    $('mb-q').placeholder = 'Un ' + T('commerce', 'client') + ', un ' + T('nomade', 'client') + ', une ville…';
+    $('mb-rappel').textContent = B ? B.RAPPEL : '';
+    var MODES = D.PARTENAIRE_MODES, R = D.nomadeRef();
+    $('mb-ong-points-t').textContent = MODES.sedentaire.clientLbl;
+    $('mb-ong-nomades-t').textContent = MODES.mobile.clientLbl;
 
-    /* ── LA POSITION : seulement au geste, et seulement le temps que PEC_GEO la garde ── */
-    var pos = (window.PEC_GEO && PEC_GEO.dernierePos) ? PEC_GEO.dernierePos() : null;
-    var filtre = 'tout', choisi = null;
+    /* ── L'ÉTAT DE L'ÉCRAN — rien de tout cela ne s'écrit ailleurs que sur cet appareil ── */
+    var onglet = Q.get('onglet') === 'nomades' ? 'nomades' : 'points';   // (24/09, nuit) par défaut : les points de vente
+    var tri = 'prix';                                                   // le moins cher d'abord ; le client change l'ordre
+    var rayon = 0;                                                      // (24/09, nuit) le rayon des points de vente, en mètres — 0 : tous
+    var choisi = null;                                                  // le point de vente mis en avant
+    var pos = (window.PEC_GEO && PEC_GEO.dernierePos) ? PEC_GEO.dernierePos() : null;   // la position, au geste seulement
+    var posLbl = null;                                                  // la rue de cette position, relue par la Base Adresse Nationale
+    var adresse = null;                                                 // une adresse cherchée : { geo, label, ville }
+    var merNomade = null;                                               // le distributeur nomade de la fenêtre ouverte
+    var merErreur = null;                                               // un refus à dire sur la carte « Ta demande »
+    function lireLocal(k) { try { return JSON.parse(localStorage.getItem(k) || '[]') || []; } catch (e) { return []; } }
+    function ecrireLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+    var CLE_MES = 'pec-bons-mises-en-relation', CLE_VUES = 'pec-bons-mises-en-relation-vues';   // sans compte : les demandes faites d'ici
+
+    /* ══ D'OÙ SE MESURE TON SECTEUR — une adresse cherchée, sinon ta position, sinon une ville du réseau tapée dans la recherche
+       (son centre : on le dit « ≈ »). Sans rien de tout cela, on ne sait pas où tu es — et on le dit, au lieu de deviner. ══ */
+    function place() {
+      if (adresse) return { geo: adresse.geo, label: adresse.label, ville: adresse.ville, approx: false, source: 'adresse' };
+      if (pos) return { geo: { lat: pos.lat, lng: pos.lng }, label: posLbl ? posLbl.label : null, ville: posLbl ? posLbl.ville : null, approx: false, source: 'position' };
+      var q = $('mb-q').value.trim(), v = (q.length > 2 && D.villeReseau) ? D.villeReseau(q) : null;
+      if (v && v.centre) return { geo: D.geoNormalise(v.centre), label: 'centre de ' + v.nom, ville: v.nom, approx: true, source: 'ville' };
+      return null;
+    }
 
     /* ══ LES DONNÉES — dérivées à chaque peinture ═══════════════════════════════════════════════════════════════ */
-    function points(q) { return D.pointsBons ? D.pointsBons({ q: q || '', pos: pos || null }) : []; }
-    function nomades(q) {
-      var n = norm(q), l = D.agentsMobiles ? D.agentsMobiles({}) : [];
-      if (pos) l.forEach(function (a) { a.vientJusquaToi = D.zoneCouvre(D.partenaire(a.id), { pos: pos }); });
-      if (n) l = l.filter(function (a) { return norm(a.enseigne + ' ' + (a.zoneLbl || '') + ' ' + ((a.zone && a.zone.villes) || []).join(' ')).indexOf(n) !== -1; });
-      return l.sort(function (a, b) { return (b.vientJusquaToi ? 1 : 0) - (a.vientJusquaToi ? 1 : 0); });
+    function points() {
+      var pl = place(), q = $('mb-q').value.trim();
+      return D.pointsBons ? D.pointsBons({ q: (pl && pl.source === 'ville') ? '' : q, ville: (pl && pl.source === 'ville') ? pl.ville : null, pos: pl ? pl.geo : null,
+        rayon: (pl && pl.source !== 'ville') ? rayon : 0 }) : [];
     }
-    function marques(q) {
-      var n = norm(q), l = D.techMarchands ? D.techMarchands({ statut: 'validated' }) : [];
-      if (n) l = l.filter(function (m) { return norm(m.raisonSociale + ' ' + (m.siteUrl || '')).indexOf(n) !== -1; });
-      return l.sort(function (a, b) { return String(a.raisonSociale).localeCompare(String(b.raisonSociale), 'fr'); });
+    var TRIS = [['prix', 'Le moins cher'], ['distance', 'Le plus proche'], ['note', 'Le mieux noté']];
+    var ORDRE = {
+      prix: function (a, b) { return (a.tarif - b.tarif) || (a.distM - b.distM); },
+      distance: function (a, b) { return (a.distM - b.distM) || (a.tarif - b.tarif); },
+      note: function (a, b) { return ((b.note || 0) - (a.note || 0)) || ((b.avis || 0) - (a.avis || 0)) || (a.tarif - b.tarif); }
+    };
+    // ceux qui viennent jusqu'à toi, avec leur tarif pour TA distance — null : on ne sait pas où tu es
+    function nomades() {
+      var pl = place(); if (!pl) return null;
+      var n = norm($('mb-q').value.trim()), l = D.nomadesAutour({ pos: pl.geo });
+      if (n && pl.source !== 'ville') l = l.filter(function (a) { return norm(a.enseigne + ' ' + a.departVille).indexOf(n) !== -1; });
+      return l.sort(ORDRE[tri] || ORDRE.prix);
+    }
+    // (24/09, nuit — « uniquement les distributeurs qui sont disponibles ») ceux du réseau qu'un client peut choisir MAINTENANT — disponibles,
+    // départ et prix posés : pour dire combien il y en a tant qu'on ne sait pas où tu es
+    function nomadesReseau() {
+      return (D.agentsMobiles ? D.agentsMobiles({}) : []).filter(function (a) { var d = D.partenaireDeplacement(a.id); return d && d.pret && D.partenaireDisponible(a.id); });
     }
 
-    /* ══ LES FILTRES — ce que montrent la carte et la liste ═════════════════════════════════════════════════════ */
-    function peindreFiltres(P, N, M) {
-      var F = [['tout', 'Tout', null], ['points', T('commerce', 'clientPluriel', true), P.length], ['nomades', T('nomade', 'clientPluriel', true), N.length], ['marques', T('marque', 'pluriel', true), M.length]];
-      $('mb-filtres').innerHTML = F.map(function (f) {
-        return '<button type="button" role="radio" data-f="' + f[0] + '" aria-checked="' + (filtre === f[0]) + '">' + esc(f[1]) + (f[2] != null ? ' <span class="n">' + f[2] + '</span>' : '') + '</button>';
-      }).join('');
-      $('mb-legende').innerHTML = '<span><i style="background:var(--color-ink)"></i>' + esc(T('commerce', 'clientPluriel', true)) + '</span>'
-        + '<span><i style="background:#E7A64A"></i>' + esc('Zones des ' + T('nomade', 'clientPluriel')) + '</span>';
+    /* ══ TA DEMANDE — celle de ton compte, sinon celles faites depuis cet appareil ; la plus récente, tant qu'elle vit ou que tu ne
+       l'as pas refermée (une rencontre servie reste là le temps de ranger ton bon et de noter) ══ */
+    function maDemande() {
+      var cl = D.clientActifGet ? D.clientActifGet() : null, vues = lireLocal(CLE_VUES);
+      var l = D.techRencontresClient ? D.techRencontresClient({ clientId: cl, ids: lireLocal(CLE_MES) }) : [];
+      return l.filter(function (r) { return r.statut === 'demandee' || r.statut === 'acceptee' || vues.indexOf(r.id) === -1; })[0] || null;
     }
-    $('mb-filtres').addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('[data-f]') : null; if (!b) return;
-      filtre = b.getAttribute('data-f'); rendre();
+    function vive(r) { return !!r && (r.statut === 'demandee' || r.statut === 'acceptee'); }
+    function dejaNote(r) { return !!r && D.notesDistributeurGet().some(function (x) { return x.rencontreId === r.id; }); }
+
+    /* ══ LES ONGLETS — leur ligne dit ce qu'ils contiennent : le nombre, et le plus proche ou le moins cher ═══════════════════ */
+    function peindreOnglets(P, N, pl) {
+      var tp = $('mb-ong-points'), tn = $('mb-ong-nomades');
+      tp.setAttribute('aria-selected', String(onglet === 'points')); tn.setAttribute('aria-selected', String(onglet === 'nomades'));
+      $('mb-ong-points-s').textContent = P.length
+        ? pluriel(P.length, T('commerce', 'client'), T('commerce', 'clientPluriel')) + (pl && P[0].distTxt ? ' — le plus proche à ' + P[0].distTxt : '')
+        : 'Aucun ' + T('commerce', 'client') + ' pour l’instant.';
+      var tous = nomadesReseau().length;
+      $('mb-ong-nomades-s').textContent = N
+        ? (N.length ? N.length + ' disponible' + (N.length > 1 ? 's' : '') + ' dans ton secteur — dès ' + N.slice().sort(ORDRE.prix)[0].tarifTxt : 'Aucun disponible dans ton secteur pour l’instant.')
+        : (tous ? tous + ' disponible' + (tous > 1 ? 's' : '') + ' — dis où tu es' : 'Aucun ' + T('nomade', 'client') + ' disponible pour l’instant.');
+    }
+    $('mb-onglets').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-onglet]') : null; if (!b) return;
+      onglet = b.getAttribute('data-onglet'); cadree = false; rendre();
     });
 
-    /* ══ LA LISTE ═══════════════════════════════════════════════════════════════════════════════════════════ */
+    /* ══ LA LISTE DES POINTS DE VENTE ═══════════════════════════════════════════════════════════════════════════ */
     function section(titre, sous, lignes, plus) {
       return '<div><p class="pec-section-label rc-sec">' + esc(titre) + '</p>' +
         '<div style="font-size:11px;color:var(--color-muted);margin:0 0 8px;line-height:1.5">' + esc(sous) + '</div>' +
         '<div class="pec-card" style="padding:0;overflow:hidden">' + lignes + (plus ? '<div class="rc-plus">' + esc(plus) + '</div>' : '') + '</div></div>';
     }
-    function rendre() {
-      var q = $('mb-q').value.trim(), P = points(q), N = nomades(q), M = marques(q), out = '';
-      peindreFiltres(P, N, M);
-      var voir = function (k) { return filtre === 'tout' || filtre === k; };
-      if (voir('points') && P.length) {
-        out += section(T('commerce', 'clientPluriel', true) + ' · ' + P.length,
-          'Tu y achètes le bon d’une marque au comptoir, au montant exact. ' + (pos ? 'Du plus proche au plus loin.' : 'Touche « Me localiser » pour les voir du plus proche au plus loin.'),
-          P.slice(0, LIMITE).map(function (p) {
-            return '<button type="button" class="rc-row tap" data-pt="' + esc(p.id) + '"' + (choisi === p.id ? ' aria-current="true"' : '') + '><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg></span>'
-              + '<span class="t"><b>' + esc(p.enseigne) + '</b><small>' + esc([p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) + (p.geoApprox ? ' · position approchée' : '') + '</small></span>'
-              + (p.distTxt ? '<span class="dist">' + esc(p.distTxt) + '</span>' : '') + '</button>';
-          }).join(''), P.length > LIMITE ? '… et ' + (P.length - LIMITE) + ' autres — précise ta recherche.' : '');
-      }
-      if (voir('nomades') && N.length) {
-        out += section(T('nomade', 'clientPluriel', true) + ' · ' + N.length,
-          'Ils se déplacent jusqu’à toi, dans la zone qu’ils ont choisie. Tu en demandes un depuis le bon que te propose une marque : « ' + ((D.PARTENAIRE_MODES.mobile || {}).clientLbl || '') + ' ».',
-          N.slice(0, LIMITE).map(function (a) {
-            return '<button type="button" class="rc-row tap" data-nomade="' + esc(a.id) + '"' + (choisi === a.id ? ' aria-current="true"' : '') + '><span class="ic nomade"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-route"/></svg></span>'
-              + '<span class="t"><b>' + esc(a.enseigne) + '</b><small>Se déplace : ' + esc(a.zoneLbl || '—') + '</small>'
-              + '<small>' + (a.note != null ? esc(String(a.note).replace('.', ',')) + ' / 5 · ' + pluriel(a.avis, 'avis') : 'Pas encore d’avis') + (a.vientJusquaToi ? ' · <b style="display:inline;color:var(--color-primary-dark)">vient jusqu’à toi</b>' : '') + '</small></span></button>';
-          }).join(''), N.length > LIMITE ? '… et ' + (N.length - LIMITE) + ' autres — précise ta recherche.' : '');
-      }
-      if (voir('marques') && M.length) {
-        out += section(T('marque', 'pluriel', true) + ' · ' + M.length, 'Chaque bon ne vaut que sur le site de la marque qui l’a émis.',
-          M.slice(0, LIMITE).map(function (m) {
-            var site = String(m.siteUrl || '');
-            return '<a class="rc-row tap" href="' + esc(site) + '" target="_blank" rel="noopener"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span>'
-              + '<span class="t"><b>' + esc(m.raisonSociale) + '</b><small>' + (site ? 'Ses bons s’utilisent uniquement sur <span class="url">' + esc(site.replace(/^https?:\/\//, '')) + '</span>' : 'Ses bons s’utilisent uniquement dans ses propres points de vente') + '</small></span>'
-              + '<svg class="pec-ico pec-row-go" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></a>';
-          }).join(''), M.length > LIMITE ? '… et ' + (M.length - LIMITE) + ' autres — précise ta recherche.' : '');
-      }
-      if (!out) {
-        out = '<div class="pec-vide"><span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-map-pin"/></svg></span>'
-          + '<p class="pec-vide-t">' + (q ? 'Rien pour « ' + esc(q) + ' »' : 'Le réseau se construit') + '</p>'
-          + '<p class="pec-vide-s">' + (q ? 'Essaie un autre mot, ou une ville.' : 'Les ' + esc(T('commerce', 'clientPluriel')) + ' et les ' + esc(T('nomade', 'clientPluriel')) + ' apparaissent ici dès qu’ils peuvent vendre les bons des marques.') + '</p></div>';
-      }
-      $('mb-resultats').innerHTML = out;
-      peindreCarte(P, N);
+    /* LES RAYONS — en mètres, puis en kilomètres (D.carteRayons) ; « Tous » n'en garde aucun. Seulement si l'on sait d'où mesurer. */
+    function rayonsHTML(pl) {
+      if (!pl || pl.source === 'ville') return '';
+      return '<div class="rc-rayons" role="radiogroup" aria-label="Autour de toi">' + [{ m: 0, lbl: 'Tous' }].concat(D.carteRayons()).map(function (x) {
+        return '<button type="button" class="tap" role="radio" data-rayon="' + x.m + '" aria-checked="' + (rayon === x.m) + '">' + esc(x.m ? '− ' + x.lbl : x.lbl) + '</button>';
+      }).join('') + '</div>';
+    }
+    function listePoints(P, pl) {
+      var q = $('mb-q').value.trim(), ray = rayon && pl && pl.source !== 'ville' ? (D.carteRayons().filter(function (x) { return x.m === rayon; })[0] || {}).lbl : null;
+      if (!P.length) return rayonsHTML(pl) + '<div class="pec-vide"><span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-map-pin"/></svg></span>'
+        + '<p class="pec-vide-t">' + (ray ? 'Aucun ' + esc(T('commerce', 'client')) + ' à moins de ' + esc(ray) : q ? 'Rien pour « ' + esc(q) + ' »' : 'Le réseau se construit') + '</p>'
+        + '<p class="pec-vide-s">' + (ray ? 'Élargis le rayon, ou choisis « Tous ».' : q ? 'Essaie un autre mot, ou une ville.' : 'Les ' + esc(T('commerce', 'clientPluriel')) + ' apparaissent ici dès qu’ils peuvent vendre les bons des marques.') + '</p></div>';
+      return rayonsHTML(pl) + section(T('commerce', 'clientPluriel', true) + ' · ' + P.length + (ray ? ' à moins de ' + ray : ''),
+        'Tu y achètes le bon d’une marque au comptoir, au montant exact. ' + (pl ? 'Du plus proche au plus loin' + (pl.approx ? ', depuis le ' + pl.label : '') + '.' : 'Touche « Me localiser » pour les voir du plus proche au plus loin.'),
+        P.slice(0, LIMITE).map(function (p) {
+          return '<button type="button" class="rc-row tap" data-pt="' + esc(p.id) + '"' + (choisi === p.id ? ' aria-current="true"' : '') + '><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg></span>'
+            + '<span class="t"><b>' + esc(p.enseigne) + '</b><small>' + esc([p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) + (p.geoApprox ? ' · position approchée' : '') + '</small></span>'
+            + (p.distTxt ? '<span class="dist">' + esc((pl && pl.approx ? '≈ ' : '') + p.distTxt) + (p.pied && !(pl && pl.approx) ? '<small>' + esc(p.pied) + '</small>' : '') + '</span>' : '') + '</button>';
+        }).join(''), P.length > LIMITE ? '… et ' + (P.length - LIMITE) + ' autres — précise ta recherche.' : '');
     }
 
-    /* ══ LA CARTE — PEC_GEO.carte (un seul montage pour toute la maquette) ═══════════════════════════════════════ */
-    var carte = null, mkPts = [], mkZones = [], mkUser = null, cadree = false;
-    function centreDefaut(P) {
-      if (pos) return { lat: pos.lat, lng: pos.lng };
+    /* ══ L'ONGLET DES DISTRIBUTEURS NOMADES — ta demande, d'où l'on mesure, qui vient, à quel tarif ═════════════════════════ */
+    function carteDemande(r) {
+      if (!r) return merErreur ? '<p class="rc-msg" role="alert">' + esc(merErreur) + '</p>' : '';
+      var nom = esc(r.revendeur || ('ton ' + T('nomade', 'client'))), tarif = (r.tarif === 0 ? 'sans frais' : D.eur(r.tarif)) + ((r.palier && r.palier.lbl) ? ' (' + r.palier.lbl + ')' : '');
+      var quoi = r.marchand ? 'un bon <b>' + esc(r.marchand) + '</b>' + (r.montant ? ' de <b>' + esc(D.eur(r.montant)) + '</b>' : '') : 'ton bon, au montant que tu veux';
+      var h = '', ferme = !vive(r) && r.statut !== 'servie';
+      if (r.statut === 'demandee') {
+        h = '<div class="h"><b>Demande envoyée à ' + nom + '</b><span class="pec-pill pec-pill--wait">en attente de son appel</span></div>'
+          + '<p>' + nom + ' t’appelle au <b>' + esc(D.telFrLbl(r.tel)) + '</b> pour valider le rendez-vous. Sans appel d’ici <b>' + esc(heure(r.expireTs)) + '</b>, ta demande se ferme, et tu en choisis un autre. <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span></p>'
+          + '<p>Tarif de déplacement : <b>' + esc(tarif) + '</b> — fixé par ' + nom + ', facturé en son nom. Sur place, tu achètes ' + quoi + '.</p>'
+          + '<div class="acts"><button type="button" class="pec-btn-secondary tap" data-mer-annuler="' + esc(r.id) + '">Annuler ma demande</button></div>';
+      } else if (r.statut === 'acceptee') {
+        h = '<div class="h"><b>Rendez-vous validé avec ' + nom + '</b><span class="pec-pill pec-pill--info">' + esc(r.rdvHeure || 'en route') + '</span></div>'
+          + '<p>Appel passé : ' + nom + ' vient te rejoindre' + (r.lieu ? ' près de <b>' + esc(r.lieu) + '</b>' : '') + '. Sur place, tu achètes ' + quoi + ' ; déplacement : <b>' + esc(tarif) + '</b>, facturé en son nom.</p>'
+          + '<div class="acts"><button type="button" class="pec-btn-secondary tap" data-mer-annuler="' + esc(r.id) + '">Annuler le rendez-vous</button></div>';
+      } else if (r.statut === 'servie') {
+        var code = (r.codes || [])[0] || '', range = !!(code && B && B.estRange && B.estRange(code)), connecte = !!(B && B.porteurId && B.porteurId());
+        h = '<div class="h"><b>' + nom + ' t’a remis ton bon</b><span class="pec-pill pec-pill--done">servie</span></div>'
+          + (code ? '<div class="code">' + esc(code) + '</div>' : '')
+          + '<p>' + (r.marchand ? 'Un bon <b>' + esc(r.marchand) + '</b>' + (r.montant ? ' de <b>' + esc(D.eur(r.montant)) + '</b>' : '') + ' : il' : 'Il') + ' se dépense sur le site de la marque, et nulle part ailleurs.</p>'
+          + '<div class="acts">' + (range ? '<a class="pec-cta tap" href="02-bon.html?code=' + encodeURIComponent(code) + '">Rangé dans Mes bons — le voir</a>'
+            : connecte ? '<button type="button" class="pec-cta tap" data-mer-ranger="' + esc(code) + '">Ranger dans Mes bons</button>'
+            : '<a class="pec-cta tap" href="02-bon.html?code=' + encodeURIComponent(code) + '">Ouvrir dans Mes bons</a>') + '</div>'
+          + (dejaNote(r) ? '<p>Merci : ta note est enregistrée. <button type="button" class="pec-btn-secondary tap" data-mer-vu="' + esc(r.id) + '" style="margin-left:6px;padding:6px 12px;min-height:0">OK</button></p>'
+            : '<p>Note ta rencontre avec ' + nom + ' :</p><div class="etoiles" role="group" aria-label="Ta note, de 1 à 5">'
+              + [1, 2, 3, 4, 5].map(function (n) { return '<button type="button" class="tap" data-mer-note="' + n + '" data-mer-id="' + esc(r.id) + '" aria-label="' + n + ' sur 5">★</button>'; }).join('') + '</div>');
+      } else {
+        var motif = r.statut === 'expiree' ? 'Pas d’appel de ' + nom + ' dans les ' + R.reponseMin + ' min : ta demande s’est fermée.'
+          : (r.annuleePar === 'client' ? 'Tu as annulé ta demande à ' + nom + '.' : nom + ' : ' + esc(String(r.motifAnnulation || 'la demande est fermée')) + '.');
+        h = '<div class="h"><b>Demande fermée</b><span class="pec-pill pec-pill--off">' + esc(D.rencontreStatutLbl(r.statut)) + '</span></div>'
+          + '<p>' + motif + ' Choisis un ' + esc(T('nomade', 'client')) + ' ci-dessous.</p>'
+          + '<div class="acts"><button type="button" class="pec-btn-secondary tap" data-mer-vu="' + esc(r.id) + '">OK</button></div>';
+      }
+      return '<section class="mer' + (ferme ? ' ferme' : '') + '" id="mb-demande" data-statut="' + esc(r.statut) + '" aria-live="polite">' + h
+        + (merErreur ? '<p class="err" role="alert">' + esc(merErreur) + '</p>' : '') + '</section>';
+    }
+    function listeNomades(N, pl, r) {
+      var out = carteDemande(r);
+      if (!pl) {
+        /* ON NE DEVINE PAS OÙ TU ES : la position au geste, ou une adresse cherchée, ou une ville tapée dans la recherche */
+        return out + '<div class="nm-ou" id="mb-ou"><div class="t">Qui vient jusqu’à toi ?</div>'
+          + '<p>Chaque ' + esc(T('nomade', 'client')) + ' fixe son tarif de déplacement selon la distance, jusqu’à ' + R.rayonMaxKm + ' km. Dis où tu es : tu verras ceux de ton secteur qui sont disponibles, et le tarif de chacun pour venir jusqu’à toi.</p>'
+          + '<button type="button" class="pec-cta tap" data-mer-localiser>Me localiser</button>'
+          + '<div class="adr"><label class="pec-input-label" for="mb-adr">Ou cherche une adresse</label><input class="pec-input" id="mb-adr" type="search" autocomplete="off" placeholder="Numéro et rue, puis la commune…"></div></div>';
+      }
+      var tete = '<div class="nm-tete"><p>' + (N.length ? '<b>' + pluriel(N.length, T('nomade', 'client') + ' disponible', T('nomade', 'clientPluriel') + ' disponibles') + '</b> ' + (N.length > 1 ? 'viennent' : 'vient') + ' jusqu’à ' : 'Personne de disponible ne vient encore jusqu’à ')
+        + esc(pl.source === 'position' ? (pl.label ? pl.label : 'ta position') : pl.label) + ' — ton secteur : ' + R.rayonMaxKm + ' km.</p>'
+        + '<button type="button" class="tap" data-mer-changer>' + (pl.source === 'position' ? 'Une autre adresse' : 'Changer') + '</button></div>';
+      if (!N.length) return out + tete + '<div class="pec-vide"><span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-route"/></svg></span>'
+        + '<p class="pec-vide-t">Aucun ' + esc(T('nomade', 'client')) + ' disponible dans ton secteur</p>'
+        + '<p class="pec-vide-s">Les ' + esc(T('commerce', 'clientPluriel')) + ', eux, t’attendent au comptoir. <button type="button" class="tap" data-onglet-aller="points" style="border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--color-primary-dark);text-decoration:underline;cursor:pointer">Voir les ' + esc(T('commerce', 'clientPluriel')) + '</button></p></div>';
+      var bloque = vive(r);
+      return out + tete
+        + '<div class="nm-tris" role="radiogroup" aria-label="Ordre de la liste">' + TRIS.map(function (x) { return '<button type="button" class="tap" role="radio" data-tri="' + x[0] + '" aria-checked="' + (tri === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('') + '</div>'
+        + '<div class="nm-liste" id="mb-nomades">' + N.map(function (a) {
+            return '<div class="nm-row" data-nomade="' + esc(a.id) + '"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-route"/></svg></span>'
+              + '<span class="t"><b>' + esc(a.enseigne) + '</b>'
+              + '<small>' + (a.note != null ? '★ ' + esc(noteTxt(a.note)) + ' · ' + pluriel(a.avis, 'avis', 'avis') : 'Pas encore d’avis') + ' · à ' + esc(a.distTxt) + ' · part ' + esc(de(a.departVille)) + '</small>'
+              + (a.mention ? '<small class="m">« ' + esc(a.mention) + ' »</small>' : '') + '</span>'
+              + '<span class="px"><b data-tarif>' + esc(a.tarifTxt) + '</b><small>' + esc(a.palier.lbl) + '</small></span>'
+              + '<button type="button" class="go tap" data-mer="' + esc(a.id) + '"' + (bloque ? ' aria-disabled="true" title="Tu as déjà une demande en cours"' : '') + '>Être mis en relation</button></div>';
+          }).join('') + '</div>'
+        + '<p class="nm-regle">Chaque ' + esc(T('nomade', 'client')) + ' fixe son tarif de déplacement, selon la distance : tu choisis. Ta demande ne part qu’à la personne choisie, qui t’appelle pour valider le rendez-vous ; sur place, tu achètes ton bon.'
+        + (bloque ? ' <b style="color:var(--color-ink)">Une demande à la fois : attends son appel, ou annule-la.</b>' : '') + '</p>';
+    }
+
+    function rendre() {
+      var pl = place(), P = points(), N = nomades(), r = maDemande();
+      peindreOnglets(P, N, pl);
+      var z = $('mb-resultats'), f = document.activeElement, garder = f && f.id === 'mb-adr' ? f.value : null;
+      z.innerHTML = onglet === 'points' ? listePoints(P, pl) : listeNomades(N || [], pl, r);
+      branchAdresse();
+      if (garder != null && $('mb-adr')) { $('mb-adr').value = garder; $('mb-adr').focus(); }
+      peindreCarte(P, N, pl);
+    }
+
+    /* ══ LA CARTE — PEC_GEO.carte (un seul montage pour toute la maquette) ═══════════════════════════════════════════════════
+       « Dans un point de vente » : leurs épingles. « Un distributeur nomade » : ton point et ton secteur (le rayon du réseau). Les
+       distributeurs nomades n'y ont jamais d'épingle — ils n'ont pas d'adresse : leur NOMBRE dans ton secteur, sur la pastille. */
+    var carte = null, mkPts = [], mkUser = null, cadree = false;
+    function centreDefaut(P, pl) {
+      if (pl) return pl.geo;
       var p = P.filter(function (x) { return x.geo; })[0]; if (p) return p.geo;
       var v = (D.zoneVillesRef() || [])[0]; return v ? v.centre : null;
     }
-    /* LES ZONES DES NOMADES — une étiquette par ville couverte (le nombre de distributeurs qui s'y déplacent), et le cercle du
-       rayon quand ils en ont posé un. Jamais un point à une adresse qu'ils n'ont pas. */
-    function zones(N) {
-      var ref = {}, parVille = {}, cercles = [];
-      (D.zoneVillesRef() || []).forEach(function (v) { ref[v.nom] = v; });
-      N.forEach(function (a) {
-        ((a.zone && a.zone.villes) || []).forEach(function (nom) {
-          var v = ref[nom]; if (!v || !v.centre) return;
-          (parVille[nom] = parVille[nom] || { ville: v, ids: [] }).ids.push(a.id);
-          if (a.zone.rayonKm > 0) cercles.push({ centre: v.centre, km: a.zone.rayonKm });
-        });
-      });
-      return { villes: Object.keys(parVille).map(function (k) { return parVille[k]; }), cercles: cercles };
-    }
     function cercleGeo(c, km) {
-      var pts = [], R = 6371, n = 48;
+      var pts = [], Rt = 6371, n = 64;
       for (var i = 0; i <= n; i++) {
-        var a = (i / n) * 2 * Math.PI, dLat = (km / R) * Math.sin(a), dLng = (km / (R * Math.cos(c.lat * Math.PI / 180))) * Math.cos(a);
+        var a = (i / n) * 2 * Math.PI, dLat = (km / Rt) * Math.sin(a), dLng = (km / (Rt * Math.cos(c.lat * Math.PI / 180))) * Math.cos(a);
         pts.push([c.lng + dLng * 180 / Math.PI, c.lat + dLat * 180 / Math.PI]);
       }
       return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [pts] }, properties: {} };
     }
-    function peindreCarte(P, N) {
+    function peindreCarte(P, N, pl) {
+      /* LA PASTILLE DU NOMBRE — dans les deux onglets : combien de distributeurs nomades dans ton secteur (ou dans le réseau, tant qu'on
+         ne sait pas où tu es) ; elle ouvre leur onglet */
+      var nb = $('mb-nb'), k = N ? N.length : nomadesReseau().length, nomK = k > 1 ? T('nomade', 'clientPluriel') + ' disponibles' : T('nomade', 'client') + ' disponible';
+      nb.hidden = !k && !N;
+      nb.innerHTML = '<span class="n">' + k + '</span>' + esc(nomK + (N ? ' dans ton secteur' : ' — dis où tu es'));
+      nb.setAttribute('aria-label', k + ' ' + nomK + (N ? ' dans ton secteur' : ' dans le réseau') + ' : voir la liste');
+      $('mb-legende').innerHTML = onglet === 'points'
+        ? '<span><i style="background:var(--color-ink)"></i>' + esc(T('commerce', 'clientPluriel', true)) + '</span>'
+        : '<span><i style="background:#E7A64A"></i>' + esc('Ton secteur : ' + R.rayonMaxKm + ' km') + '</span>';
       if (!window.PEC_GEO || typeof maplibregl === 'undefined') return;
-      var c0 = centreDefaut(P); if (!c0) return;
+      var c0 = centreDefaut(P, pl); if (!c0) return;
       if (!carte) {
-        carte = PEC_GEO.carte('mb-carte', { centre: c0, zoom: pos ? 13 : 11, cadre: $('mb-carte-cadre') });
+        carte = PEC_GEO.carte('mb-carte', { centre: c0, zoom: pl ? 12 : 11, cadre: $('mb-carte-cadre') });
         if (!carte) return;
-        carte.on('load', function () { rendre(); });   // les cercles des zones attendent le style ; les marqueurs, non
+        carte.on('load', function () { rendre(); });   // le secteur (une couche) attend le style ; les marqueurs, non
       }
-      mkPts.concat(mkZones).forEach(function (m) { m.remove(); }); mkPts = []; mkZones = [];
-      var montrerPts = filtre === 'tout' || filtre === 'points', montrerZones = filtre === 'tout' || filtre === 'nomades';
-      if (montrerPts) P.forEach(function (p) {
+      mkPts.forEach(function (m) { m.remove(); }); mkPts = [];
+      if (onglet === 'points') P.forEach(function (p) {
         if (!p.geo) return;
         var el = document.createElement('button'); el.type = 'button'; el.className = 'mb-mk-pt' + (choisi === p.id ? ' ici' : ''); el.setAttribute('aria-label', p.enseigne);
         el.innerHTML = '<svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>' + esc(p.enseigne);
         el.addEventListener('click', function () { choisir(p.id); });
         mkPts.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.geo.lng, p.geo.lat]).addTo(carte));
       });
-      var Z = zones(N);
-      if (montrerZones) Z.villes.forEach(function (z) {
-        var el = document.createElement('button'); el.type = 'button'; el.className = 'mb-mk-zone';
-        el.textContent = z.ville.nom + ' · ' + pluriel(z.ids.length, T('nomade', 'court'));
-        el.addEventListener('click', function () { filtre = 'nomades'; $('mb-q').value = z.ville.nom; rendre(); });
-        mkZones.push(new maplibregl.Marker({ element: el }).setLngLat([z.ville.centre.lng, z.ville.centre.lat]).addTo(carte));
-      });
       try {
-        var geo = { type: 'FeatureCollection', features: montrerZones ? Z.cercles.map(function (x) { return cercleGeo(x.centre, x.km); }) : [] };
+        var geo = { type: 'FeatureCollection', features: (onglet === 'nomades' && pl) ? [cercleGeo(pl.geo, R.rayonMaxKm)] : [] };
         if (carte.isStyleLoaded && carte.isStyleLoaded()) {
-          if (carte.getSource('mb-zones')) carte.getSource('mb-zones').setData(geo);
+          if (carte.getSource('mb-secteur')) carte.getSource('mb-secteur').setData(geo);
           else {
-            carte.addSource('mb-zones', { type: 'geojson', data: geo });
-            carte.addLayer({ id: 'mb-zones-fond', type: 'fill', source: 'mb-zones', paint: { 'fill-color': '#E7A64A', 'fill-opacity': 0.12 } });
-            carte.addLayer({ id: 'mb-zones-bord', type: 'line', source: 'mb-zones', paint: { 'line-color': '#E7A64A', 'line-width': 1.5, 'line-dasharray': [2, 2] } });
+            carte.addSource('mb-secteur', { type: 'geojson', data: geo });
+            carte.addLayer({ id: 'mb-secteur-fond', type: 'fill', source: 'mb-secteur', paint: { 'fill-color': '#E7A64A', 'fill-opacity': 0.08 } });
+            carte.addLayer({ id: 'mb-secteur-bord', type: 'line', source: 'mb-secteur', paint: { 'line-color': '#E7A64A', 'line-width': 1.5, 'line-dasharray': [2, 2] } });
           }
         }
       } catch (eZ) {}
-      if (pos) {
-        if (!mkUser) { var u = document.createElement('div'); u.className = 'mb-mk-user'; u.setAttribute('aria-label', 'Ta position'); mkUser = new maplibregl.Marker({ element: u }); }
-        mkUser.setLngLat([pos.lng, pos.lat]).addTo(carte);
-      }
-      /* LE CADRAGE, UNE FOIS : ce qu'il y a à voir (et toi, si l'on sait où tu es) — ensuite, la carte est à celui qui la touche */
+      if (pl) {
+        if (!mkUser) { var u = document.createElement('div'); u.className = 'mb-mk-user'; u.setAttribute('aria-label', 'Toi'); mkUser = new maplibregl.Marker({ element: u }); }
+        mkUser.setLngLat([pl.geo.lng, pl.geo.lat]).addTo(carte);
+      } else if (mkUser) mkUser.remove();
+      /* LE CADRAGE, UNE FOIS PAR ONGLET : ce qu'il y a à voir (et toi) — ensuite, la carte est à celui qui la touche */
       if (!cadree) {
-        var coins = P.filter(function (p) { return p.geo; }).map(function (p) { return [p.geo.lng, p.geo.lat]; })
-          .concat(Z.villes.map(function (z) { return [z.ville.centre.lng, z.ville.centre.lat]; }));
-        if (pos) coins.push([pos.lng, pos.lat]);
+        var coins = [];
+        if (onglet === 'points') coins = P.filter(function (p) { return p.geo; }).map(function (p) { return [p.geo.lng, p.geo.lat]; });
+        if (pl) coins.push([pl.geo.lng, pl.geo.lat]);
+        if (onglet === 'nomades' && pl) {
+          var dLat = R.rayonMaxKm / 111, dLng = R.rayonMaxKm / (111 * Math.cos(pl.geo.lat * Math.PI / 180));
+          coins.push([pl.geo.lng - dLng, pl.geo.lat - dLat], [pl.geo.lng + dLng, pl.geo.lat + dLat]);
+        }
         if (coins.length > 1) {
           var bb = new maplibregl.LngLatBounds(coins[0], coins[0]); coins.forEach(function (x) { bb.extend(x); });
-          carte.fitBounds(bb, { padding: 48, maxZoom: 14, duration: 0 }); cadree = true;
+          carte.fitBounds(bb, { padding: 42, maxZoom: 14, duration: 0 }); cadree = true;
         } else if (coins.length === 1) { carte.setCenter(coins[0]); cadree = true; }
       }
     }
     /* UN POINT CHOISI — dans la liste ou sur la carte : l'un suit l'autre */
     function choisir(id) {
       choisi = id; rendre();
-      var p = points('').filter(function (x) { return x.id === id; })[0];
+      var p = points().filter(function (x) { return x.id === id; })[0];
       if (carte && p && p.geo) carte.easeTo({ center: [p.geo.lng, p.geo.lat], zoom: Math.max(carte.getZoom(), 14), duration: 400 });
       var row = document.querySelector('[data-pt="' + id + '"]'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
-    $('mb-resultats').addEventListener('click', function (e) {
-      var r = e.target.closest ? e.target.closest('[data-pt]') : null;
-      if (r) { choisir(r.getAttribute('data-pt')); try { $('mb-carte-cadre').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (x) {} }
-    });
+    $('mb-nb').addEventListener('click', function () { onglet = 'nomades'; cadree = false; rendre(); amener(); });
+    function amener() { var z = $('mb-onglets'); if (z && z.scrollIntoView) z.scrollIntoView({ block: 'start', behavior: 'smooth' }); }
 
-    /* ══ ME LOCALISER — au geste seulement ; l'échec se dit, avec ce qu'il faut faire ════════════════════════════ */
-    $('mb-localiser').addEventListener('click', function () {
+    /* ══ ME LOCALISER — au geste seulement ; l'échec se dit, avec ce qu'il faut faire. La rue de la position se relit (Base Adresse
+       Nationale) : c'est elle que ton distributeur nomade lira, jamais des degrés. ══ */
+    function localiser(ok, ko) {
       if (!window.PEC_GEO) return;
       var msg = $('mb-geo-msg'); msg.hidden = false; msg.textContent = 'Recherche de ta position…';
       PEC_GEO.localiser(function (f) {
+        if (ok) ok(f);
         PEC_GEO.noterAccord();
         pos = PEC_GEO.dernierePos ? (PEC_GEO.dernierePos() || { lat: f.lat, lng: f.lng }) : { lat: f.lat, lng: f.lng };
+        adresse = null; posLbl = null;
         msg.hidden = true; $('mb-geo-retention').hidden = false; if (PEC_GEO.appliquerRetention) PEC_GEO.appliquerRetention();
         cadree = false; rendre();
         if (carte) carte.easeTo({ center: [pos.lng, pos.lat], zoom: 13, duration: 500 });
-      }, function (m) { msg.hidden = false; msg.textContent = m; });
+        if (PEC_GEO.adresseDepuisPosition) PEC_GEO.adresseDepuisPosition(f, function (a) { if (a && pos) { posLbl = { label: a.label, ville: a.ville }; rendre(); } });
+      }, function (m) { msg.hidden = false; msg.textContent = m; if (ko) ko(m); });
+    }
+    /* ══ (24/09, nuit — fondatrice : « ajoute la modale d'autorisation de position ») L'ACCORD SE DEMANDE, UNE FOIS ════════════════
+       Accord déjà donné sur cet appareil → la position part seule (autoLocaliser). Jamais donné → la fenêtre dit d'abord à quoi elle
+       sert, et c'est SON bouton qui déclenche la question du téléphone. Bloquée par le navigateur → pas de fenêtre : le refus se dit,
+       la recherche prend le relais. « Continuer sans » n'est pas un cul-de-sac (une ville, une adresse) et ne se repose pas de la
+       session. Une question sans point de vente ni distributeur à trier ne se pose pas. */
+    var CLE_GEO_NON = 'pec-bons-geo-non';
+    function geoRefusee() { try { return sessionStorage.getItem(CLE_GEO_NON) === '1'; } catch (e) { return false; } }
+    function geoFenetre() {
+      $('geopop-p').textContent = 'Uniquement pour te montrer les ' + T('commerce', 'clientPluriel') + ' les plus proches, et les ' + T('nomade', 'clientPluriel')
+        + ' de ton secteur avec leur tarif pour venir jusqu’à toi. ' + PEC_GEO.phraseRetention(true) + ' Ton téléphone te demandera son autorisation.';
+      $('geopop-err').hidden = true; $('geopop-ok').textContent = 'Autoriser ma position';
+      $('geopop').hidden = false; $('geopop-ok').focus();
+    }
+    function geoDemander() {
+      if (!window.PEC_GEO) return;
+      if (PEC_GEO.accordConnu()) { localiser(); return; }
+      if (!PEC_GEO.permissionEtat) { geoFenetre(); return; }
+      PEC_GEO.permissionEtat(function (etat) {
+        if (etat === 'granted') { localiser(); return; }
+        if (etat === 'denied') { var m = $('mb-geo-msg'); m.hidden = false; m.textContent = PEC_GEO.messageErreur({ code: 1 }); return; }
+        geoFenetre();
+      });
+    }
+    $('geopop-ok').addEventListener('click', function () {
+      var b = this; b.textContent = 'Localisation…';
+      localiser(function () { $('geopop').hidden = true; }, function (m) { b.textContent = 'Réessayer'; $('geopop-err').hidden = false; $('geopop-err').textContent = m; });
     });
+    $('geopop-non').addEventListener('click', function () {
+      try { sessionStorage.setItem(CLE_GEO_NON, '1'); } catch (e) {}
+      $('geopop').hidden = true;
+      var q = $('mb-adr') || $('mb-q'); if (q && q.focus) q.focus();
+    });
+    $('mb-localiser').addEventListener('click', geoDemander);
     if (pos) { $('mb-geo-retention').hidden = false; if (window.PEC_GEO && PEC_GEO.appliquerRetention) PEC_GEO.appliquerRetention(); }
+    // l'adresse cherchée (Base Adresse Nationale) : la suggestion choisie arrive géolocalisée, et devient ton point
+    var adrBranchee = null;
+    function branchAdresse() {
+      var i = $('mb-adr'); if (!i || i === adrBranchee || !window.PEC_GEO || !PEC_GEO.autocompleteAdresse) return;
+      adrBranchee = i;
+      PEC_GEO.autocompleteAdresse(i, function (sug) {
+        if (!sug || !sug.geo) { $('mb-geo-msg').hidden = false; $('mb-geo-msg').textContent = 'Cette adresse n’a pas de position : choisis une suggestion avec un numéro de rue.'; return; }
+        adresse = { geo: sug.geo, label: sug.label, ville: sug.ville || null }; $('mb-geo-msg').hidden = true; cadree = false; rendre();
+      });
+    }
+
+    /* ══ LES GESTES DE LA LISTE ═══════════════════════════════════════════════════════════════════════════════════════════ */
+    $('mb-resultats').addEventListener('click', function (e) {
+      var t = e.target.closest ? e.target : null; if (!t) return;
+      var x;
+      if ((x = t.closest('[data-pt]'))) { choisir(x.getAttribute('data-pt')); try { $('mb-carte-cadre').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (y) {} return; }
+      if ((x = t.closest('[data-tri]'))) { tri = x.getAttribute('data-tri'); rendre(); return; }
+      if ((x = t.closest('[data-rayon]'))) { rayon = +x.getAttribute('data-rayon') || 0; cadree = false; rendre(); return; }
+      if ((x = t.closest('[data-onglet-aller]'))) { onglet = x.getAttribute('data-onglet-aller'); cadree = false; rendre(); return; }
+      if (t.closest('[data-mer-localiser]')) { geoDemander(); return; }
+      if (t.closest('[data-mer-changer]')) { adresse = null; if (pos && window.PEC_GEO && PEC_GEO.oublierPos) PEC_GEO.oublierPos(); pos = null; posLbl = null; cadree = false; rendre(); var ai = $('mb-adr'); if (ai) ai.focus(); return; }
+      if ((x = t.closest('[data-mer]'))) { if (x.getAttribute('aria-disabled') === 'true') { merErreur = 'Tu as déjà une demande en cours : attends son appel, ou annule-la pour en choisir un autre.'; rendre(); return; } merOuvrir(x.getAttribute('data-mer')); return; }
+      if ((x = t.closest('[data-mer-annuler]'))) {
+        var an = D.techRencontreAnnuler(x.getAttribute('data-mer-annuler'), 'tu as annulé ta demande', 'client');
+        merErreur = an.ok ? null : an.motif; rendre(); return;
+      }
+      if ((x = t.closest('[data-mer-ranger]'))) {
+        var rg = B && B.ajouter ? B.ajouter(x.getAttribute('data-mer-ranger')) : { ok: false, motif: 'Mes bons n’est pas chargé.' };
+        merErreur = rg.ok ? null : rg.motif; rendre(); return;
+      }
+      if ((x = t.closest('[data-mer-note]'))) {
+        var nt = D.distributeurNoter(x.getAttribute('data-mer-id'), +x.getAttribute('data-mer-note'), { par: (D.clientActifGet && D.clientActifGet()) || 'client' });
+        merErreur = nt.ok || nt.deja ? null : nt.motif; rendre(); return;
+      }
+      if ((x = t.closest('[data-mer-vu]'))) { var v = lireLocal(CLE_VUES); v.push(x.getAttribute('data-mer-vu')); ecrireLocal(CLE_VUES, v.slice(-50)); merErreur = null; rendre(); return; }
+    });
+
+    /* ══ LA FENÊTRE DE MISE EN RELATION — ce qui va se passer, le tarif, le bon voulu (facultatif), le numéro où il t'appelle,
+       l'accord. Le data-layer tranche (techMiseEnRelationDemander) ; son refus s'affiche tel quel, sur le champ qu'il nomme. ══ */
+    function merNumero() { var v = $('merpop-tel').value; return D._telFr ? D._telFr(v) : null; }
+    function merConsentement() {
+      var n = merNumero();
+      return 'J’accepte que ' + (merNomade ? merNomade.enseigne : 'ce ' + T('nomade', 'client')) + ' m’appelle ' + (n ? 'au ' + D.telFrLbl(n) : 'au numéro ci-dessus')
+        + ' pour convenir de ce rendez-vous. Mon numéro ne lui sert qu’à cela, et s’efface quand la demande se ferme.';
+    }
+    function merCta() { var ok = $('merpop-rgpd').checked, b = $('merpop-ok'); b.setAttribute('aria-disabled', String(!ok)); b.style.opacity = ok ? '' : '.45'; }
+    function merOuvrir(id) {
+      var pl = place(), a = (nomades() || []).filter(function (x) { return x.id === id; })[0];
+      if (!pl || !a) { merErreur = 'Ce ' + T('nomade', 'client') + ' ne vient plus jusqu’ici : choisis-en un autre.'; rendre(); return; }
+      var v = D.techMiseEnRelationVerifier({ partenaireId: a.id, pos: pl.geo, clientId: (D.clientActifGet && D.clientActifGet()) || null });
+      if (!v.ok) { merErreur = v.motif; rendre(); return; }
+      merNomade = a; merErreur = null;
+      var cl = D.clientCourant ? D.clientCourant() : null;
+      $('merpop-t').textContent = 'On te met en relation avec ' + a.enseigne;
+      $('merpop-p').textContent = a.enseigne + ' reçoit ta demande tout de suite — une notification et un SMS — et t’appelle pour convenir du rendez-vous. Sans appel dans les ' + R.reponseMin + ' min, elle se ferme, et tu en choisis un autre.';
+      $('merpop-recap').innerHTML = '<b>Tarif de déplacement : ' + esc(a.tarifTxt) + '</b> — ' + esc(a.palier.lbl) + ', tu es à ' + esc(a.distTxt) + ' de son départ. Tarif fixé par ' + esc(a.enseigne) + ', facturé en son nom.'
+        + '<br>Rendez-vous : ' + esc(pl.source === 'position' ? 'près de ' + (pl.label || 'ta position') : (pl.approx ? 'au ' + pl.label + ' — précise l’endroit au téléphone' : 'près de ' + pl.label)) + '.'
+        + '<br>Sur place, tu achètes ton bon : il se dépense ensuite sur le site de la marque.';
+      var bq = D.techBoutiques ? D.techBoutiques() : [];
+      $('merpop-marque').innerHTML = '<option value="">Je le lui dirai au téléphone</option>' + bq.map(function (b) { return '<option value="' + esc(b.id) + '">' + esc(b.nom) + (b.categorieLbl ? ' — ' + esc(b.categorieLbl) : '') + '</option>'; }).join('');
+      $('merpop-montant').value = '';
+      $('merpop-prenom-z').hidden = !!cl; $('merpop-prenom').value = '';
+      $('merpop-tel').value = cl ? D.telFrLbl(cl.telComplet || cl.tel || '') : '';
+      $('merpop-rgpd').checked = false; $('merpop-rgpd-txt').textContent = merConsentement();
+      [].forEach.call(document.querySelectorAll('#merpop .ko'), function (x) { x.classList.remove('ko'); });
+      $('merpop-err').hidden = true; merCta();
+      $('merpop').hidden = false;
+      var f = $('merpop-tel').value ? $('merpop-marque') : $('merpop-tel'); if (f && f.focus) f.focus();
+    }
+    function merFermer() { $('merpop').hidden = true; merNomade = null; }
+    $('merpop-tel').addEventListener('input', function () { this.classList.remove('ko'); $('merpop-rgpd-txt').textContent = merConsentement(); });
+    ['merpop-montant', 'merpop-marque'].forEach(function (id) { $(id).addEventListener('input', function () { this.classList.remove('ko'); $('merpop-err').hidden = true; }); });
+    $('merpop-rgpd').addEventListener('change', merCta);
+    $('merpop-non').addEventListener('click', merFermer);
+    $('merpop').addEventListener('click', function (e) { if (e.target === this) merFermer(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('merpop').hidden) merFermer(); });
+    $('merpop-ok').addEventListener('click', function () {
+      var er = $('merpop-err'); er.hidden = true;
+      if (!$('merpop-rgpd').checked) { er.hidden = false; er.textContent = 'Coche l’accord : personne ne t’appelle sans ton autorisation.'; return; }
+      var pl = place(); if (!merNomade || !pl) { merFermer(); rendre(); return; }
+      var cl = D.clientCourant ? D.clientCourant() : null;
+      var rr = D.techMiseEnRelationDemander({ partenaireId: merNomade.id, pos: pl.geo, posApprox: pl.approx, lieu: pl.label, ville: pl.ville,
+        clientId: cl ? cl.id : null, prenom: cl ? cl.prenom : $('merpop-prenom').value, tel: $('merpop-tel').value,
+        marchandId: $('merpop-marque').value || null, montant: $('merpop-montant').value, consentement: merConsentement() });
+      if (!rr.ok) {
+        if (rr.rencontre) { merFermer(); merErreur = rr.motif; rendre(); return; }   // une demande vivait déjà : on la montre
+        er.hidden = false; er.textContent = rr.motif;
+        var champ = { tel: 'merpop-tel', montant: 'merpop-montant', marque: 'merpop-marque' }[rr.champ];
+        if (champ) { $(champ).classList.add('ko'); $(champ).focus(); }
+        return;
+      }
+      if (!cl) { var m = lireLocal(CLE_MES); m.push(rr.rencontre.id); ecrireLocal(CLE_MES, m.slice(-20)); }
+      merFermer(); onglet = 'nomades'; merErreur = null; rendre();
+      var c = $('mb-demande'); if (c && c.scrollIntoView) c.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    });
 
     $('rc-form').addEventListener('submit', function (e) {
       e.preventDefault();
       var aide = $('rc-aide');
-      if (!$('mb-q').value.trim()) { aide.textContent = 'Tape une marque, un ' + T('commerce', 'client') + ' ou une ville : la carte et la liste se resserrent pendant que tu écris.'; aide.hidden = false; $('mb-q').focus(); return; }
+      if (!$('mb-q').value.trim()) { aide.textContent = 'Tape un ' + T('commerce', 'client') + ', un ' + T('nomade', 'client') + ' ou une ville : la carte et la liste se resserrent pendant que tu écris. Les marques, leurs articles et ton code sont dans Boutiques.'; aide.hidden = false; $('mb-q').focus(); return; }
       aide.hidden = true; cadree = false; rendre();   // une recherche lancée recadre la carte sur ce qu'elle a trouvé
     });
     $('mb-q').addEventListener('input', function () { $('rc-aide').hidden = true; rendre(); });   // la liste se filtre pendant qu'on tape
     rendre();
-    window.addEventListener('pec-bus', rendre);    // un point activé, une marque validée : la carte suit
-    window.addEventListener('storage', rendre);
+    if (!pos && window.PEC_GEO && !Q.get('q')) {
+      if (PEC_GEO.accordConnu()) localiser();
+      else if (!geoRefusee() && (points().length || nomadesReseau().length)) geoDemander();
+    }
+    /* L'ÉCRAN N'EST PAS SOURD : un point activé, un distributeur nomade qui appelle et valide, un bon remis — la page suit (le bus,
+       et le stockage quand l'autre geste vient d'un autre onglet). Pas pendant qu'on écrit dans la fenêtre : rien ne s'y efface. */
+    function suivre() { if ($('merpop').hidden && $('geopop').hidden) rendre(); }
+    window.addEventListener('pec-bus', suivre);
+    window.addEventListener('storage', suivre);
   })();
 </script>
 </body>

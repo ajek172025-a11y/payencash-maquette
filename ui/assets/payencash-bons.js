@@ -42,7 +42,7 @@
   function D() { return window.PEC_DATA || null; }
 
   var ESPACE = 'bons';                        // l'espace des documents du porteur dans ref.documents / consents
-  var PREFIXE = 'pec-bons-porteur:';          // + clientId → { bons: [{ code, ajouteLe }] }
+  var PREFIXE = 'pec-bons-porteur:';          // + clientId → { bons: [{ code, ajouteLe }], propositions: [{ slug, recuLe }] }
 
   /* LE RAPPEL D'USAGE — une phrase, dite partout de la même façon (liste, détail, compte, bon proposé). Elle ne
      promet rien : elle rappelle ce que le titre est, qui l'émet, et ce que PayEnCash n'est pas. */
@@ -73,12 +73,12 @@
   function porteurId() { var d = D(); return (d && d.clientActifGet) ? (d.clientActifGet() || null) : null; }
   function cle() { var id = porteurId(); return id ? PREFIXE + id : null; }
   function lire() {
-    var k = cle(); if (!k) return { bons: [] };
+    var k = cle(); if (!k) return { bons: [], propositions: [] };
     try {
       var o = JSON.parse(localStorage.getItem(k) || 'null');
-      if (o && typeof o === 'object') return { bons: Array.isArray(o.bons) ? o.bons : [] };
+      if (o && typeof o === 'object') return { bons: Array.isArray(o.bons) ? o.bons : [], propositions: Array.isArray(o.propositions) ? o.propositions : [] };
     } catch (e) {}
-    return { bons: [] };
+    return { bons: [], propositions: [] };
   }
   /* UNE ÉCRITURE REFUSÉE SE DIT : comme dans le data-layer (_ecrit), on rend vrai/faux et on garde le motif —
      un bon qu'on croit rangé et qui ne l'est pas, c'est un code que le porteur ne retrouvera pas. */
@@ -127,17 +127,21 @@
       : etat === 'expire' ? 'expiré le ' + dateFr(tb.expireLe) : '';
     var rev = (tb.revendeurId && d.techRevendeur) ? d.techRevendeur(tb.revendeurId) : null;
     var art = (d.refArticle && S.reseauLimiteSource) ? d.refArticle(S.reseauLimiteSource) : '';
-    var siteLbl = String(tb.site || '').replace(/^https?:\/\//, '').replace(/\/$/, '');   // à l'écran, l'adresse sans son schéma ; le lien garde tout
+    /* (24/09, nuit — « utilisé uniquement sur le site de la marque, jamais sur notre site ») OÙ IL SE DÉPENSE : la boutique liée à son
+       abonnement si elle l'a, sinon son propre site (techMarchandDestination) — une règle, la même que la page de la boutique */
+    var dest = (d.techMarchandDestination && tb.marchandId) ? d.techMarchandDestination(tb.marchandId) : null;
+    var siteUrl = (dest && dest.url) || tb.site || '';
+    var siteLbl = (dest && dest.url) ? dest.lbl : String(tb.site || '').replace(/^https?:\/\//, '').replace(/\/$/, '');   // à l'écran, l'adresse sans son schéma ; le lien garde tout
     var mentions = [
       'Utilisable uniquement sur ' + siteLbl + ' — le site de ' + tb.marchand + ', qui l\'a émis. C\'est un réseau limité' + (art ? ' (' + art + ')' : '') + ' : il ne vaut nulle part ailleurs.',
       /* (24/09, soir) la durée minimale est un engagement du réseau, pas un article de loi : elle se dit sans citation */
       tb.expireLe ? 'Valable jusqu\'au ' + dateFr(tb.expireLe) + (F.validite ? ' (au moins un an : c\'est un engagement de la marque)' : '') + ' ; passé ce délai, ce qu\'il reste est perdu.' : '',
-      'Ni échangeable, ni remboursable en espèces, ne donne lieu à aucun rendu de monnaie ; s\'utilise en une ou plusieurs fois, jusqu\'à épuisement — depuis cette app, avec ton compte.',
+      'Ni échangeable, ni remboursable en espèces, ne donne lieu à aucun rendu de monnaie ; s\'utilise en une ou plusieurs fois, jusqu\'à épuisement, sur le site de ' + tb.marchand + ' — jamais chez PayEnCash, qui le vend sans l\'encaisser.',
       'Le code vaut titre : conserve-le, il ne sera pas remplacé en cas de perte ou de vol.'
     ].filter(Boolean);   // le rôle de PayEnCash n'est pas une mention du bon : le détail le dit en note, la liste dans son rappel
     return {
       code: tb.code, marchandId: tb.marchandId,
-      emetteur: tb.marchand, site: tb.site, siteLbl: siteLbl, ou: 'uniquement sur ' + siteLbl,
+      emetteur: tb.marchand, site: siteUrl, siteLbl: siteLbl, ou: 'uniquement sur ' + siteLbl, destination: dest,
       montant: tb.montant, solde: tb.solde,
       etat: etat, etatLbl: etatLbl(etat), pill: etatPill(etat), detail: detail,
       expireLe: tb.expireLe || null, emisLe: tb.emisLe || null, venduLe: tb.venduLe || tb.emisLe || null,
@@ -351,6 +355,40 @@
   /* PURGER — la suppression du compte (04-compte, RGPD) emporte la liste rangée sous sa clé : les codes d'une personne
      ne restent pas sur l'appareil après son compte. Les bons eux-mêmes ne sont pas touchés (ils valent avec leur ticket).
      À appeler AVANT de fermer la session : la clé se calcule sur le porteur actif. */
+  // ── LES BONS PROPOSÉS QUE LE PORTEUR A REÇUS ─────────────────────────────────────────────────────────────────────
+  /* (24/09, nuit — fondatrice : « dans l'app utilisateur, les bons partagés sont visibles dans la page Mes bons : une section
+     dédiée au lien partagé avec un montant précis » ; « attention, un utilisateur ne voit que ses bons et les liens reçus »)
+     Un lien de la marque (techLien : un montant précis, sa référence) devient « reçu » quand le porteur l'OUVRE sous son compte
+     (page 05). On ne garde que son identifiant (slug) et la date de réception, SOUS LA CLÉ DU COMPTE : un autre compte, sur le
+     même appareil, n'en voit rien. La marque, le montant, ce qui reste à acheter, l'état et la date de fin se RELISENT chez la
+     marque (techOrdreVente) à chaque peinture — une copie serait fausse dès qu'un bon le couvre. */
+  function propositionRecue(slug) {
+    var d = D(); if (!porteurId()) return { ok: false, motif: 'Aucune session.' };
+    var x = (d && d.techLien) ? d.techLien(slug) : null;
+    if (!x) return { ok: false, motif: 'Bon proposé inconnu.' };
+    var st = lire();
+    if (st.propositions.some(function (p) { return p.slug === x.slug; })) return { ok: true, deja: true };
+    st.propositions.unshift({ slug: x.slug, recuLe: Date.now() });
+    if (!ecrire(st)) return { ok: false, motif: 'Le bon proposé n\'a PAS été gardé (' + (DERNIER_ECHEC || 'écriture refusée') + ').' };
+    return { ok: true };
+  }
+  /* Les propositions reçues, relues chez la marque : celles qui s'achètent encore d'abord, puis les plus récentes. */
+  function propositions() {
+    var d = D(); if (!d || !d.techOrdreVente || !porteurId()) return [];
+    return lire().propositions.map(function (p) {
+      var o = d.techOrdreVente(p.slug);
+      return o ? Object.assign({ recuLe: p.recuLe, flashcode: o.vendable && d.techOrdreVenteUrl ? d.techOrdreVenteUrl(p.slug) : null }, o) : null;
+    }).filter(Boolean).sort(function (a, b) { return ((b.vendable ? 1 : 0) - (a.vendable ? 1 : 0)) || ((b.recuLe || 0) - (a.recuLe || 0)); });
+  }
+  function propositionRetirer(slug) {
+    if (!porteurId()) return { ok: false, motif: 'Aucune session.' };
+    var st = lire(), avant = st.propositions.length;
+    st.propositions = st.propositions.filter(function (p) { return p.slug !== slug; });
+    if (st.propositions.length === avant) return { ok: false, motif: 'Ce bon proposé n\'est pas dans ta liste.' };
+    if (!ecrire(st)) return { ok: false, motif: 'Le retrait n\'a PAS été enregistré (' + (DERNIER_ECHEC || 'écriture refusée') + ').' };
+    return { ok: true };
+  }
+
   function purger() {
     var k = cle(); if (!k) return false;
     try { localStorage.removeItem(k); } catch (e) { return false; }
@@ -361,8 +399,11 @@
      nomades ») LA NAVIGATION, ÉCRITE UNE FOIS — la carte d'abord (elle se consulte sans compte : on y voit où acheter un bon),
      puis les bons rangés, puis le compte. Les sept écrans recopiaient chacun leur barre ; elle se pose ici, dans chaque
      <nav data-bons-menu="<l'écran actif>">. 02-bon et 05-offre se rattachent à « Mes bons » : on y arrive depuis un bon. ══ */
+  /* (24/09, nuit — fondatrice : « ajoute Boutique dans l'app utilisateur ») les BOUTIQUES des marques, entre la carte (où acheter) et
+     les bons rangés (ce que j'ai) : leurs articles, mon code, le site où il se dépense */
   var MENU = [
     { href: '03-rechercher.html', lbl: 'Carte', ico: 'i-map-pin' },
+    { href: '07-boutiques.html', lbl: 'Boutiques', ico: 'i-tag', aussi: ['08-boutique.html'] },
     { href: '01-mes-bons.html', lbl: 'Mes bons', ico: 'i-ticket', aussi: ['02-bon.html', '05-offre.html'] },
     { href: '04-compte.html', lbl: 'Compte', ico: 'i-user' }
   ];
@@ -383,6 +424,7 @@
     porteurId: porteurId, formater: formater, resoudre: resoudre, familleAutre: familleAutre,
     liste: liste, estRange: estRange, total: total, bonsDeMarque: bonsDeMarque,
     ajouter: ajouter, retirer: retirer, utiliser: utiliser, peutRanger: peutRanger, purger: purger,
+    propositionRecue: propositionRecue, propositions: propositions, propositionRetirer: propositionRetirer,
     kyc: kyc,
     documents: documents, acceptations: acceptations, acceptationsRequises: acceptationsRequises, consulter: consulter, accepter: accepter,
     etatLbl: etatLbl, etatPill: etatPill, dateFr: dateFr

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Boutiques</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : on parcourt les boutiques sans compte -->
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-bons.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- le kit de listes : recherche, filtres, pagination -->
+<!-- BOUTIQUES — les marques du réseau, vues de l'app Mes bons (24/09, nuit — fondatrice : « ajoute Boutique dans l'app utilisateur :
+     cela doit afficher la liste des boutiques, filtre, recherche etc. ; si je clique dessus, ça présente les articles publiés et elle
+     renseigne son code ; si titulaire de l'abonnement, ça renvoie sur le site de la marque » ; « enlève de la carte boutique »).
+     LA CARTE DIT OÙ ACHETER UN BON ; CETTE PAGE DIT OÙ IL SE DÉPENSE. Une boutique = une marque qui peut travailler avec nous
+     (PEC_DATA.techBoutiques : validée, dossier, contrat) ; ses articles publiés encore disponibles ; le site où son bon se dépense
+     (techMarchandDestination : la boutique liée à son abonnement, sinon son propre site, où le bouton ou l'API sont intégrés) ; et,
+     pour qui est connecté, ce qui lui reste en bons de cette marque. Rien n'est écrit ici : tout se relit à chaque peinture.
+     Le kit de listes fait la recherche (data-fsearch), les filtres (data-fscope) et la pagination (data-fpage). -->
+<style>
+  .bq-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
+  .bq-hdr-ico{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:var(--color-surface);border:1px solid var(--color-sep);color:var(--color-ink);text-decoration:none}
+  .bq-hdr-ico .pec-ico{font-size:17px}
+  .bq-titre{margin:2px 0 0;font-size:20px;line-height:1.2;font-weight:800;letter-spacing:-.02em;color:var(--color-ink);text-wrap:balance}
+  .bq-sous{margin:4px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)}
+  .bq-form{display:flex;align-items:center;gap:9px;border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:3px 13px}
+  .bq-form input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:13.5px;color:var(--color-ink);padding:11px 0;outline:none}
+  .bq-filtres{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .bq-filtres::-webkit-scrollbar{display:none}
+  .bq-filtres button{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-surface);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer;white-space:nowrap}
+  .bq-filtres button[aria-pressed="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+  .bq-liste{display:flex;flex-direction:column;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-card);overflow:hidden}
+  .bq-row{display:flex;align-items:center;gap:12px;padding:12px 14px;text-decoration:none;color:inherit}
+  .bq-row + .bq-row{box-shadow:inset 0 1px 0 var(--color-sep)}
+  .bq-av{flex:none;width:46px;height:46px;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;background:var(--color-mint);color:var(--color-primary-dark);font-weight:800;font-size:16px}
+  .bq-av img{width:100%;height:100%;object-fit:cover;display:block}
+  .bq-row .t{min-width:0;flex:1}
+  .bq-row .t b{display:block;font-size:14px;color:var(--color-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bq-row .t small{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
+  .bq-row .t small.moi{color:var(--color-primary-dark);font-weight:800}
+  .bq-row .badge{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:99px;background:var(--color-mint);color:var(--color-primary-dark);font-size:9.5px;font-weight:800;vertical-align:1px}
+  .bq-row .pec-ico.go{flex:none;color:var(--color-muted);font-size:16px}
+  .bq-vide{padding:22px 16px;text-align:center;font-size:12.5px;line-height:1.55;color:var(--color-muted)}
+  .bq-rappel{margin:0;font-size:11px;line-height:1.55;color:var(--color-muted)}
+  #bq-page{padding:14px 18px 8px;display:flex;flex-direction:column;gap:12px}
+  @media (min-width:1024px){
+    #bq-page{padding:28px 40px 40px;gap:16px}
+    .bq-titre{font-size:30px;line-height:1.15} .bq-sous{font-size:14.5px}
+    .bq-form input{font-size:15px;padding:13px 0}
+    .bq-filtres{flex-wrap:wrap;gap:8px;overflow:visible} .bq-filtres button{font-size:13.5px;padding:9px 15px}
+    .bq-row{padding:15px 18px;gap:15px} .bq-av{width:54px;height:54px}
+    .bq-row .t b{font-size:15.5px} .bq-row .t small{font-size:13px} .bq-row .badge{font-size:11px}
+    .bq-vide{font-size:14px} .bq-rappel{font-size:13px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script>
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device pec-etroit">
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+  <div class="pec-body pec-body--scroll" id="bq-page">
+    <header class="bq-hdr pec-entete-app">
+      <span data-pec-marque="bons" data-slogan></span>
+      <a href="04-compte.html" class="tap bq-hdr-ico" aria-label="Mon compte"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-user"/></svg></a>
+    </header>
+    <div>
+      <h1 class="bq-titre">Boutiques</h1>
+      <p class="bq-sous" id="bq-sous">—</p>
+    </div>
+    <form class="bq-form" id="bq-form" role="search" onsubmit="return false">
+      <svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;font-size:15px;color:var(--color-muted)"><use href="#i-search"/></svg>
+      <input id="bq-q" type="search" enterkeyhint="search" autocomplete="off" data-fsearch="#bq-liste > a" placeholder="Une boutique, une catégorie, un article…" aria-label="Rechercher une boutique">
+    </form>
+    <div class="bq-filtres" id="bq-filtres" data-fscope="#bq-liste > a" data-finit aria-label="Catégorie de la marque"></div>
+    <div class="bq-liste" id="bq-liste" data-fpage="10"></div>
+    <div class="bq-vide" data-fvide="#bq-liste > a" data-fvide-txt="Aucune boutique pour « %q » — essaie un autre mot." style="display:none"></div>
+    <p class="bq-rappel" id="bq-rappel">—</p>
+    <div style="height:6px"></div>
+  </div>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="07-boutiques.html"></nav>
+</div>
+</div>
+<script>
+  (function () {
+    'use strict';
+    var D = window.PEC_DATA, B = window.PEC_BONS; if (!D || !D.techBoutiques) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function photo(src) { return /^(https?:|data:|blob:)/.test(String(src || '')) ? src : ''; }
+    function initiales(n) { return String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(function (m) { return m.charAt(0); }).join('').toUpperCase(); }
+    /* CE QUI ME RESTE CHEZ CETTE MARQUE — seulement pour qui est connecté, et seulement ses bons actifs (PEC_BONS.bonsDeMarque) */
+    function monSolde(id) {
+      if (!B || !B.porteurId || !B.porteurId()) return null;
+      var l = B.bonsDeMarque(id).filter(function (r) { return r.etat === 'actif' && r.solde > 0; });
+      return l.length ? { n: l.length, reste: Math.round(l.reduce(function (a, r) { return a + r.solde; }, 0) * 100) / 100 } : null;
+    }
+    var derniere = null;
+    function peindre() {
+      var L = D.techBoutiques(), connecte = !!(B && B.porteurId && B.porteurId());
+      $('bq-sous').textContent = L.length
+        ? L.length + ' boutique' + (L.length > 1 ? 's' : '') + ' du réseau : leurs articles, ton code, et le site où ton bon se dépense.'
+        : 'Les boutiques du réseau apparaissent ici dès qu’une marque peut vendre ses bons.';
+      var sig = JSON.stringify(L.map(function (b) { var s = monSolde(b.id); return [b.id, b.categorie, b.articles.length, b.destination && b.destination.type, s && s.reste]; })) + connecte;
+      if (sig === derniere) return;
+      derniere = sig;
+      /* (24/09, nuit — fondatrice : « dans la page Boutique, un filtre horizontal avec la catégorie de la marque ; pas de dur, pas de
+         statique : logique donnée ») LE FILTRE — les catégories d'activité des marques présentes (référentiel techCategoriesActivite,
+         dans son ordre), seulement celles qui ont une boutique ; « J'y ai un bon » pour qui est connecté */
+      var F = [['tous', 'Toutes']];
+      D.techCategoriesActivite().forEach(function (c) { var n = L.filter(function (b) { return b.categorie === c.id; }).length; if (n) F.push(['cat-' + c.id, c.lbl + ' · ' + n]); });
+      /* « J'y ai un bon » suit la même règle que les catégories : il n'apparaît que s'il mène à au moins une boutique */
+      var nMes = connecte ? L.filter(function (b) { return !!monSolde(b.id); }).length : 0;
+      if (nMes) F.push(['mes', 'J’y ai un bon · ' + nMes]);
+      var fz = $('bq-filtres');
+      if (fz.getAttribute('data-sig') !== F.map(function (f) { return f[0]; }).join('|')) {
+        fz.setAttribute('data-sig', F.map(function (f) { return f[0]; }).join('|'));
+        fz.innerHTML = F.map(function (f, i) { return '<button type="button" class="tap" data-fval="' + esc(f[0]) + '" aria-pressed="' + (i === 0) + '">' + esc(f[1]) + '</button>'; }).join('');
+      }
+      $('bq-liste').innerHTML = L.length ? L.map(function (b) {
+        var s = monSolde(b.id), d = b.destination || {}, ph = b.articles.map(function (a) { return photo(a.photo); }).filter(Boolean)[0];
+        var tags = ['tous'].concat(b.categorie ? ['cat-' + b.categorie] : []).concat(s ? ['mes'] : []);
+        return '<a class="bq-row tap" href="08-boutique.html?m=' + encodeURIComponent(b.id) + '" data-ftag="' + esc(tags.join(' ')) + '" data-boutique="' + esc(b.id) + '">'
+          + '<span class="bq-av" aria-hidden="true">' + (ph ? '<img src="' + esc(ph) + '" alt="" loading="lazy">' : esc(initiales(b.nom))) + '</span>'
+          + '<span class="t"><b>' + esc(b.nom) + (d.type === 'boutique' ? '<span class="badge">Boutique</span>' : '') + '</b>'
+          + '<small>' + esc(b.categorieLbl || 'Catégorie à venir') + ' · ' + (b.articles.length ? b.articles.length + ' article' + (b.articles.length > 1 ? 's' : '') : 'pas encore d’article publié') + '</small>'
+          + '<small>Son bon se dépense sur ' + esc(d.lbl || '—') + '</small>'
+          + (s ? '<small class="moi">Tu y as ' + esc(D.eur(s.reste)) + ' en ' + s.n + ' bon' + (s.n > 1 ? 's' : '') + '</small>' : '')
+          /* la recherche lit la ligne entière : ses articles et leurs catégories y sont, sans s'afficher */
+          + '<span hidden>' + esc(b.articles.map(function (a) { return a.modele; }).concat(b.categories).concat([d.lbl || '']).join(' ')) + '</span>'
+          + '</span><svg class="pec-ico go" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></a>';
+      }).join('') : '<div class="bq-vide" data-fvide-row>Aucune boutique pour l’instant : elles arrivent avec les marques du réseau.</div>';
+      $('bq-rappel').textContent = 'Un bon d’achat ne vaut que sur le site de la marque qui l’a émis. Il s’achète au comptoir d’un ' + D.terme('commerce', 'client') + ' ou auprès d’un ' + D.terme('nomade', 'client') + ' — la carte te dit où — et se dépense chez la marque, jamais chez PayEnCash.';
+    }
+    peindre();
+    window.addEventListener('pec-bus', peindre);
+    window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+  })();
+</script>
+</body>
+</html>

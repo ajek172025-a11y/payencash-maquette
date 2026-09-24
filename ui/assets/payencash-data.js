@@ -808,14 +808,19 @@ codesFournisseur: [
     var base = (typeof location !== 'undefined' && location.href) ? location.href : '', i = base.indexOf('/ui/');
     return (i > -1 ? base.slice(0, i) + '/ui/' : '../') + 'assets/logos/';
   },
-  slogan: function () { return ((this.ref || {}).marque || {}).slogan || ''; },
+  /* le slogan du réseau, ou celui d'une app qui a le sien (ref.apps.<app>.slogan — l'app Mes bons, tournée vers son utilisateur) */
+  slogan: function (app) {
+    var a = app ? (((this.ref || {}).apps || {})[app] || {}) : {};
+    return a.slogan || ((this.ref || {}).marque || {}).slogan || '';
+  },
   marqueHTML: function (app, o) {
     o = o || {};
     var e = this.esc.bind(this), nom = o.nom || this.MARQUE_NOMS[app] || '';
     var sy = this.MARQUE_SYMBOLE[app];
     var sym = sy ? '<img class="pec-symbole" src="' + this.logosBase() + 'payencash-' + sy + '-symbole.webp" alt="" width="30" height="30">' : '';
     return sym + '<span class="pec-marque-txt"><b>pay<em>En</em>Cash</b>' + (nom ? ' <span class="sfx">' + e(nom) + '</span>' : '')
-      + (o.slogan ? '<small data-slogan>' + e(this.slogan()) + '</small>' : '') + '</span>';
+      /* la ligne du slogan porte son app : marqueAppliquer la réécrit, et doit y remettre celui de CETTE app */
+      + (o.slogan ? '<small data-slogan="' + e(app || '') + '">' + e(this.slogan(app)) + '</small>' : '') + '</span>';
   },
   /* (24/09, soir) LES CHAMPS DE CODE (autocomplete="one-time-code") prennent leur longueur au référentiel, et `[data-otp-longueur]` l'écrit */
   otpAppliquer: function (root) {
@@ -830,8 +835,8 @@ codesFournisseur: [
       el.innerHTML = d.marqueHTML(el.getAttribute('data-pec-marque'), { slogan: el.hasAttribute('data-slogan'), nom: el.getAttribute('data-nom') || null });
       if (!el.getAttribute('aria-label')) el.setAttribute('aria-label', 'PayEnCash ' + (el.getAttribute('data-nom') || d.MARQUE_NOMS[el.getAttribute('data-pec-marque')] || ''));
     });
-    var sl = this.slogan();
-    [].forEach.call(R.querySelectorAll('[data-slogan]:not([data-pec-marque])'), function (el) { el.textContent = sl; });
+    // un [data-slogan="bons"] seul écrit le slogan de cette app ; vide, celui du réseau
+    [].forEach.call(R.querySelectorAll('[data-slogan]:not([data-pec-marque])'), function (el) { el.textContent = d.slogan(el.getAttribute('data-slogan') || null); });
   },
   societeAppliquer: function (root) {
     var l = this.societeLigne();
@@ -1116,6 +1121,10 @@ codesFournisseur: [
          `horizonJours`, `rencontreReglages`, `rencontreCreneaux`, `rencontreCreneauLbl`, le <select> de
          l'écran, et les colonnes `when_at` / `when_text` de `distributor_meetings`. */
       source: "vitesse et rayon d'arrivée repris de ref.dispatch (banc 18/09) — ~18 km/h en ville ; aucun tarif de déplacement au référentiel depuis le 23/09 (chaque commissionnaire fixe le sien) ; TTL de position : minimisation RGPD, une position vit 30 min et ne s'historise pas" },
+    /* (24/09, nuit — fondatrice : « dans un point de vente : la liste dessous, avec la distance jusqu'à l'utilisateur, filtre par mètre
+       et km ») LES RAYONS DE LA CARTE DE MES BONS — ce qu'on peut garder autour de soi ; ils ne s'offrent que si l'on sait où tu es. */
+    /* (24/09, nuit) le rayon ouvert par défaut sur « dans un point de vente » d'un bon proposé — celui de l'écran du 19/09, soir */
+    carte: { rayonsM: [500, 1000, 2000, 5000, 10000], rayonDefautM: 2000 },
     villesReseau: [
       { id: "marseille",   nom: "Marseille",        cp: ["13001","13002","13003","13004","13005","13006","13007","13008","13009","13010","13011","13012","13013","13014","13015","13016"], centre: { lat: 43.2965, lng: 5.3698 } },
       { id: "aix",         nom: "Aix-en-Provence",  cp: ["13100"], centre: { lat: 43.5297, lng: 5.4474 } },
@@ -1419,7 +1428,7 @@ codesFournisseur: [
         texte: 'Tu émets tes bons ; les commerces du réseau les achètent au moment où ils les vendent, et nous te payons à l’échéance de ton offre.',
         avantages: ['Ton paiement arrive à l’échéance de ton offre : {offres}.',
                     'Le risque d’impayé d’un commerce est pour nous, jamais pour toi.',
-                    'Tes bons ne s’utilisent que chez toi, depuis l’app Mes bons.']
+                    'Tes bons ne se dépensent que chez toi, sur ton site.']
       },
       partenaire: {
         duree: 'environ dix minutes',
@@ -1451,6 +1460,22 @@ codesFournisseur: [
                     'Les mêmes données que le manager, au même instant.'],
         pied: '{societe}'
       }
+    },
+    /* ══ (24/09, nuit — fondatrice : « lorsque, depuis l'app Solution, la marque partage un lien pour proposer un montant précis,
+       je veux que la page invite à télécharger gratuitement l'application PayEnCash Mes bons ») L'APP DU PORTEUR ══════════════
+       Son nom, et ses adresses dans les boutiques d'applications : VIDES tant que l'app n'y est pas publiée — l'écran dit
+       alors « bientôt », jamais un lien inventé ; en attendant, l'app s'ouvre dans le navigateur. « Gratuite » ne s'écrit que
+       si l'utilisateur ne paie rien (ref.verification.tarifs.client).
+       (24/09, nuit — « le partage d'accès implique l'envoi d'un SMS, WhatsApp… avec le lien de l'application à télécharger ») LES
+       TROIS APPS QU'ON TÉLÉCHARGE, au même endroit : celle du porteur, celle des commerces du réseau, celle des marques. `entree` est
+       la page d'entrée de l'app dans le navigateur — c'est elle que le message donne tant qu'aucune boutique n'a d'adresse. */
+    apps: {
+      /* (24/09, nuit — fondatrice : « le slogan de l'app utilisateur doit être tourné : profiter de remises, large choix de marques qui
+         proposent des bons d'achat ») L'APP DU CLIENT A SON SLOGAN À ELLE — ce que LUI y gagne ; les autres apps, les documents et la
+         vitrine gardent celui du réseau (ref.marque.slogan). Les remises sont celles que les marques accordent avec leur bon. */
+      bons:       { nom: 'PayEnCash Mes bons',   stores: { apple: '', google: '' }, entree: 'ui/bons/06-connexion.html', slogan: 'Profite de remises chez un large choix de marques' },
+      partenaire: { nom: 'PayEnCash Partenaire', stores: { apple: '', google: '' }, entree: 'ui/partenaire/01-connexion.html' },
+      solution:   { nom: 'PayEnCash Solution',   stores: { apple: '', google: '' }, entree: 'ui/tech/01-connexion.html' }
     },
     invitations: { validiteH: 72, motDePasseMin: 10 },
     otp: { validiteMin: 10, longueur: 6, source: "codes SMS / e-mail : validité annoncée au client" },
@@ -1578,7 +1603,9 @@ codesFournisseur: [
       marque:      { nom: 'marque', pluriel: 'marques', client: 'marque', juridique: 'la Marque, émettrice des bons' },
       commerce:    { nom: 'commerce du réseau', court: 'commerce', pluriel: 'commerces du réseau', client: 'point de vente', clientPluriel: 'points de vente', juridique: 'le Distributeur sédentaire, revendeur pour son propre compte' },
       nomade:      { nom: 'distributeur nomade', court: 'distributeur', pluriel: 'distributeurs nomades', client: 'distributeur nomade', clientPluriel: 'distributeurs nomades', juridique: 'le Distributeur nomade, commissionnaire (art. L132-1 du code de commerce)' },
-      utilisateur: { nom: 'utilisateur', pluriel: 'utilisateurs', client: 'toi', juridique: 'le Porteur du bon' }
+      utilisateur: { nom: 'utilisateur', pluriel: 'utilisateurs', client: 'toi', juridique: 'le Porteur du bon' },
+      // (24/09, nuit) la personne à qui un commerce ou une marque ouvre un accès à son app : elle agit en son nom, ne voit que ses actions
+      collaborateur: { nom: 'collaborateur', pluriel: 'collaborateurs', juridique: 'la personne à qui le titulaire du compte ouvre un accès en son nom' }
     },
     tech: {
       nom: 'PayEnCash Solution',
@@ -1594,6 +1621,30 @@ codesFournisseur: [
       tvaPct: 20,                    // le logiciel est un service soumis à TVA (les bons, eux, relèvent de l'art. 256 ter CGI)
       cleLongueur: 32,
       prefixeBon: 'TB-',          // le code d'un bon de commerçant : TB-XXXX-XXXX-XXXX
+      /* (24/09, nuit — fondatrice : « le lien partagé avec scan doit également afficher une réf : pour le partenaire qui va scanner,
+         si le scan n'est pas reconnu, la réf du bon à acheter ») LA RÉFÉRENCE D'UN BON PROPOSÉ, à saisir au comptoir quand le
+         flashcode ne passe pas : ce préfixe, puis `refOrdreLongueur` caractères sans ambiguïté (ni O ni 0, ni I ni 1, ni L). */
+      prefixeOrdre: 'OV-',
+      /* (24/09, nuit — fondatrice : « ajoute à Bon d'achat les marques compagnie aérienne, revendeur de billets d'avion ; dans la page
+         Boutique, un filtre horizontal avec la catégorie de la marque ; vérifie dans Solution si la catégorie d'activité est présente ;
+         pas de dur, pas de statique : logique donnée ») LES CATÉGORIES D'ACTIVITÉ D'UNE MARQUE — elle en choisit une à son inscription
+         (et la change dans Compte › Identité) ; Mes bons en fait le filtre de ses Boutiques, avec les seules catégories présentes. */
+      categoriesActivite: [
+        { id: 'mode', lbl: 'Mode & accessoires' },
+        { id: 'beaute', lbl: 'Beauté & bien-être' },
+        { id: 'maison', lbl: 'Maison & décoration' },
+        { id: 'high-tech', lbl: 'High-tech & électroménager' },
+        { id: 'alimentation', lbl: 'Alimentation & épicerie fine' },
+        { id: 'restauration', lbl: 'Restauration' },
+        { id: 'sport', lbl: 'Sport & loisirs' },
+        { id: 'culture', lbl: 'Culture, livres & musique' },
+        { id: 'enfants', lbl: 'Enfants & jouets' },
+        { id: 'voyage', lbl: 'Voyage & hébergement' },
+        { id: 'aerien', lbl: 'Compagnie aérienne' },
+        { id: 'billets-avion', lbl: 'Revendeur de billets d’avion' },
+        { id: 'services', lbl: 'Services' }
+      ],
+      refOrdreLongueur: 6,
       lienValiditeJours: 30,      // (20/09) un bon proposé à un client périme : au-delà, il ne vaut plus rien
       annulationMinutes: 30,      // une vente s'annule au comptoir dans ce délai si le bon n'a pas servi — comme le Bon d’achat PayEnCash
       /* ══ (22/09 — décisions fondatrice) L'ARGENT DE LA SECONDE LIGNE : NOUS SOMMES GROSSISTE ═══════════════════
@@ -1688,6 +1739,19 @@ codesFournisseur: [
          montants variables ») : `bonsMax` est le nombre de bons qu'une marque peut éditer PAR MOIS, une vente = une édition. L'astérisque de l'illimité est un SEUIL LÉGAL,
          pas un tarif : au-delà de 1 000 000 € de bons sur douze mois glissants, l'exclusion « réseau limité »
          impose une déclaration à l'ACPR (art. L521-3 II CMF) — l'écran le dit avant, et nous accompagnons. */
+      /* (24/09, nuit — fondatrice : « le site de l'abonnement sera conçu par une société tierce, à prix convenu ; il sera connecté via
+         API pour récupérer les données de son site — à prévoir, je te donnerai sa doc API ») LE SITE HÉBERGÉ PAR NOTRE PARTENAIRE.
+         Rien n'est inventé : tant que la société n'est pas retenue et sa documentation reçue, ces champs restent vides ; les articles
+         d'une boutique viennent alors de ses publications dans PayEnCash Solution, et son site est la page de démonstration
+         (tech/11-site). Le jour où `apiDoc` et `apiBase` sont posés, la boutique de Mes bons lira aussi les données de son site. */
+      siteHebergement: { societe: null, prixConvenu: null, apiDoc: null, apiBase: null },
+      /* (24/09, nuit — fondatrice : « si distributeur nomade : la liste des distributeurs nomades dans un rayon de 20 km et la mise en
+         relation ; chacun affiche son propre prix de déplacement : il paramètre de 0 à 1 km un prix, etc., jusqu'à 20 ; libre
+         concurrence ») LE DÉPLACEMENT D'UN DISTRIBUTEUR NOMADE. Les BORNES des paliers sont celles du réseau — une grille commune,
+         pour que les prix se comparent ; les MONTANTS sont les siens. `reponseMin` : le temps qu'il a pour appeler le client qui l'a
+         choisi, avant que la demande ne se ferme. Tout se règle en Configuration (tech.nomade.*). */
+      /* (24/09, nuit — « uniquement les distributeurs qui sont disponibles ») `dispoHeures` : ce que vaut sa disponibilité, une fois allumée */
+      nomade: { rayonMaxKm: 20, paliersKm: [1, 3, 5, 10, 15, 20], reponseMin: 30, dispoHeures: 8 },
       logiciel: {
         essaiMois: 0,
         pageBons: 20,          // la liste des bons se lit 20 par 20 (23/09 : « pagination 20 éléments vus »)
@@ -1858,11 +1922,11 @@ codesFournisseur: [
       tech_marchand_suspendu: "Compte d'une marque suspendu par le manager (motif)",
       tech_marchand_reactive: "Compte d'une marque réactivé par le manager",
       document_consulte: "Document lu jusqu'au bout (consultation notée avec sa version)",
-      tech_rencontre_demandee: "Rencontre demandée à un distributeur nomade, depuis la page d'un bon proposé par une marque",
-      tech_rencontre_acceptee: "Rencontre prise par un distributeur nomade",
+      tech_rencontre_demandee: "Rencontre demandée à un distributeur nomade — depuis un bon proposé par une marque, ou choisi par le client sur la carte de Mes bons (mise en relation)",
+      tech_rencontre_acceptee: "Rencontre prise par un distributeur nomade — ou validée par son appel au client (mise en relation)",
       tech_rencontre_servie: "Rencontre honorée — le distributeur nomade a remis le bon de la marque à l'utilisateur",
       tech_rencontre_annulee: "Rencontre avec un distributeur nomade annulée",
-      document_valide: "Pièce validée (coffre)", document_refuse: "Pièce refusée (coffre)", dossier_transfere: "Dossier de candidature transféré à son titulaire validé", compte_clos: "Compte clos (fin de contrat)", compte_rouvert: "Candidature rouverte", compte_recandidature: "Nouvelle candidature après refus", session_planifiee: "Session de recrutement planifiée", encaissement_refuse: "Encaissement refusé par le bus", compte_tel_modifie: "Numéro de téléphone du compte modifié", mdp_code_envoye: "Code de réinitialisation envoyé", appel_assignation: "Appel assigné", registre_sortie: "Mouvement inscrit au livre de police (art. 321-7 CP)", registre_entree: "Objet inscrit au livre de police (entrée en stock, art. 321-7 CP)", fournisseur_hors_vente: "Fournisseur retiré de la vente (accès suspendu ou clos) — pièces dépubliées et réservations relâchées", partage_vente_retiree: "Vente attribuée à un lien de partage retirée (commande remboursée)", registre_rectificatif: "Rectificatif inscrit au livre de police (la ligne d'origine reste inscrite)", reseau_boutique: "Compte de réseau social relié par le fournisseur", reseau_boutique_visibilite: "Affichage d'un réseau sur la boutique modifié", reseau_boutique_retire: "Compte de réseau social retiré par le fournisseur", encaissement_hors_fenetre: "Encaissement enregistré HORS fenêtre par le manager (argent déjà reçu)", reservations_liberees: "Pièces relibérées au catalogue (réservation relâchée)", commande_expiree: "Commande expirée (code de paiement, fenêtre dépassée)", kyc: "Vérification d'identité (KYC)", sav_assignation: "Demande assignée", sav_reponse: "Réponse à une demande", achat_voyage: "Achat fournisseur voyage", atelier_verdict: "Verdict de l'atelier", client_statut: "Statut client modifié", connexion_sso: "Connexion (SSO)", fournisseur_acces: "Accès fournisseur modifié", partage_clic: "Lien de partage ouvert", partage_vente: "Vente issue d'un partage", satisfaction_ajoutee: "Réponse au questionnaire de satisfaction", questionnaire_satisfaction: "Questionnaire de satisfaction envoyé (e-mail)", visite_cr: "Compte-rendu de visite (D1)", proposition_envoyee: "Proposition envoyée (D2)", prospect_cree: "Commerce ajouté au pipeline", prospect_maj: "Fiche prospect mise à jour", prospect_perdu: "Prospect perdu", campagne_marketing: "Campagne créée", campagne_marketing_statut: "Campagne — statut", campagne_marketing_releve: "Campagne — relevé", ged_depot: "Créa déposée (GED)", ged_statut: "Créa — statut", agenda_action: "Action planifiée", agenda_action_faite: "Action faite", rappel_commercial: "Rappel commercial programmé", rappel_commercial_fait: "Rappel commercial passé", influenceur_ajoute: "Influenceur ajouté", influenceur_statut: "Influenceur — statut", concours: "Participation au concours", concours_publie: "Lot du concours publié", facture_pdf: "Facture demandée en PDF", recote_reponse: "Réponse du fournisseur à une re-cotation", concours_tirage: "Tirage du concours effectué", influenceur_clic: "Lien influenceur ouvert", code_promo_fly_cree: "Code promo Fly créé", code_promo_fly_desactive: "Code promo Fly désactivé", prospect_invite_fournisseur: "Atelier invité comme fournisseur", annonce: "Commande annoncée", paiement: "Paiement déclaré", sav: "Demande SAV", code_promo_cree: "Code promo créé", bon_emis: "Bon d’achat PayEnCash émis (vente au comptoir ou carte cadeau)", bon_serie_emise: "Vente découpée en plusieurs bons d’achat (plafond LCB-FT par bon)", bon_serie_utilisee: "Série de bons d’achat utilisée par son code commun (un geste, plusieurs bons débités)", bon_utilise: "Bon d’achat PayEnCash utilisé (débit au règlement)", bon_recredite: "Bon d’achat PayEnCash re-crédité (remboursement)", bon_annule: "Bon d’achat PayEnCash annulé", bon_bloque: "Bon d’achat PayEnCash bloqué", bon_debloque: "Bon d’achat PayEnCash débloqué", bon_applique: "Bon d’achat PayEnCash appliqué à une commande", bon_retire: "Bon d’achat PayEnCash retiré d'une commande", partenaire_enregistre: "Fiche du commerce partenaire enregistrée", point_active: "Partenaire du réseau activé (vente des bons de marque ouverte)", point_refuse: "Relation commerciale refusée (distributeur)", distributeur_zone: "Zone de déplacement définie par le distributeur nomade", distributeur_note: "Distributeur noté par un client après une rencontre", distributeur_tarif: "Tarif de déplacement fixé par le commissionnaire lui-même (aucun tarif de réseau)", avance_mouvement: "Mouvement sur le compte d'avance d'un commissionnaire (garantie, recharge, achat, remboursement, restitution)", rencontre_proposition: "Proposition de tarif faite à un client pour un déplacement", rencontre_proposition_retiree: "Proposition de tarif retirée par le commissionnaire", rencontre_choisie: "Commissionnaire choisi par le client parmi les propositions reçues", rencontre_demandee: "Rencontre avec un distributeur nomade demandée par un utilisateur", rencontre_acceptee: "Rencontre prise par un distributeur nomade", rencontre_servie: "Rencontre honorée — bon d’achat remis au client", rencontre_annulee: "Rencontre annulée", point_suspendu: "Partenaire du réseau suspendu", point_reactive: "Partenaire du réseau réactivé", point_clos: "Contrat de distribution résilié (point clos)", contrat_partenaire_signe: "Contrat de distribution du Bon d’achat PayEnCash signé", signature_envoyee: "Lien de signature envoyé au gérant", signature_otp: "Code de signature envoyé au gérant", carte_partenaire: "Carte de règlement du commerce enregistrée", carte_partenaire_retiree: "Carte de règlement du commerce retirée", commission_partenaire: "Taux de commission de distribution d'un commerce modifié", prelevement: "Prélèvement du commerce à la vente d'un bon d’achat", prelevement_refuse: "Prélèvement refusé par la banque — aucun bon d’achat émis", prelevement_rembourse: "Prélèvement remboursé au commerce (bon d’achat annulé)", autofacture_commission: "Autofacture de commission de distribution émise", etiquette_editee: "Étiquette Mondial Relay éditée", colis_expedie: "Colis expédié (Mondial Relay)", verification: "Vérification de compte", compte_cree: "Compte créé", compte_verifie: "Code confirmé (SMS / e-mail)", compte_valide: "Compte validé", compte_lie: "Entré dans son référentiel", compte_refuse: "Compte refusé", compte_suspendu: "Compte suspendu", compte_reactive: "Compte réactivé", compte_profil: "Profil complété", compte_supprime: "Compte supprimé (RGPD)", connexion: "Connexion", connexion_echec: "Connexion refusée", deconnexion: "Déconnexion", export: "Export de données", export_rgpd: "Export RGPD demandé", suppression_compte: "Suppression de compte demandée", rgpd_code: "Code RGPD envoyé", rgpd_effacement: "Effacement RGPD", rgpd_export: "Export RGPD (support)", rgpd_rectification: "Rectification RGPD", reclamation_decision: "Décision sur réclamation", confirmation_manuelle: "Paiement confirmé manuellement", promo_controlee: "Offre contrôlée", promo_publiee: "Offre publiée", promo_depubliee: "Offre dépubliée", parametre_modifie: "Paramètre modifié", remboursement: "Remboursement", annulation: "Commande annulée", kyb_soumis: "Dossier de vérification envoyé", kyb_frais: "Frais de vérification réglés", kyb_assigne: "Dossier de vérification assigné", document_depose: "Pièce déposée au coffre", document_signe: "Document signé en ligne", document_supprime: "Pièce retirée du coffre", video_verification: "Vidéo de vérification enregistrée", acceptation_documents: "Documents en vigueur acceptés", fiche_entreprise: "Fiche entreprise modifiée", piece_publiee: "Pièce publiée (envoyée à l'atelier)", stock_retrait: "Pièce retirée du stock (vendue hors PayEnCash)", partage_copie: "Lien de partage copié", lot_prix_actualise: "Prix de vente à PayEnCash actualisé par le fournisseur", etiquette_editee: "Étiquette Mondial Relay éditée", colis_expedie: "Colis déposé en point relais", code_promo_cree: "Code promo créé", campagne_creee: "Campagne marketing créée", demarque_proposee: "Démarque proposée au fournisseur", rib_a_controler: "IBAN modifié — RIB à contrôler", rib_controle: "RIB contrôlé par le manager", facture_emise: "Facture fournisseur émise", facture_viree: "Facture fournisseur virée", appel: "Appel passé", notation: "Note laissée par le client", export_rgpd_support: "Export RGPD (support)", rib_client: "RIB enregistré par le client", rib_client_supprime: "RIB retiré par le client", fiche_entreprise: "Fiche entreprise modifiée", code_promo_desactive: "Code promo désactivé", code_promo_reactive: "Code promo réactivé", mentions_legales: "Mentions légales relevées (dossier papier)", contrat_resilie: "Contrat fournisseur résilié", contrat_contresigne: "Contrat contresigné par PayEnCash", colis_suivi: "Suivi transporteur (Mondial Relay)", commande_livree: "Commande livrée au point relais", controle_tire: "Pièce tirée au contrôle qualité", controle_reception: "Pièce reçue à l'atelier (contrôle)", controle_verdict: "Verdict du contrôle qualité sur une pièce vendue", reclamation_ouverte: "Réclamation ouverte (Mode)", reclamation_remboursee: "Réclamation remboursée", reclamation_retour_depose: "Colis retour déposé en relais", reclamation_retour_recu: "Colis retour reçu à l'atelier", reclamation_constat: "Constat de l'atelier sur un retour", reclamation_contestee: "Constat contesté par le fournisseur", reclamation_expiree: "Réclamation close — retour jamais déposé", debits_imputes: "Débits fournisseur imputés sur une facture",
+      document_valide: "Pièce validée (coffre)", document_refuse: "Pièce refusée (coffre)", dossier_transfere: "Dossier de candidature transféré à son titulaire validé", compte_clos: "Compte clos (fin de contrat)", compte_rouvert: "Candidature rouverte", compte_recandidature: "Nouvelle candidature après refus", session_planifiee: "Session de recrutement planifiée", encaissement_refuse: "Encaissement refusé par le bus", compte_tel_modifie: "Numéro de téléphone du compte modifié", mdp_code_envoye: "Code de réinitialisation envoyé", appel_assignation: "Appel assigné", registre_sortie: "Mouvement inscrit au livre de police (art. 321-7 CP)", registre_entree: "Objet inscrit au livre de police (entrée en stock, art. 321-7 CP)", fournisseur_hors_vente: "Fournisseur retiré de la vente (accès suspendu ou clos) — pièces dépubliées et réservations relâchées", partage_vente_retiree: "Vente attribuée à un lien de partage retirée (commande remboursée)", registre_rectificatif: "Rectificatif inscrit au livre de police (la ligne d'origine reste inscrite)", reseau_boutique: "Compte de réseau social relié par le fournisseur", reseau_boutique_visibilite: "Affichage d'un réseau sur la boutique modifié", reseau_boutique_retire: "Compte de réseau social retiré par le fournisseur", encaissement_hors_fenetre: "Encaissement enregistré HORS fenêtre par le manager (argent déjà reçu)", reservations_liberees: "Pièces relibérées au catalogue (réservation relâchée)", commande_expiree: "Commande expirée (code de paiement, fenêtre dépassée)", kyc: "Vérification d'identité (KYC)", sav_assignation: "Demande assignée", sav_reponse: "Réponse à une demande", achat_voyage: "Achat fournisseur voyage", atelier_verdict: "Verdict de l'atelier", client_statut: "Statut client modifié", connexion_sso: "Connexion (SSO)", fournisseur_acces: "Accès fournisseur modifié", partage_clic: "Lien de partage ouvert", partage_vente: "Vente issue d'un partage", satisfaction_ajoutee: "Réponse au questionnaire de satisfaction", questionnaire_satisfaction: "Questionnaire de satisfaction envoyé (e-mail)", visite_cr: "Compte-rendu de visite (D1)", proposition_envoyee: "Proposition envoyée (D2)", prospect_cree: "Commerce ajouté au pipeline", prospect_maj: "Fiche prospect mise à jour", prospect_perdu: "Prospect perdu", campagne_marketing: "Campagne créée", campagne_marketing_statut: "Campagne — statut", campagne_marketing_releve: "Campagne — relevé", ged_depot: "Créa déposée (GED)", ged_statut: "Créa — statut", agenda_action: "Action planifiée", agenda_action_faite: "Action faite", rappel_commercial: "Rappel commercial programmé", rappel_commercial_fait: "Rappel commercial passé", influenceur_ajoute: "Influenceur ajouté", influenceur_statut: "Influenceur — statut", concours: "Participation au concours", concours_publie: "Lot du concours publié", facture_pdf: "Facture demandée en PDF", recote_reponse: "Réponse du fournisseur à une re-cotation", concours_tirage: "Tirage du concours effectué", influenceur_clic: "Lien influenceur ouvert", code_promo_fly_cree: "Code promo Fly créé", code_promo_fly_desactive: "Code promo Fly désactivé", prospect_invite_fournisseur: "Atelier invité comme fournisseur", annonce: "Commande annoncée", paiement: "Paiement déclaré", sav: "Demande SAV", code_promo_cree: "Code promo créé", bon_emis: "Bon d’achat PayEnCash émis (vente au comptoir ou carte cadeau)", bon_serie_emise: "Vente découpée en plusieurs bons d’achat (plafond LCB-FT par bon)", bon_serie_utilisee: "Série de bons d’achat utilisée par son code commun (un geste, plusieurs bons débités)", bon_utilise: "Bon d’achat PayEnCash utilisé (débit au règlement)", bon_recredite: "Bon d’achat PayEnCash re-crédité (remboursement)", bon_annule: "Bon d’achat PayEnCash annulé", bon_bloque: "Bon d’achat PayEnCash bloqué", bon_debloque: "Bon d’achat PayEnCash débloqué", bon_applique: "Bon d’achat PayEnCash appliqué à une commande", bon_retire: "Bon d’achat PayEnCash retiré d'une commande", partenaire_enregistre: "Fiche du commerce partenaire enregistrée", point_active: "Partenaire du réseau activé (vente des bons de marque ouverte)", point_refuse: "Relation commerciale refusée (distributeur)", distributeur_zone: "Zone de déplacement définie par le distributeur nomade", distributeur_note: "Distributeur noté par un client après une rencontre", distributeur_tarif: "Tarif de déplacement fixé par le commissionnaire lui-même (aucun tarif de réseau)", distributeur_disponible: "Disponibilité allumée ou éteinte par le distributeur nomade lui-même", avance_mouvement: "Mouvement sur le compte d'avance d'un commissionnaire (garantie, recharge, achat, remboursement, restitution)", rencontre_proposition: "Proposition de tarif faite à un client pour un déplacement", rencontre_proposition_retiree: "Proposition de tarif retirée par le commissionnaire", rencontre_choisie: "Commissionnaire choisi par le client parmi les propositions reçues", rencontre_demandee: "Rencontre avec un distributeur nomade demandée par un utilisateur", rencontre_acceptee: "Rencontre prise par un distributeur nomade", rencontre_servie: "Rencontre honorée — bon d’achat remis au client", rencontre_annulee: "Rencontre annulée", point_suspendu: "Partenaire du réseau suspendu", point_reactive: "Partenaire du réseau réactivé", point_clos: "Contrat de distribution résilié (point clos)", contrat_partenaire_signe: "Contrat de distribution du Bon d’achat PayEnCash signé", signature_envoyee: "Lien de signature envoyé au gérant", signature_otp: "Code de signature envoyé au gérant", carte_partenaire: "Carte de règlement du commerce enregistrée", carte_partenaire_retiree: "Carte de règlement du commerce retirée", commission_partenaire: "Taux de commission de distribution d'un commerce modifié", prelevement: "Prélèvement du commerce à la vente d'un bon d’achat", prelevement_refuse: "Prélèvement refusé par la banque — aucun bon d’achat émis", prelevement_rembourse: "Prélèvement remboursé au commerce (bon d’achat annulé)", autofacture_commission: "Autofacture de commission de distribution émise", etiquette_editee: "Étiquette Mondial Relay éditée", colis_expedie: "Colis expédié (Mondial Relay)", verification: "Vérification de compte", compte_cree: "Compte créé", compte_verifie: "Code confirmé (SMS / e-mail)", compte_valide: "Compte validé", compte_lie: "Entré dans son référentiel", compte_refuse: "Compte refusé", compte_suspendu: "Compte suspendu", compte_reactive: "Compte réactivé", compte_profil: "Profil complété", compte_supprime: "Compte supprimé (RGPD)", connexion: "Connexion", connexion_echec: "Connexion refusée", deconnexion: "Déconnexion", export: "Export de données", export_rgpd: "Export RGPD demandé", suppression_compte: "Suppression de compte demandée", rgpd_code: "Code RGPD envoyé", rgpd_effacement: "Effacement RGPD", rgpd_export: "Export RGPD (support)", rgpd_rectification: "Rectification RGPD", reclamation_decision: "Décision sur réclamation", confirmation_manuelle: "Paiement confirmé manuellement", promo_controlee: "Offre contrôlée", promo_publiee: "Offre publiée", promo_depubliee: "Offre dépubliée", parametre_modifie: "Paramètre modifié", remboursement: "Remboursement", annulation: "Commande annulée", kyb_soumis: "Dossier de vérification envoyé", kyb_frais: "Frais de vérification réglés", kyb_assigne: "Dossier de vérification assigné", document_depose: "Pièce déposée au coffre", document_signe: "Document signé en ligne", document_supprime: "Pièce retirée du coffre", video_verification: "Vidéo de vérification enregistrée", acceptation_documents: "Documents en vigueur acceptés", fiche_entreprise: "Fiche entreprise modifiée", piece_publiee: "Pièce publiée (envoyée à l'atelier)", stock_retrait: "Pièce retirée du stock (vendue hors PayEnCash)", partage_copie: "Lien de partage copié", lot_prix_actualise: "Prix de vente à PayEnCash actualisé par le fournisseur", etiquette_editee: "Étiquette Mondial Relay éditée", colis_expedie: "Colis déposé en point relais", code_promo_cree: "Code promo créé", campagne_creee: "Campagne marketing créée", demarque_proposee: "Démarque proposée au fournisseur", rib_a_controler: "IBAN modifié — RIB à contrôler", rib_controle: "RIB contrôlé par le manager", facture_emise: "Facture fournisseur émise", facture_viree: "Facture fournisseur virée", appel: "Appel passé", notation: "Note laissée par le client", export_rgpd_support: "Export RGPD (support)", rib_client: "RIB enregistré par le client", rib_client_supprime: "RIB retiré par le client", fiche_entreprise: "Fiche entreprise modifiée", code_promo_desactive: "Code promo désactivé", code_promo_reactive: "Code promo réactivé", mentions_legales: "Mentions légales relevées (dossier papier)", contrat_resilie: "Contrat fournisseur résilié", contrat_contresigne: "Contrat contresigné par PayEnCash", colis_suivi: "Suivi transporteur (Mondial Relay)", commande_livree: "Commande livrée au point relais", controle_tire: "Pièce tirée au contrôle qualité", controle_reception: "Pièce reçue à l'atelier (contrôle)", controle_verdict: "Verdict du contrôle qualité sur une pièce vendue", reclamation_ouverte: "Réclamation ouverte (Mode)", reclamation_remboursee: "Réclamation remboursée", reclamation_retour_depose: "Colis retour déposé en relais", reclamation_retour_recu: "Colis retour reçu à l'atelier", reclamation_constat: "Constat de l'atelier sur un retour", reclamation_contestee: "Constat contesté par le fournisseur", reclamation_expiree: "Réclamation close — retour jamais déposé", debits_imputes: "Débits fournisseur imputés sur une facture",
       // (09/09 — lot 2 l'argent)
  annulation_client: "Commande annulée par le client", 
       // (10/09 — lot 7 paie & RH)
@@ -2013,6 +2077,11 @@ codesFournisseur: [
     else { var l = this.comptesCreesGet(); var i = l.map(function (x) { return x.id; }).indexOf(c.id); if (i !== -1) l[i] = c; else l.unshift(c); this.comptesCreesPut(l); }
     this._compteNoter(evt, c, extra); return c;
   },
+  // L'identifiant technique d'un compte — une seule fabrique, pour les inscriptions comme pour les accès collaborateurs
+  _compteNouvelId: function (espace) {
+    var seq = 1; try { seq = parseInt(localStorage.getItem('pec-comptes-seq') || '0', 10) + 1; localStorage.setItem('pec-comptes-seq', String(seq)); } catch (e) {}
+    return 'cpt-' + espace + '-' + String(seq).padStart(3, '0');
+  },
   // ① CRÉER — depuis le formulaire de l'app de l'espace. Renvoie {ok, compte} ou {ok:false, motif}.
   compteCreer: function (espace, form) {
     var E = this.ESPACES_COMPTE[espace]; if (!E) return { ok: false, motif: 'Espace inconnu' };
@@ -2049,6 +2118,14 @@ codesFournisseur: [
     /* (24/09) GOOGLE / APPLE : l'adresse vérifiée par le fournisseur d'identité tient lieu de code e-mail, et aucun mot de
        passe n'est créé — c'est le fournisseur qui authentifie. */
     var sso = (form.sso && this.SSO_FOURNISSEURS[form.sso]) ? form.sso : null;
+    /* (24/09, nuit — fondatrice : « es-tu sûr d'avoir intégré la logique connexion par Gmail ») L'UTILISATEUR DE MES BONS PAR GOOGLE /
+       APPLE : son identifiant reste son MOBILE ; l'adresse que le fournisseur a vérifiée est son e-mail. Elle est exigée, et elle ne
+       doit porter aucun autre compte — sinon deux comptes répondraient à la même porte. */
+    var ssoMail = espace === 'client' ? String(form.email || '').trim().toLowerCase() : null;
+    if (sso && espace === 'client') {
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(ssoMail)) return { ok: false, champ: 'email', motif: 'L’adresse vérifiée par ' + this.SSO_FOURNISSEURS[sso] + ' manque : recommence avec le bouton.' };
+      if (this._compteClientParEmail(ssoMail)) return { ok: false, champ: 'email', motif: 'Un compte Mes bons porte déjà cette adresse : connecte-toi avec ' + this.SSO_FOURNISSEURS[sso] + '.' };
+    }
     /* (06/09) CLIENT : le mot de passe est le sien, mais il n'est pas exigé ICI — l'onboarding
        Fly ouvre un compte sur le seul numéro, et le mot de passe se choisit à l'inscription Mode
        ou depuis « mot de passe oublié ». Un compte sans mot de passe choisi retombe sur celui de
@@ -2067,12 +2144,11 @@ codesFournisseur: [
     if (parEtapes) { profil.etapes = true; delete profil.sso; }
     if (espace === 'client' && !profil.prenom) { profil.prenom = ''; profil.nom = 'Client'; }   // onboarding Fly : le nom arrive APRÈS le code SMS (compteProfilMaj)
     else if (espace === 'client') profil.nom = profil.prenom + ' ' + String(profil.nom).charAt(0).toUpperCase() + '.';
-    var seq = 1; try { seq = parseInt(localStorage.getItem('pec-comptes-seq') || '0', 10) + 1; localStorage.setItem('pec-comptes-seq', String(seq)); } catch (e) {}
-    var c = { id: 'cpt-' + espace + '-' + String(seq).padStart(3, '0'), seed: false, espace: espace, identifiant: identifiant, motdepasse: E.motdepasse ? (form.motdepasse || null) : null,
+    var c = { id: this._compteNouvelId(espace), seed: false, espace: espace, identifiant: identifiant, motdepasse: E.motdepasse ? (form.motdepasse || null) : null,
       statut: E.verifs.length ? 'a_verifier' : E.initial, verifs: { sms: false, email: false, kyb: false, kyc: false, documents: false, habilitation: false }, profil: profil, refId: null, creeAt: Date.now(), journal: [] };
     if (invite) { c.statut = 'invite'; c.invitePar = form.invitePar || 'manager'; c.inviteExpireAt = Date.now() + ((this.ref && this.ref.invitations && this.ref.invitations.validiteH) || 72) * 3600000; }
     this._compteMaj(c, {}, 'compte_cree');
-    if (sso) this._compteMaj(c, { sso: { fournisseur: sso, email: identifiant, lieLe: Date.now() }, verifs: Object.assign({}, c.verifs, { email: true }),
+    if (sso) this._compteMaj(c, { sso: { fournisseur: sso, email: ssoMail || identifiant, lieLe: Date.now() }, verifs: Object.assign({}, c.verifs, { email: true }),
       statut: (E.verifs || []).filter(function (k) { return k !== 'email'; }).length ? c.statut : this._compteApresVerifs(c) }, 'compte_sso', { fournisseur: sso });
     // (24/09) la fiche de la MARQUE naît en brouillon avec son compte : l'inscription se termine ensuite, étape par étape
     if (espace === 'marque' && !invite) { try { this._compteLierMetier(c, 'inscription'); } catch (eM) {} }
@@ -2113,6 +2189,9 @@ codesFournisseur: [
   compteMotDePasseOublie: function (espace, identifiant) {
     var c = this.compteParIdentifiant(espace, identifiant);
     if (!c) return { ok: false, motif: 'Aucun compte avec cet identifiant' };
+    /* (24/09, nuit) UN COLLABORATEUR N'A NI E-MAIL NI CODE À RECEVOIR DE NOUS : c'est le titulaire qui lui renvoie un lien pour recréer
+       son mot de passe (collaborateurReinitialiser) — le même chemin que son premier accès. */
+    if (c.collab) return { ok: false, collaborateur: true, compte: c, motif: 'Ton accès a été ouvert par ' + ((this._collabParentInfo(c.collab.type, c.collab.parentId) || {}).nom || 'le titulaire du compte') + ' : demande-lui de t’envoyer un lien pour recréer ton mot de passe.' };
     if (c.statut === 'suspendu') return { ok: false, motif: 'Compte suspendu — contacte PayEnCash', compte: c };
     var canal = this._compteCanalReinit(c);
     try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter('mdp_code_envoye', c.id, { espace: espace, identifiant: c.identifiant, canal: canal }); } catch (e) {}
@@ -2133,7 +2212,7 @@ codesFournisseur: [
   compteMotDePasseChanger: function (id, ancien, nouveau) {
     var c = this.compte(id); if (!c) return { ok: false, motif: 'Compte inconnu' };
     if (String(ancien || '') !== String(this.compteMdpAttendu(c) || '')) return { ok: false, motif: 'Mot de passe actuel incorrect' };
-    var min = (this.ref && this.ref.connexion && this.ref.connexion.motDePasseMin) || 8;
+    var min = this.compteMdpMin(c.espace);   // (24/09, nuit) la règle de l'espace : un accès professionnel changeait le sien à 8 caractères
     if (String(nouveau || '').length < min) return { ok: false, motif: 'Mot de passe : ' + min + ' caractères minimum' };
     if (String(nouveau) === String(ancien)) return { ok: false, motif: 'Le nouveau mot de passe doit être différent' };
     this._compteMaj(c, { motdepasse: String(nouveau) }, 'mdp_change');
@@ -2358,6 +2437,237 @@ codesFournisseur: [
       }
     } catch (e) {}
   },
+  /* ══ (24/09, nuit — fondatrice : « un partenaire du réseau, sauf micro, peut ajouter un collaborateur — process simple — ça crée une
+     session active pour le salarié qui voit ses ventes exclusivement, et le compte principal a un accès sur tout ce qui se passe ; le
+     partage d'accès implique l'envoi d'un SMS, WhatsApp etc. avec le lien de l'application à télécharger, l'identifiant du partenaire
+     et un mot de passe à créer » ; « une marque peut également ajouter une session collaborateur / partenaire : il peut promouvoir la
+     marque et consulter uniquement ses actions, voir le bon acheté qu'il a généré ») LES COLLABORATEURS ══════════════════════════
+     UN COLLABORATEUR EST UN COMPTE, dans l'espace de celui qui l'ajoute (le commerce : `partenaire` ; la marque : `marque`). Il entre
+     par la MÊME porte (compteConnecter), il est journalisé, suspendu et fermé comme les autres. Ce qui le distingue tient dans
+     `compte.collab` : { type: 'point'|'marque', parentId, creePar, creeLe, partages }. Il n'a PAS de `refId` : toutes les lectures
+     « le compte du point » (acceptations, gérant, contrat) continuent de désigner le compte principal — un salarié ne signe rien au
+     nom du commerce, et ne lit ni ses relevés ni son contrat.
+     SON IDENTIFIANT PORTE CELUI DU PARTENAIRE : « <nom du point ou de la marque>.<prénom> », un chiffre en plus s'il est déjà pris.
+     SON MOT DE PASSE, IL LE CRÉE LUI-MÊME, par un lien d'activation à usage unique (un jeton tiré du générateur sûr du navigateur,
+     valable ref.invitations.validiteH) : personne ne lui envoie de mot de passe, et le responsable ne le connaît jamais. Renvoyer
+     l'accès retire le lien précédent. En maquette le jeton est gardé sur le compte, comme le mot de passe ; en production, seule son
+     empreinte l'est.
+     LE PARTAGE PART DU TÉLÉPHONE DU RESPONSABLE (SMS, WhatsApp, copier) : c'est lui que le collaborateur connaît, et un SMS de la
+     plateforme coûterait à chaque ajout. Nous gardons la trace de chaque partage (canal, date), jamais son contenu.
+     « SAUF MICRO » : le distributeur nomade — micro-entrepreneur, qui paie d'avance — n'ajoute pas de collaborateur. La règle est ici ;
+     l'écran ne montre pas la section. ══ */
+  COLLAB_TYPES: {
+    point:  { espace: 'partenaire', app: 'partenaire', lbl: 'Collaborateur du point' },
+    marque: { espace: 'marque',     app: 'solution',   lbl: 'Collaborateur de la marque' }
+  },
+  COLLAB_STATUTS: { invite: 'Accès envoyé — mot de passe à créer', actif: 'Actif', suspendu: 'Suspendu', clos: 'Accès retiré' },
+  COLLAB_CANAUX: { sms: 'SMS', whatsapp: 'WhatsApp', copie: 'lien copié', partage: 'partage du téléphone' },
+  estCollaborateur: function (c) { return !!(c && c.collab && this.COLLAB_TYPES[c.collab.type]); },
+  // le POINT d'un compte partenaire : le sien (gérant, refId) ou celui pour qui il travaille (collaborateur)
+  comptePoint: function (c) { if (!c) return null; if (c.refId) return c.refId; return (c.collab && c.collab.type === 'point') ? c.collab.parentId : null; },
+  _slug: function (s, max) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, max || 24).replace(/-$/, ''); },
+  /* LE PARTENAIRE derrière un collaborateur : son nom, le mot court de son identifiant, et s'il est FERMÉ (point clos ou refusé,
+     marque suspendue) — un collaborateur ne travaille pas pour un partenaire qui ne peut plus travailler. */
+  _collabParentInfo: function (type, parentId) {
+    if (type === 'point') {
+      var p = this.partenaire ? this.partenaire(parentId) : null; if (!p) return null;
+      return { nom: p.enseigne || p.id, slug: this._slug(p.enseigne || p.id, 20) || 'point', mobile: this.partenaireEstMobile(p),
+        ferme: p.statut === 'clos' ? 'point clos' : p.statut === 'refuse' ? 'relation refusée' : null, fiche: p };
+    }
+    if (type === 'marque') {
+      var m = this.techMarchand ? this.techMarchand(parentId) : null; if (!m) return null;
+      return { nom: m.raisonSociale || m.email || m.id, slug: this._slug(m.raisonSociale || m.id, 20) || 'marque', mobile: false,
+        ferme: m.statut === 'suspended' ? 'marque suspendue' : null, brouillon: m.statut === 'draft', fiche: m };
+    }
+    return null;
+  },
+  // CE QUI INTERDIT D'AJOUTER UN COLLABORATEUR — une règle, lue par l'écran (qui cache la section) et par l'ajout
+  collaborateurPeutAjouter: function (type, parentId) {
+    var i = this._collabParentInfo(type, parentId);
+    if (!i) return { ok: false, motif: type === 'point' ? 'Aucun point rattaché à cette session.' : 'Marque inconnue.' };
+    if (i.mobile) return { ok: false, refus: 'micro', motif: 'Les accès collaborateurs sont réservés aux ' + this.terme('commerce', 'pluriel') + ' : un ' + this.terme('nomade') + ' exerce seul, en micro-entrepreneur.' };
+    if (i.ferme) return { ok: false, refus: 'ferme', motif: i.nom + ' ne peut plus travailler (' + i.ferme + ') : aucun accès ne s’ouvre à son nom.' };
+    if (i.brouillon) return { ok: false, refus: 'brouillon', motif: 'Termine l’inscription de ta marque avant d’ouvrir un accès à un collaborateur.' };
+    return { ok: true, parent: i };
+  },
+  collaborateurNomAffiche: function (c) { var p = (c && c.profil) || {}; return ((p.prenom || '') + (p.nom ? ' ' + String(p.nom).charAt(0).toUpperCase() + '.' : '')).trim() || (c && c.identifiant) || '—'; },
+  _collabVue: function (c) {
+    var p = c.profil || {}, k = c.collab || {};
+    var expiree = c.statut === 'invite' && !!c.inviteExpireAt && Date.now() > c.inviteExpireAt;
+    return { id: c.id, compte: c, type: k.type, parentId: k.parentId, identifiant: c.identifiant,
+      prenom: p.prenom || '', nom: p.nom || '', nomAffiche: this.collaborateurNomAffiche(c), tel: p.tel || '',
+      statut: c.statut, invite: c.statut === 'invite', expiree: expiree, inviteExpireAt: c.inviteExpireAt || null,
+      statutLbl: expiree ? 'Lien expiré — renvoie l’accès' : (this.COLLAB_STATUTS[c.statut] || this.STATUTS_COMPTE[c.statut] || c.statut),
+      derniereConnexion: c.derniereConnexion || null, creeLe: k.creeLe || c.creeAt || null, creePar: k.creePar || null,
+      partage: (k.partages || [])[0] || null };
+  },
+  // L'ÉQUIPE d'un partenaire : les accès actifs d'abord, puis les invitations, les suspendus, et les accès retirés en dernier
+  collaborateurs: function (type, parentId) {
+    var d = this, T = this.COLLAB_TYPES[type]; if (!T) return [];
+    var rang = { actif: 0, invite: 1, suspendu: 2, clos: 3 };
+    return this.comptesTous(T.espace).filter(function (c) { return c.collab && c.collab.type === type && c.collab.parentId === parentId; })
+      .map(function (c) { return d._collabVue(c); })
+      .sort(function (a, b) { return ((rang[a.statut] || 0) - (rang[b.statut] || 0)) || ((b.creeLe || 0) - (a.creeLe || 0)); });
+  },
+  collaborateur: function (compteId) { var c = this.compte(compteId); return this.estCollaborateur(c) ? this._collabVue(c) : null; },
+  /* ① AJOUTER — prénom, nom (facultatif), mobile : c'est tout. Rend l'accès à partager (identifiant, lien, message). */
+  collaborateurAjouter: function (type, parentId, form, par) {
+    var T = this.COLLAB_TYPES[type]; if (!T) return { ok: false, motif: 'Type de collaborateur inconnu.' };
+    var pa = this.collaborateurPeutAjouter(type, parentId); if (!pa.ok) return pa;
+    form = form || {};
+    var prenom = String(form.prenom || '').trim().replace(/\s+/g, ' '), nom = String(form.nom || '').trim().replace(/\s+/g, ' ');
+    var NOM = /^[A-Za-zÀ-ÖØ-öø-ÿ]{2,}(?:[ '\-][A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+    if (!NOM.test(prenom)) return { ok: false, champ: 'prenom', motif: 'Prénom : deux lettres minimum.' };
+    if (nom && !NOM.test(nom)) return { ok: false, champ: 'nom', motif: 'Nom : deux lettres minimum — ou laisse la case vide.' };
+    var tel = String(form.tel || '').replace(/\D/g, '');
+    if (/^33\d{9}$/.test(tel)) tel = '0' + tel.slice(2);
+    if (!/^0[67]\d{8}$/.test(tel)) return { ok: false, champ: 'tel', motif: 'Mobile : 10 chiffres commençant par 06 ou 07 — c’est à ce numéro que part l’accès.' };
+    var deja = this.collaborateurs(type, parentId).filter(function (x) { return x.tel === tel && x.statut !== 'clos'; })[0];
+    if (deja) return { ok: false, champ: 'tel', motif: deja.nomAffiche + ' a déjà un accès avec ce numéro' + (deja.invite ? ' : renvoie-le plutôt que d’en ouvrir un second.' : '.') };
+    // L'IDENTIFIANT : « <partenaire>.<prénom> », un chiffre en plus s'il est déjà pris dans l'espace (un identifiant est unique)
+    var base = pa.parent.slug + '.' + (this._slug(prenom, 16) || 'collaborateur'), identifiant = base, n = 1;
+    while (this.compteParIdentifiant(T.espace, identifiant)) identifiant = base + (++n);
+    var c = { id: this._compteNouvelId(T.espace), seed: false, espace: T.espace, identifiant: identifiant, motdepasse: null, statut: 'invite',
+      verifs: { sms: false, email: false, kyb: false, kyc: false, documents: false, habilitation: false },
+      profil: { prenom: prenom, nom: nom, tel: tel }, refId: null,
+      collab: { type: type, parentId: parentId, creePar: par || null, creeLe: Date.now(), partages: [] },
+      invitePar: par || null, creeAt: Date.now(), journal: [] };
+    this._compteMaj(c, {}, 'compte_cree', { collaborateur: type, parent: parentId, par: par || null });
+    this._journal('collaborateur_ajoute', c.id, { type: type, parent: parentId, identifiant: identifiant, par: par || null });
+    return this.collaborateurInviter(c.id, par);
+  },
+  /* ② L'ACCÈS À PARTAGER — (re)tire le lien d'activation tant que le mot de passe n'est pas créé ; un accès actif n'a plus rien à
+     activer : son message redonne l'app et l'identifiant (« j'ai perdu mon identifiant »). Un seul lien vivant par collaborateur. */
+  collaborateurInviter: function (compteId, par) {
+    var c = this.compte(compteId); if (!this.estCollaborateur(c)) return { ok: false, motif: 'Collaborateur inconnu.' };
+    if (c.statut === 'clos') return { ok: false, motif: 'Cet accès a été retiré : ajoute de nouveau la personne si elle revient.' };
+    if (c.statut === 'suspendu') return { ok: false, motif: 'Cet accès est suspendu : réactive-le d’abord.' };
+    var jeton = null;
+    if (c.statut === 'invite') {
+      jeton = this._techAlea(24);
+      if (!jeton) return { ok: false, motif: 'Ce navigateur ne sait pas tirer un lien sûr — aucun accès ne sera inventé.' };
+      this._compteMaj(c, { jeton: jeton, inviteExpireAt: Date.now() + (+this.ref.invitations.validiteH) * 3600000 }, 'collab_lien', { par: par || null });
+      c = this.compte(compteId);
+    }
+    return { ok: true, compte: c, collaborateur: this._collabVue(c), identifiant: c.identifiant, jeton: jeton,
+      lien: jeton ? this.collaborateurLienActivation(c, jeton) : null, app: this.collaborateurApp(c), message: this.collaborateurMessage(c, jeton) };
+  },
+  // l'adresse absolue d'une page du site — construite comme les autres liens partagés, jamais un domaine écrit à la main
+  _urlSite: function (chemin) {
+    var base = (typeof location !== 'undefined' && location.href) ? location.href : '';
+    var i = base.indexOf('/ui/');
+    return (i > -1 ? base.slice(0, i) + '/' : '') + String(chemin || '');
+  },
+  // l'app du collaborateur : son nom, ses boutiques (vides tant qu'elle n'y est pas publiée) et sa page d'entrée dans le navigateur
+  collaborateurApp: function (c) {
+    var T = this.COLLAB_TYPES[((c && c.collab) || {}).type] || {}, A = ((this.ref.apps || {})[T.app]) || {}, st = A.stores || {};
+    return { nom: A.nom || '', apple: st.apple || '', google: st.google || '', web: this._urlSite(A.entree || '') };
+  },
+  collaborateurLienActivation: function (c, jeton) { return this.collaborateurApp(c).web + '?acces=' + encodeURIComponent(jeton); },
+  /* LE MESSAGE — trois lignes, dans l'ordre où la personne s'en sert : l'app à télécharger, son identifiant, son mot de passe à
+     créer. Il part du téléphone du responsable ; nous n'en gardons pas le texte. */
+  collaborateurMessage: function (c, jeton) {
+    var k = c.collab || {}, pa = this._collabParentInfo(k.type, k.parentId) || {}, a = this.collaborateurApp(c), p = c.profil || {};
+    var stores = [a.apple ? 'App Store ' + a.apple : '', a.google ? 'Google Play ' + a.google : ''].filter(Boolean);
+    var l = ['Bonjour ' + (p.prenom || '') + ', ' + (pa.nom || '') + ' t’ouvre un accès ' + this.terme('collaborateur') + ' à l’app ' + a.nom + '.',
+      '1. Télécharge l’app : ' + (stores.length ? stores.join(' · ') : a.web),
+      '2. Ton identifiant : ' + c.identifiant];
+    l.push(jeton ? '3. Crée ton mot de passe : ' + this.collaborateurLienActivation(c, jeton) + ' (lien à usage unique, valable ' + (+this.ref.invitations.validiteH) + ' h)'
+      : '3. Ton mot de passe : celui que tu as créé (« Mot de passe oublié ? » sinon).');
+    return l.join('\n');
+  },
+  // les adresses de partage d'un message vers un mobile français : SMS (l'app de messages du téléphone) et WhatsApp
+  partageLiens: function (tel, texte) {
+    var t = String(tel || '').replace(/\D/g, ''); if (/^0\d{9}$/.test(t)) t = '33' + t.slice(1);
+    var m = encodeURIComponent(String(texte || ''));
+    return { sms: 'sms:+' + t + '?&body=' + m, whatsapp: 'https://wa.me/' + t + '?text=' + m };
+  },
+  // LA TRACE D'UN PARTAGE : le canal et la date, par qui — jamais le texte (il porte le lien d'activation)
+  collaborateurPartageNoter: function (compteId, canal, par) {
+    var c = this.compte(compteId); if (!this.estCollaborateur(c)) return { ok: false, motif: 'Collaborateur inconnu.' };
+    if (!this.COLLAB_CANAUX[canal]) return { ok: false, motif: 'Canal de partage inconnu.' };
+    var k = Object.assign({}, c.collab), trace = { canal: canal, at: Date.now(), par: par || null };
+    k.partages = [trace].concat(k.partages || []).slice(0, 10);
+    this._compteMaj(c, { collab: k }, 'collab_acces_partage', { canal: canal, par: par || null });
+    return { ok: true, partage: trace };
+  },
+  /* ③ ACTIVER — le collaborateur, depuis son lien : le jeton doit être le dernier tiré, pas expiré ; il crée SON mot de passe (la règle
+     de l'espace), et son accès est actif sur-le-champ — il ne passe pas par une validation : c'est le partenaire, déjà vérifié, qui
+     répond de lui. Le jeton est effacé : le lien ne sert qu'une fois. */
+  collaborateurParJeton: function (jeton) {
+    var j = String(jeton || '').trim(); if (!j) return null;
+    var d = this, l = [];
+    Object.keys(this.COLLAB_TYPES).forEach(function (k) { l = l.concat(d.comptesTous(d.COLLAB_TYPES[k].espace)); });
+    return l.filter(function (c) { return c.collab && c.jeton && c.jeton === j; })[0] || null;
+  },
+  collaborateurActiver: function (jeton, motdepasse, motdepasse2) {
+    var c = this.collaborateurParJeton(jeton);
+    if (!c) return { ok: false, motif: 'Ce lien d’activation n’est plus valable : il a déjà servi, ou un lien plus récent l’a remplacé. Demande à ton responsable de te renvoyer l’accès.' };
+    if (c.statut !== 'invite') return { ok: false, motif: 'Cet accès est déjà activé : connecte-toi avec ton identifiant ' + c.identifiant + '.', compte: c };
+    if (c.inviteExpireAt && Date.now() > c.inviteExpireAt) return { ok: false, expire: true, motif: 'Ce lien a expiré le ' + this.dateCourte(c.inviteExpireAt) + ' : demande à ton responsable de te renvoyer l’accès.', compte: c };
+    var pcx = this._collabParentInfo(c.collab.type, c.collab.parentId);
+    if (!pcx || pcx.ferme) return { ok: false, motif: (pcx ? pcx.nom + ' ne peut plus travailler (' + pcx.ferme + ')' : 'Le compte qui t’a invité n’existe plus') + ' : l’accès ne s’ouvre pas.', compte: c };
+    var min = this.compteMdpMin(c.espace);
+    if (String(motdepasse || '').length < min) return { ok: false, champ: 'motdepasse', motif: 'Mot de passe : ' + min + ' caractères minimum.' };
+    if (motdepasse2 != null && String(motdepasse2) !== String(motdepasse)) return { ok: false, champ: 'motdepasse2', motif: 'Les deux mots de passe ne correspondent pas.' };
+    this._compteMaj(c, { statut: 'actif', motdepasse: String(motdepasse), jeton: null, inviteExpireAt: null, valideAt: Date.now() }, 'compte_valide', { par: 'invitation', collaborateur: c.collab.type });
+    return { ok: true, compte: this.compte(c.id) };
+  },
+  /* MOT DE PASSE OUBLIÉ D'UN COLLABORATEUR — le titulaire lui renvoie un lien : l'accès redevient une invitation (l'ancien mot de passe
+     ne vaut plus), et le lien tiré sert une fois, comme le premier. */
+  collaborateurReinitialiser: function (compteId, par) {
+    var c = this.compte(compteId); if (!this.estCollaborateur(c)) return { ok: false, motif: 'Collaborateur inconnu.' };
+    if (c.statut !== 'actif') return { ok: false, motif: 'Seul un accès actif se réinitialise : ' + (this.COLLAB_STATUTS[c.statut] || c.statut).toLowerCase() + '.' };
+    this._compteMaj(c, { statut: 'invite', motdepasse: null }, 'mdp_reinitialise', { par: par || null, collaborateur: c.collab.type });
+    return this.collaborateurInviter(compteId, par);
+  },
+  // ④ SUSPENDRE / RÉACTIVER / RETIRER — par le titulaire du compte ; un accès retiré ne se rouvre pas (on ajoute de nouveau)
+  _collabStatut: function (compteId, statut, evt, par, motif) {
+    var c = this.compte(compteId); if (!this.estCollaborateur(c)) return { ok: false, motif: 'Collaborateur inconnu.' };
+    if (c.statut === 'clos') return { ok: false, motif: 'Cet accès est déjà retiré.' };
+    var patch = { statut: statut };
+    if (statut === 'suspendu') patch.statutAvant = c.statut;
+    if (statut === 'actif' && c.statutAvant === 'invite') patch.statut = 'invite';   // une invitation suspendue redevient une invitation
+    if (statut === 'clos') { patch.jeton = null; patch.motifClos = motif || null; }
+    this._compteMaj(c, patch, evt, { par: par || null, collaborateur: c.collab.type });
+    return { ok: true, collaborateur: this._collabVue(this.compte(compteId)) };
+  },
+  collaborateurSuspendre: function (compteId, par) { var c = this.compte(compteId); if (c && c.statut === 'suspendu') return { ok: true, collaborateur: this._collabVue(c) }; return this._collabStatut(compteId, 'suspendu', 'compte_suspendu', par); },
+  collaborateurReactiver: function (compteId, par) { var c = this.compte(compteId); if (c && c.statut !== 'suspendu') return { ok: false, motif: 'Cet accès n’est pas suspendu.' }; return this._collabStatut(compteId, 'actif', 'compte_reactive', par); },
+  collaborateurRetirer: function (compteId, par, motif) { return this._collabStatut(compteId, 'clos', 'compte_clos', par, motif); },
+  /* ⑤ CE QU'IL A FAIT — dérivé, jamais compté à part. Au point : ses ventes (celles qui portent son identifiant). À la marque : ses
+     liens de vente, les bons qu'il a proposés, et les bons ACHETÉS grâce à lui (vendus sur l'ordre d'un de ses bons proposés). */
+  collaborateurResultats: function (compteId, o) {
+    o = o || {};
+    var c = this.compte(compteId); if (!this.estCollaborateur(c)) return null;
+    var r2 = function (x) { return Math.round(x * 100) / 100; };
+    if (c.collab.type === 'point') {
+      var rv = this.techRevendeurDuPoint ? this.techRevendeurDuPoint(c.collab.parentId) : null;
+      var tout = rv ? this.techVentes({ revendeurId: rv.id, par: c.identifiant }) : [];
+      var vivesT = tout.filter(function (v) { return v.statut !== 'annulee'; });
+      var mois = rv ? this.techVentes({ revendeurId: rv.id, par: c.identifiant, mois: o.mois || this.techPeriodeCourante() }).filter(function (v) { return v.statut !== 'annulee'; }) : [];
+      return { type: 'point', ventes: vivesT.length, valeur: r2(vivesT.reduce(function (a, v) { return a + v.montant; }, 0)),
+        ventesMois: mois.length, valeurMois: r2(mois.reduce(function (a, v) { return a + v.montant; }, 0)), derniere: vivesT[0] ? vivesT[0].at : null };
+    }
+    var self = this, liens = this.techVenteLiens(c.collab.parentId, { collaborateur: c.id });
+    var props = this.techLiens({ marchandId: c.collab.parentId, collaborateur: c.id });
+    var vus = {}, bons = [];
+    props.forEach(function (x) { self.techLienBons(x.slug).forEach(function (b) { if (!vus[b.code]) { vus[b.code] = 1; bons.push(b); } }); });
+    bons.sort(function (a, b) { return (b.emisLe || 0) - (a.emisLe || 0); });
+    var vivs = bons.filter(function (b) { return b.etat !== 'cancelled'; });
+    return { type: 'marque', liens: liens.length, ouvertures: liens.reduce(function (a, v) { return a + (v.ouvertures || 0); }, 0),
+      propositions: props.length, bons: vivs.length, valeur: r2(vivs.reduce(function (a, b) { return a + (b.montant || 0); }, 0)),
+      listeBons: bons, listePropositions: props, listeLiens: liens };
+  },
+  // QUI A VENDU — le nom d'un vendeur tel que le point le lit : un collaborateur par son nom, le compte principal par le sien
+  vendeurNom: function (par) {
+    var id = String(par || '').toLowerCase(); if (!id) return '—';
+    var c = this.compteParIdentifiant('partenaire', id);
+    if (this.estCollaborateur(c)) return this.collaborateurNomAffiche(c);
+    if (c) return (c.profil && (c.profil.responsable || c.profil.nom)) || c.identifiant;
+    return par;
+  },
+
   // ④ CONNEXION — un seul point d'entrée pour tous les espaces : vérifie le compte, son statut, pose la session de l'espace
   /* ── JOURNAL DE CONNEXION (fondatrice 05/09 : « de vrais logs de connexion pour chaque
         espace ») : chaque TENTATIVE est consignée — les ÉCHECS autant que les réussites, sinon
@@ -2396,13 +2706,27 @@ codesFournisseur: [
     if (!this.SSO_FOURNISSEURS[fournisseur]) return { ok: false, motif: 'Fournisseur d’identité inconnu.' };
     var mail = String(email || '').trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(mail)) return { ok: false, champ: 'email', motif: 'Adresse e-mail non valide.' };
+    /* (24/09, nuit) MES BONS : l'identifiant est le MOBILE. On retrouve le compte qui porte l'adresse vérifiée ; sans compte, on n'en
+       invente pas — il faut un mobile, confirmé par SMS : la page d'inscription le demande, l'adresse déjà vérifiée par le fournisseur. */
+    if (espace === 'client') {
+      var cc = this._compteClientParEmail(mail);
+      if (!cc) return { ok: false, inscrire: true, email: mail, fournisseur: fournisseur, motif: 'Aucun compte Mes bons avec cette adresse : crée le tien — ton mobile sera ton identifiant.' };
+      return Object.assign({ nouveau: false }, this.compteConnecter('client', cc.identifiant, null, { sso: fournisseur, email: mail }));
+    }
     var nouveau = false;
     if (!this.compteParIdentifiant(espace, mail)) {
       var cr = this.compteCreer(espace, { email: mail, sso: fournisseur });
       if (!cr.ok) return cr;
       nouveau = true;
     }
-    return Object.assign({ nouveau: nouveau }, this.compteConnecter(espace, mail, null, { sso: fournisseur }));
+    return Object.assign({ nouveau: nouveau }, this.compteConnecter(espace, mail, null, { sso: fournisseur, email: mail }));
+  },
+  // le compte Mes bons qui porte cette adresse — celle de son profil, ou celle que Google / Apple ont vérifiée
+  _compteClientParEmail: function (mail) {
+    mail = String(mail || '').trim().toLowerCase(); if (!mail) return null;
+    return this.comptesTous('client').filter(function (c) {
+      return String((c.profil || {}).email || '').toLowerCase() === mail || String((c.sso || {}).email || '').toLowerCase() === mail;
+    })[0] || null;
   },
   compteConnecter: function (espace, identifiant, motdepasse, o) {
     var r = this._compteConnecterBrut(espace, identifiant, motdepasse, o) || { ok: false, motif: 'échec' };
@@ -2417,6 +2741,7 @@ codesFournisseur: [
     var E = this.ESPACES_COMPTE[espace]; if (!E) return { ok: false, motif: 'Espace inconnu' };
     var c = this.compteParIdentifiant(espace, identifiant);
     if (!c) return { ok: false, motif: 'Identifiant inconnu' };
+    if (c.statut === 'invite' && c.collab) return { ok: false, motif: 'Ton accès n’est pas encore activé : ouvre le lien reçu par SMS ou WhatsApp pour créer ton mot de passe (ou demande à ton responsable de te le renvoyer).', compte: c };   // (24/09, nuit)
     if (c.statut === 'invite') return { ok: false, motif: 'Invitation à activer : crée ton mot de passe', compte: c };
     /* (24/09) ON AUTHENTIFIE AVANT DE PARLER DE L'ÉTAT DU COMPTE. Les refus disaient « suspendu », « en attente de validation »,
        « confirme d'abord ton code » à quiconque tapait une adresse — sans mot de passe : l'état d'un compte se lisait de
@@ -2427,14 +2752,21 @@ codesFournisseur: [
        déjà authentifié la personne : pas de mot de passe à comparer. Un compte ouvert avec un mot de passe se RELIE au fournisseur
        la première fois (même adresse vérifiée). */
     if (o && o.sso && this.SSO_FOURNISSEURS[o.sso]) {
-      if (!c.sso && c.statut !== 'supprime') this._compteMaj(c, { sso: { fournisseur: o.sso, email: c.identifiant, lieLe: Date.now() } }, 'compte_sso', { fournisseur: o.sso });
+      /* (24/09, nuit) GOOGLE / APPLE NE REPRENNENT PAS UN COMPTE DONT L'ADRESSE N'A JAMAIS ÉTÉ CONFIRMÉE. Quelqu'un pouvait ouvrir un
+         compte avec l'adresse d'un autre et SON mot de passe : le vrai titulaire, arrivant par Google, y serait entré — et le premier
+         aurait gardé la clé. Le fournisseur se relie donc à un compte dont l'adresse est confirmée, ou qui n'a pas de mot de passe. */
+      if (!c.sso && c.motdepasse && !(c.verifs && c.verifs.email)) return { ok: false, motif: 'Un compte existe avec cette adresse, mais elle n’a jamais été confirmée : connecte-toi avec ton mot de passe (ou « Mot de passe oublié ? ») — ' + this.SSO_FOURNISSEURS[o.sso] + ' s’y reliera ensuite.' };
+      if (!c.sso && c.statut !== 'supprime') this._compteMaj(c, { sso: { fournisseur: o.sso, email: String(o.email || (c.espace === 'client' ? (c.profil || {}).email : c.identifiant) || '').toLowerCase(), lieLe: Date.now() },
+        verifs: Object.assign({}, c.verifs, { email: true }) }, 'compte_sso', { fournisseur: o.sso });
     } else if (E.motdepasse) {
       if (c.sso && !c.motdepasse) return { ok: false, motif: 'Ce compte s’ouvre avec ' + this.SSO_FOURNISSEURS[c.sso.fournisseur] + ' : utilise le bouton « Continuer avec ' + this.SSO_FOURNISSEURS[c.sso.fournisseur] + ' ».', compte: c };
       var attendu = this.compteMdpAttendu(c);
       if (String(motdepasse || '') !== String(attendu || '')) return { ok: false, motif: 'Mot de passe incorrect' };
     }
+    if (c.statut === 'suspendu' && c.collab) return { ok: false, motif: 'Ton accès est suspendu par ' + ((this._collabParentInfo(c.collab.type, c.collab.parentId) || {}).nom || 'le titulaire du compte') + ' : vois avec lui.', compte: c };   // (24/09, nuit)
     if (c.statut === 'suspendu') return { ok: false, motif: 'Compte suspendu — contacte PayEnCash', compte: c };
     if (c.statut === 'refuse') return { ok: false, motif: 'Demande refusée' + (c.motifRefus ? ' : ' + c.motifRefus : ''), compte: c };
+    if (c.statut === 'clos' && c.collab) return { ok: false, motif: 'Ton accès a été retiré par ' + ((this._collabParentInfo(c.collab.type, c.collab.parentId) || {}).nom || 'le titulaire du compte') + '.', compte: c };   // (24/09, nuit)
     if (c.statut === 'clos') return { ok: false, motif: 'Contrat terminé' + (c.motifClos ? ' (' + c.motifClos + ')' : '') + ' — accès fermé, tes bulletins restent disponibles auprès de PayEnCash', compte: c };   // (09/09)
     if (c.statut === 'supprime') return { ok: false, motif: 'Compte supprimé', compte: c };
     // (24/09) une candidature par étapes pas encore envoyée : elle se REPREND, là où elle s'était arrêtée
@@ -2451,6 +2783,13 @@ codesFournisseur: [
       return { ok: false, enAttente: true, motif: 'Compte en attente de validation par PayEnCash (dossier envoyé, contrôle en cours)', compte: c };
     }
     if (c.statut === 'a_verifier' && espace !== 'client') return { ok: false, aVerifier: true, motif: 'Confirme d\'abord le code reçu par ' + (E.verifs[0] === 'sms' ? 'SMS' : 'e-mail'), compte: c };
+    /* (24/09, nuit) UN COLLABORATEUR ENTRE AU NOM DE SON PARTENAIRE : si le point est fermé, ou la marque suspendue, son accès l'est
+       aussi — il ne travaille jamais pour un partenaire qui ne peut plus travailler. */
+    if (c.collab) {
+      var pcx = this._collabParentInfo(c.collab.type, c.collab.parentId);
+      if (!pcx) return { ok: false, motif: 'Le compte qui t’a ouvert cet accès n’existe plus.', compte: c };
+      if (pcx.ferme) return { ok: false, motif: pcx.nom + ' ne peut plus ' + (c.collab.type === 'point' ? 'vendre' : 'émettre de bons') + ' (' + pcx.ferme + ') : ton accès est fermé avec lui.', compte: c };
+    }
     /* (10/09 — lot 4) SUSPENDRE UN FOURNISSEUR DEPUIS SON ÉCRAN LE DIT. L'écran 26 suspendait le RÉFÉRENTIEL, pas le compte :
        la connexion réussissait, posait la session, puis la page suivante l'effaçait au démarrage — retour à la connexion,
        sans un mot d'explication. La raison se lit ici, au même endroit que les autres refus. */
@@ -2461,7 +2800,7 @@ codesFournisseur: [
     }
     // (07/09) manager/hotline : le rôle de session vient de ROLES_MANAGER (libellé) — plus profil.nom,
     // qui pour un manager INVITÉ est le nom de la personne, pas son rôle
-    var roleSess = (espace === 'manager' || espace === 'hotline')
+    var roleSess = c.collab ? 'Collaborateur · ' + this.collaborateurNomAffiche(c) : (espace === 'manager' || espace === 'hotline')
       ? ((this.roleManager((c.profil && (c.profil.role || (c.seed ? c.profil.nom : null))) || (espace === 'hotline' ? 'hotline' : 'operateur')) || {}).label || c.identifiant)
       : ((c.profil && (c.profil.nom || c.profil.enseigne)) || c.identifiant);
     var sess = this.connecter({ identifiant: c.identifiant, espace: E.sessionLabel, role: roleSess });
@@ -2492,7 +2831,7 @@ codesFournisseur: [
       // (setter puis setItem en dur), la seconde écrasant la première.
       if (espace === 'client' && c.refId) this.clientActifSet(c.refId);
       // (18/09) le POINT du compte partenaire devient le point de session — vide (explicite) quand le compte n'est rattaché à aucun point
-      if (espace === 'partenaire') { try { localStorage.setItem('pec-partenaire-id', c.refId || ''); } catch (ePt) {} }
+      if (espace === 'partenaire') { try { localStorage.setItem('pec-partenaire-id', this.comptePoint(c) || ''); } catch (ePt) {} }   // (24/09, nuit) le collaborateur vend pour SON point
       // le fournisseur connecté devient le fournisseur ACTIF de l'appareil : son enseigne vient
       // de son profil, sinon du référentiel via refId, sinon du rôle du compte de démo.
       if (espace === 'fournisseur') {
@@ -3119,51 +3458,149 @@ codesFournisseur: [
   partenaireModeLbl: function (p) { return (this.PARTENAIRE_MODES[this.partenaireMode(p)] || {}).lbl || ''; },
   partenaireEstMobile: function (p) { return this.partenaireMode(p) === 'mobile'; },
 
-  /* LA ZONE D'UN DISTRIBUTEUR MOBILE — il la pose lui-même, et il est SEUL à pouvoir la changer. Les villes
-     viennent du référentiel (ref.villesReseau) : on ne saisit pas une ville à la main, on en choisit. */
+  /* LES VILLES DU RÉSEAU (ref.villesReseau) — celle d'où part un distributeur nomade s'y choisit : on ne saisit pas une ville à la main. */
   zoneVillesRef: function () { return (((this.ref || {}).villesReseau) || []).map(function (v) { return { id: v.id, nom: v.nom, centre: v.centre }; }); },
-  partenaireZoneSet: function (id, zone, par) {
-    var p = this.partenaire(id); if (!p) return { ok: false, motif: 'Point inconnu.' };
-    if (!this.partenaireEstMobile(p)) return { ok: false, motif: 'Un commerce n\'a pas de zone : c\'est son adresse qui dit où il vend.' };
-    var ref = this.zoneVillesRef(), noms = {}; ref.forEach(function (v) { noms[v.nom] = 1; noms[v.id] = v.nom; });
-    var villes = ((zone && zone.villes) || []).map(function (v) { return noms[v] === 1 ? v : noms[v]; }).filter(Boolean);
-    villes = villes.filter(function (v, i, a) { return a.indexOf(v) === i; });
-    if (!villes.length) return { ok: false, champ: 'villes', motif: 'Choisis au moins une ville où tu te déplaces — c\'est ce qui dit aux clients que tu peux les rejoindre.' };
-    var r = Math.round(Number((zone && zone.rayonKm) || 0));
-    var avant = p.zone || null;
-    if (!this.partenaireEnregistrer({ id: p.id, zone: { villes: villes, rayonKm: r > 0 ? r : null } }, par || 'distributeur')) return { ok: false, motif: 'Zone non enregistrée : le stockage a refusé.' };
-    try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter('distributeur_zone', p.id, { par: par || null, avant: avant, apres: { villes: villes, rayonKm: r > 0 ? r : null } }); } catch (e) {}
-    return { ok: true, zone: { villes: villes, rayonKm: r > 0 ? r : null } };
+  /* ══ (24/09, nuit — fondatrice : « chaque distributeur nomade affiche son propre prix de déplacement pour le rayon de déplacement : il
+     paramètre de 0 à 1 km un prix, etc., jusqu'à 20 ; libre concurrence entre eux ; attention, vérifie la logique ») SON DÉPLACEMENT ═══
+     Deux choses que lui seul pose, depuis Mon point (partenaireDeplacementSet) :
+       · son POINT DE DÉPART — une ville du réseau (ref.villesReseau) et, s'il le veut, sa position exacte. Elle ne sort jamais : le
+         client ne lit qu'une distance, arrondie (le centre de la ville, lui, se dit « ≈ ») ;
+       · ses PRIX PAR PALIER — les bornes sont celles du réseau (nomadeRef), les montants les siens, libres : ni plancher, ni plafond,
+         ni tarif conseillé de la maison (un tarif imposé tirerait le contrat de commission vers la subordination — arbitrage du
+         24/09). Un palier laissé vide : il ne va pas si loin. Zéro est un prix (« sans frais »).
+     LA LOGIQUE QUI SE VÉRIFIE : les paliers couverts partent de 0 km et se SUIVENT (on ne va pas à 10 km sans aller à 3), et plus loin
+     ne coûte pas MOINS cher. Son rayon est son dernier palier couvert, jamais plus que celui du réseau. Ils remplacent la zone de
+     plusieurs villes et le tarif unique d'avant : `zone` se DÉDUIT désormais du départ et du rayon, pour ce qui la lit encore. ══ */
+  nomadeRef: function () {
+    var t = (((this.ref || {}).tech) || {}).nomade || {}, self = this;
+    var v = function (k, d) { var x = self.param ? self.param('tech.nomade.' + k, t[k]) : t[k]; return (x == null || x === '') ? d : x; };
+    var rayon = Math.max(1, Math.round(+v('rayonMaxKm', 20) || 20));
+    var bornes = (Array.isArray(t.paliersKm) ? t.paliersKm : []).map(Number)
+      .filter(function (k, i, a) { return k > 0 && k < rayon && a.indexOf(k) === i; }).sort(function (a, b) { return a - b; });
+    bornes.push(rayon);   // le dernier palier va jusqu'au rayon du réseau
+    return { rayonMaxKm: rayon, reponseMin: Math.max(5, Math.round(+v('reponseMin', 30) || 30)), dispoHeures: Math.max(1, +v('dispoHeures', 8) || 8),
+      paliers: bornes.map(function (a, i) { var de = i ? bornes[i - 1] : 0; return { de: de, a: a, lbl: 'de ' + de + ' à ' + a + ' km' }; }) };
   },
-  /* ══ (24/09, fondatrice — formulaire d'arbitrages : « corriger le contrat : tarif libre convenu ») LE TARIF DE DÉPLACEMENT DU NOMADE
-     Il le fixe lui-même, l'affiche, et le convient avec son client au cas par cas ; PayEnCash ne pose ni plancher, ni plafond, ni
-     tarif conseillé — un tarif imposé au commissionnaire tirerait la relation vers le lien de subordination. Il se facture en son nom.
-     Zéro est un tarif (« sans frais ») ; l'absence de tarif se dit « à convenir ». */
-  partenaireTarifSet: function (id, o, par) {
+  /* CE QU'EST SON DÉPLACEMENT AUJOURD'HUI — dérivé de ce qu'il a posé : le point d'où se mesure la distance (sa position exacte s'il
+     l'a donnée, sinon le centre de sa ville — `departApprox`), ses paliers avec leur prix, son rayon. `pret` : un client peut le choisir. */
+  partenaireDeplacement: function (p) {
+    p = (typeof p === 'string') ? this.partenaire(p) : p;
+    if (!p || !this.partenaireEstMobile(p)) return null;
+    var R = this.nomadeRef(), dep = p.depart || null, prix = p.tarifPaliers || {};
+    var paliers = R.paliers.map(function (x) { var s = prix[String(x.a)]; return { de: x.de, a: x.a, lbl: x.lbl, tarif: (s == null || s === '') ? null : +s }; });
+    var couverts = paliers.filter(function (x) { return x.tarif != null; });
+    var exact = (dep && dep.geo) ? this.geoNormalise(dep.geo) : null;
+    var geo = exact || ((dep && dep.ville && this.villeGeo) ? this.villeGeo(dep.ville) : null);
+    return { depart: dep, departGeo: geo, departApprox: !exact, paliers: paliers, mention: p.tarifMention || null,
+      rayonKm: couverts.length ? Math.min(couverts[couverts.length - 1].a, R.rayonMaxKm) : 0, pret: !!(geo && couverts.length) };
+  },
+  partenaireDeplacementSet: function (id, o, par) {
     o = o || {};
     var p = this.partenaire(id); if (!p) return { ok: false, motif: 'Point inconnu.' };
-    if (!this.partenaireEstMobile(p)) return { ok: false, motif: 'Un commerce n\'a pas de tarif de déplacement : il vend au comptoir.' };
-    var brut = String(o.tarif == null ? '' : o.tarif).trim().replace(',', '.');
-    var tarif = brut === '' ? null : Math.round((parseFloat(brut) || 0) * 100) / 100;
-    if (tarif != null && !(tarif >= 0 && tarif <= 1000)) return { ok: false, champ: 'tarif', motif: 'Le tarif se donne en euros, de 0 à 1 000 — ou reste vide (« à convenir »).' };
-    var mention = String(o.mention || '').trim().slice(0, 140);
-    if (!this.partenaireEnregistrer({ id: p.id, tarifDeplacement: tarif, tarifMention: mention || null }, par || 'distributeur')) return { ok: false, motif: 'Tarif non enregistré : le stockage a refusé l\'écriture.' };
-    try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter('distributeur_tarif', p.id, { par: par || null, tarif: tarif, mention: mention || null }); } catch (e) {}
-    return { ok: true, tarif: tarif, mention: mention || null };
+    if (!this.partenaireEstMobile(p)) return { ok: false, motif: 'Un commerce n\'a ni point de départ ni prix de déplacement : il vend au comptoir, à son adresse.' };
+    var R = this.nomadeRef(), self = this;
+    var ville = String((o.depart && o.depart.ville) || '').trim();
+    var vr = this.zoneVillesRef().filter(function (v) { return self._sansAccent(v.nom) === self._sansAccent(ville); })[0];
+    if (!vr) return { ok: false, champ: 'ville', motif: 'Choisis la ville d\'où tu pars, parmi celles du réseau : c\'est de là que se mesure la distance jusqu\'au client.' };
+    var geo = null, g0 = o.depart && o.depart.geo;
+    if (g0) {
+      geo = this.geoNormalise(g0);
+      if (!geo) return { ok: false, champ: 'position', motif: 'Ta position n\'a pas pu être lue : réessaie, ou pars du centre de ' + vr.nom + '.' };
+      if (vr.centre && this.distanceM(geo, vr.centre) > R.rayonMaxKm * 1000) return { ok: false, champ: 'position', motif: 'Ta position est à plus de ' + R.rayonMaxKm + ' km de ' + vr.nom + ' : choisis la ville d\'où tu pars vraiment.' };
+      geo = { lat: Math.round(geo.lat * 1e5) / 1e5, lng: Math.round(geo.lng * 1e5) / 1e5 };
+    }
+    var saisis = o.paliers || {}, prix = {}, couverts = [], trou = null, err = null;
+    R.paliers.forEach(function (x) {
+      if (err) return;
+      var brut = String(saisis[String(x.a)] == null ? '' : saisis[String(x.a)]).replace(/\s|€/g, '').replace(',', '.');
+      if (brut === '') { if (couverts.length && !trou) trou = x; return; }
+      if (!/^\d+(\.\d{1,2})?$/.test(brut) || +brut > 1000) { err = { ok: false, champ: 'palier-' + x.a, motif: 'Le prix ' + x.lbl + ' se donne en euros, de 0 à 1 000 (0 : sans frais) — ou reste vide si tu ne vas pas si loin.' }; return; }
+      var t0 = Math.round(+brut * 100) / 100;
+      if (!couverts.length && x.de > 0) { err = { ok: false, champ: 'palier-' + R.paliers[0].a, motif: 'Tes paliers partent de 0 km : donne d\'abord ton prix ' + R.paliers[0].lbl + '.' }; return; }
+      if (trou) { err = { ok: false, champ: 'palier-' + trou.a, motif: 'Tes paliers se suivent : pour aller jusqu\'à ' + x.a + ' km, donne aussi ton prix ' + trou.lbl + '.' }; return; }
+      var prec = couverts[couverts.length - 1];
+      if (prec && t0 < prec.tarif) { err = { ok: false, champ: 'palier-' + x.a, motif: 'Plus loin ne coûte pas moins cher : ' + x.lbl + ' à ' + self.eur(t0) + ', après ' + prec.lbl + ' à ' + self.eur(prec.tarif) + '.' }; return; }
+      prix[String(x.a)] = t0; couverts.push({ a: x.a, lbl: x.lbl, tarif: t0 });
+    });
+    if (err) return err;
+    if (!couverts.length) return { ok: false, champ: 'palier-' + R.paliers[0].a, motif: 'Donne au moins ton prix ' + R.paliers[0].lbl + ' : c\'est ce qui dit aux clients que tu viens jusqu\'à eux.' };
+    var mention = String(o.mention || '').trim().slice(0, 140) || null, rayon = couverts[couverts.length - 1].a;
+    var avant = { depart: p.depart || null, tarifPaliers: p.tarifPaliers || null };
+    if (!this.partenaireEnregistrer({ id: p.id, depart: { ville: vr.nom, geo: geo }, tarifPaliers: prix, tarifMention: mention, tarifDeplacement: null,
+        zone: { villes: [vr.nom], rayonKm: rayon } }, par || 'distributeur')) return { ok: false, motif: 'Déplacement non enregistré : le stockage a refusé l\'écriture.' };
+    try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter('distributeur_tarif', p.id, { par: par || null, depart: vr.nom, exact: !!geo, rayonKm: rayon, paliers: prix, avant: avant }); } catch (e) {}
+    return { ok: true, deplacement: this.partenaireDeplacement(p.id) };
   },
-  /* CE QUE LE CLIENT LIT — le tarif tel que le nomade l'affiche, ou « à convenir » ; jamais un chiffre de la maison */
+  /* (24/09, nuit — fondatrice : « affiche la liste des distributeurs, leurs tarifs, uniquement ceux qui sont disponibles ») SA
+     DISPONIBILITÉ — lui seul l'allume et l'éteint, quand il veut (contrat, art. 6.6 : ni horaire, ni planning, ni obligation de
+     disponibilité). Allumée, elle vaut `dispoHeures` au plus : un distributeur qui oublie de l'éteindre ne reste pas affiché la nuit.
+     Éteinte ou échue, il n'apparaît pas sur la carte de Mes bons ; les demandes déjà reçues restent les siennes. */
+  partenaireDisponible: function (p) {
+    p = (typeof p === 'string') ? this.partenaire(p) : p;
+    if (!p || !this.partenaireEstMobile(p) || !p.disponibleDepuis) return false;
+    return (Date.now() - p.disponibleDepuis) < this.nomadeRef().dispoHeures * 3600000;
+  },
+  partenaireDisponibleJusqua: function (p) {
+    p = (typeof p === 'string') ? this.partenaire(p) : p;
+    return this.partenaireDisponible(p) ? p.disponibleDepuis + this.nomadeRef().dispoHeures * 3600000 : null;
+  },
+  partenaireDisponibiliteSet: function (id, dispo, par) {
+    var p = this.partenaire(id); if (!p) return { ok: false, motif: 'Point inconnu.' };
+    if (!this.partenaireEstMobile(p)) return { ok: false, motif: 'Un commerce n\'a pas de disponibilité à allumer : son comptoir a ses horaires.' };
+    if (dispo) {
+      var dep = this.partenaireDeplacement(p);
+      if (!dep || !dep.pret) return { ok: false, champ: 'deplacement', motif: 'Pose d\'abord ton point de départ et tes prix de déplacement dans Mon point : c\'est ce que les clients verront.', href: '07-mon-point.html#mp-dep' };
+      if (!this._pointPeutVendre(p)) return { ok: false, champ: 'vente', motif: 'Ta vente est fermée en ce moment (contrat, garantie ou avance) : un client ne pourrait pas t\'acheter de bon.', href: '07-mon-point.html#avance' };
+    }
+    var now = Date.now();
+    if (!this.partenaireEnregistrer({ id: p.id, disponibleDepuis: dispo ? now : null }, par || 'distributeur')) return { ok: false, motif: 'Disponibilité non enregistrée : le stockage a refusé l\'écriture.' };
+    try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter('distributeur_disponible', p.id, { par: par || null, disponible: !!dispo }); } catch (e) {}
+    return { ok: true, disponible: !!dispo, jusqua: dispo ? now + this.nomadeRef().dispoHeures * 3600000 : null };
+  },
+  /* CE QUE LE CLIENT LIT DE SON TARIF — tel qu'il l'a posé, jamais un chiffre de la maison ; sans prix posé, « à convenir ». Le prix
+     pour UN client (sa distance, son palier) : nomadesAutour. */
   partenaireTarifLbl: function (p) {
-    if (!p || !this.partenaireEstMobile(p)) return '';
-    if (p.tarifDeplacement == null) return 'déplacement : tarif à convenir';
-    return p.tarifDeplacement === 0 ? 'déplacement sans frais' : 'déplacement : ' + this.eur(p.tarifDeplacement) + (p.tarifMention ? ' — ' + p.tarifMention : '');
+    var d = this.partenaireDeplacement(p); if (!d) return '';
+    var t = d.paliers.filter(function (x) { return x.tarif != null; }).map(function (x) { return x.tarif; });
+    if (!t.length) return 'déplacement : tarif à convenir';
+    var mn = Math.min.apply(null, t), mx = Math.max.apply(null, t);
+    return 'déplacement : ' + (mn === mx ? (mn === 0 ? 'sans frais' : this.eur(mn)) : 'de ' + this.eur(mn) + ' à ' + this.eur(mx) + ' selon la distance')
+      + ', jusqu\'à ' + d.rayonKm + ' km' + (d.mention ? ' — ' + d.mention : '');
   },
   partenaireZoneLbl: function (p) {
+    var d = this.partenaireDeplacement(p);
+    if (d && d.pret) return 'départ ' + d.depart.ville + ' · jusqu\'à ' + d.rayonKm + ' km';
     var z = p && p.zone; if (!z || !(z.villes || []).length) return 'zone à définir';
     return z.villes.join(' · ') + (z.rayonKm ? ' (jusqu\'à ' + z.rayonKm + ' km)' : '');
   },
+  /* LES DISTRIBUTEURS NOMADES QUI VIENNENT JUSQU'À CE CLIENT — DISPONIBLES, qui peuvent vendre aujourd'hui, prêts (départ et paliers posés),
+     dont le départ est à portée de leur dernier palier, jamais au-delà du rayon du réseau ; chacun avec SON prix pour CETTE distance.
+     LIBRE CONCURRENCE : le data-layer ne classe personne — l'écran trie (prix, distance, note), au choix du client. */
+  nomadesAutour: function (o) {
+    o = o || {}; var self = this, R = this.nomadeRef();
+    var pos = (o.pos && isFinite(o.pos.lat) && isFinite(o.pos.lng)) ? { lat: +o.pos.lat, lng: +o.pos.lng } : null;
+    if (!pos) return [];
+    return this.partenaires().filter(function (p) { return p.statut === 'actif' && self.partenaireEstMobile(p) && self.partenaireDisponible(p) && self._pointPeutVendre(p); })
+      .map(function (p) {
+        var dep = self.partenaireDeplacement(p); if (!dep || !dep.pret) return null;
+        var m = self.distanceM(pos, dep.departGeo), km = m / 1000;
+        if (km > dep.rayonKm || km > R.rayonMaxKm) return null;
+        var pal = dep.paliers.filter(function (x) { return x.tarif != null && km <= x.a; })[0]; if (!pal) return null;
+        var rv = self.techRevendeurDuPoint(p.id); if (!rv) return null;
+        var n = self.distributeurNote(p.id);
+        return { id: p.id, revendeurId: rv.id, enseigne: p.enseigne, distM: m, km: Math.round(km * 10) / 10,
+          distTxt: (dep.departApprox ? '≈ ' : '') + self.fmtDist(Math.max(100, Math.round(m / 100) * 100)),
+          palier: { de: pal.de, a: pal.a, lbl: pal.lbl }, tarif: pal.tarif, tarifTxt: pal.tarif === 0 ? 'sans frais' : self.eur(pal.tarif),
+          mention: dep.mention, note: n.note, avis: n.avis, departVille: dep.depart.ville };
+      }).filter(Boolean);
+  },
   /* La zone couvre-t-elle CE client ? Par sa ville, ou par sa position si un rayon est posé. */
   zoneCouvre: function (p, o) {
-    o = o || {}; var z = p && p.zone; if (!z || !(z.villes || []).length) return false;
+    o = o || {};
+    /* (24/09, nuit) un nomade qui a posé son départ et ses paliers couvre ce qui est à portée de son dernier palier */
+    var dep = this.partenaireDeplacement(p);
+    if (dep && dep.pret && o.pos) return this.distanceM(o.pos, dep.departGeo) <= dep.rayonKm * 1000;
+    var z = p && p.zone; if (!z || !(z.villes || []).length) return false;
     var self = this;
     if (o.ville) { var v = this._sansAccent(o.ville); if (z.villes.some(function (x) { return self._sansAccent(x) === v; })) return true; }
     if (o.pos && z.rayonKm > 0) {
@@ -3222,8 +3659,8 @@ codesFournisseur: [
      domicile pour une rencontre d'argent — c'est ce qui distingue cette rencontre de l'ancien « à domicile ».
      Miroir SQL : distributor_meetings. ══ */
   RENCONTRE_STATUTS: {
-    demandee: ['Demandée — en attente d\'un distributeur nomade', 'pec-pill--wait'],
-    acceptee: ['Acceptée — un distributeur nomade vient', 'pec-pill--info'],
+    demandee: ['Demandée — en attente de l\'appel du distributeur nomade', 'pec-pill--wait'],
+    acceptee: ['Validée au téléphone — le distributeur nomade vient', 'pec-pill--info'],
     servie:   ['Servie — bon d’achat remis', 'pec-pill--done'],
     annulee:  ['Annulée', 'pec-pill--off'],
     expiree:  ['Expirée — personne ne l\'a prise', 'pec-pill--off']
@@ -3514,7 +3951,9 @@ codesFournisseur: [
     // le commerce du réseau
     { evt: 'point_active', canal: 'email', modele: 'point_actif', objet: 'Ton point de vente est actif', cible: 'commerce' },
     { evt: 'point_suspendu', canal: 'email', modele: 'point_suspendu', objet: 'Ton point de vente est suspendu', cible: 'commerce' },
-    { evt: 'tech_penalite', canal: 'email', modele: 'prelevement_impaye', objet: 'Prélèvement impayé : la pénalité du contrat s\'applique', cible: 'commerce' }
+    { evt: 'tech_penalite', canal: 'email', modele: 'prelevement_impaye', objet: 'Prélèvement impayé : la pénalité du contrat s\'applique', cible: 'commerce' },
+    /* (24/09, nuit — fondatrice : « notification lorsque le distributeur nomade reçoit une demande ») un SMS, en plus de son fil */
+    { evt: 'tech_rencontre_demandee', si: { choisi: true }, canal: 'sms', modele: 'mise_en_relation', objet: 'Nouvelle demande de mise en relation : appelle ton client pour valider le rendez-vous', cible: 'nomade' }
   ],
   /* (09/09 — lot 1 socle) LE JOURNAL DES ENVOIS est PERSISTÉ (magasin du bus), alimenté à la source par PEC_BUS.noter :
      il était recalculé depuis le journal plafonné, donc les messages « à envoyer » disparaissaient au fil de la journée. */
@@ -4603,6 +5042,23 @@ codesFournisseur: [
               if (b.etat === 'cancelled' && b.annuleLe) pousser({ id: 'bon-annule:' + b.code, at: b.annuleLe, icone: 'i-x', titre: 'Bon ' + b.code + ' annulé',
                 texte: (b.motifAnnulation || 'annulé') + ' — sa vente n\'est pas prélevée.', href: '04-bons.html' });
             });
+            /* (24/09, nuit — fondatrice : « notification lorsque le distributeur nomade reçoit une demande ») SES MISES EN RELATION : chaque
+               demande reste dans son fil (sa phrase suit son état ; urgente tant qu'elle attend son appel), et ce qui l'a fermée sans lui
+               s'y ajoute — annulée par le client, ou expirée. Les phrases ne supposent le genre de personne. */
+            if (this.partenaireEstMobile(pt)) this.techRencontresGet().forEach(function (r0) {
+              if (!self._rencontreChoisie(r0) || r0.revendeurId !== rv.id) return;
+              var r = self._techRencontreVive(r0), qui = r.prenom || 'un client', Qui = r.prenom || 'Le client', de = /^[aeiouyhàâäéèêëîïôöùûü]/i.test(qui) ? 'd’' : 'de ';
+              var ou = (r.distTxt ? ', à ' + r.distTxt : '') + (r.ville ? ' (' + r.ville + ')' : '');
+              var tarif = ' — ton tarif pour ce palier (' + ((r.palier || {}).lbl || '—') + ') : ' + (r.tarif === 0 ? 'sans frais' : self.eur(r.tarif)) + '.';
+              var etat = { demandee: ' Appelle ' + qui + ' pour valider le rendez-vous.', acceptee: ' Rendez-vous validé' + (r.rdvHeure ? ' (' + r.rdvHeure + ')' : '') + ' : vends-lui son bon depuis ta caisse.',
+                servie: ' Rencontre servie — bon remis.', annulee: ' Demande fermée.', expiree: ' Demande fermée sans appel.' }[r.statut] || '';
+              pousser({ id: 'rdv-dem:' + r.id, at: r.creeTs, icone: 'i-route', urgent: r.statut === 'demandee', titre: 'Mise en relation — ' + (r.prenom || r.ref),
+                texte: 'Demande ' + de + qui + ou + tarif + etat, href: '02-accueil.html#pb-rdv', action: r.statut === 'demandee' ? 'Appeler' : null });
+              if (r.statut === 'expiree') pousser({ id: 'rdv-exp:' + r.id, at: r.expireTs, icone: 'i-clock', titre: 'Demande expirée — ' + r.ref,
+                texte: Qui + ' n\'a pas eu d\'appel dans les ' + self.nomadeRef().reponseMin + ' min : sa demande s\'est fermée.', href: '02-accueil.html#pb-rdv' });
+              else if (r.statut === 'annulee' && r.annuleePar === 'client') pousser({ id: 'rdv-ann:' + r.id, at: r.annuleeTs || r.creeTs, icone: 'i-x', titre: 'Demande annulée par le client — ' + r.ref,
+                texte: (r.motifAnnulation || 'le client a annulé') + '.', href: '02-accueil.html#pb-rdv' });
+            });
           }
         }
       } catch (eP) {}
@@ -4766,6 +5222,19 @@ codesFournisseur: [
     if (m <= P.arriveM) return { cle: 'arrive', distM: m, titre: 'Tu y es', texte: 'Tu es sur place à quelques mètres près — entre et demande un ' + (this.bonsRef().nom || 'Bon d’achat PayEnCash') + '.' };
     if (m <= P.procheM) return { cle: 'proche', distM: m, titre: 'C’est tout près', texte: 'Plus que ' + this.fmtDist(m) + (this.fmtPied(m) ? ' · ' + this.fmtPied(m) : '') + '.' };
     return { cle: 'route', distM: m, titre: 'En route', texte: this.fmtDist(m) + (this.fmtPied(m) ? ' · ' + this.fmtPied(m) : '') + ' — la distance se met à jour pendant que tu marches.' };
+  },
+  // les rayons de la carte, lisibles : « 500 m », « 1 km »… (ref.carte.rayonsM, réglables en Configuration : carte.rayonsM)
+  /* le rayon par défaut, s'il est l'un des rayons proposés ; sinon le plus proche d'en dessous — jamais un rayon que l'écran n'offre pas */
+  carteRayonDefaut: function () {
+    var R = this.carteRayons(), d = +(this.param ? this.param('carte.rayonDefautM', ((this.ref || {}).carte || {}).rayonDefautM) : ((this.ref || {}).carte || {}).rayonDefautM) || 0;
+    if (!R.length) return d || null;
+    var sous = R.filter(function (x) { return x.m <= d; });
+    return (sous.length ? sous[sous.length - 1] : R[0]).m;
+  },
+  carteRayons: function () {
+    var r = (this.param ? this.param('carte.rayonsM', ((this.ref || {}).carte || {}).rayonsM) : ((this.ref || {}).carte || {}).rayonsM) || [];
+    return (Array.isArray(r) ? r : []).map(Number).filter(function (m) { return m > 0; }).sort(function (a, b) { return a - b; })
+      .map(function (m) { return { m: m, lbl: m < 1000 ? m + ' m' : String(Math.round(m / 100) / 10).replace('.', ',') + ' km' }; });
   },
   fmtPied: function (m) {
     if (m === null || m === undefined) return '';
@@ -5410,6 +5879,11 @@ chercher: function (q, f) {
       tvaPct: +v('tvaPct', 20),                              // le logiciel est un service soumis à TVA
       cleLongueur: +v('cleLongueur', 32),
       prefixeBon: t.prefixeBon || 'TB-',
+      /* (24/09, nuit) la référence d'un bon proposé, à saisir au comptoir quand le flashcode ne passe pas */
+      prefixeOrdre: t.prefixeOrdre || 'OV-',
+      categoriesActivite: (t.categoriesActivite || []).slice(),
+      siteHebergement: Object.assign({ societe: null, prixConvenu: null, apiDoc: null, apiBase: null }, t.siteHebergement || {}),
+      refOrdreLongueur: Math.max(4, +v('refOrdreLongueur', 6) || 6),
       lienValiditeJours: +v('lienValiditeJours', 30),
       annulationMinutes: +v('annulationMinutes', 30),        // l'annulation au comptoir d'une vente
       paiement: {
@@ -5540,8 +6014,20 @@ chercher: function (q, f) {
        TVA sur tout ce qu'elle vend, et une vente taxable en France seulement. Facultatifs à la saisie (le contrôle les redemande), dérivés par techMarchandTva. */
     var tv = null;
     if (o.tauxUnique != null || o.franceSeule != null) tv = { tauxUnique: o.tauxUnique === true || o.tauxUnique === 'oui', franceSeule: o.franceSeule === true || o.franceSeule === 'oui', declareLe: Date.now() };
+    /* (24/09, nuit) LA CATÉGORIE D'ACTIVITÉ : l'une de celles du référentiel ; absente, la fiche garde la sienne */
+    var cat = null;
+    if (o.categorie != null && String(o.categorie).trim() !== '') { cat = this.techCategorieActivite(o.categorie); if (!cat) return { ok: false, champ: 'categorie', motif: 'Choisis ta catégorie d’activité dans la liste.' }; }
     return { ok: true, entreprise: Object.assign({ raisonSociale: nom, siret: siret, siteUrl: site, sansSite: o.sansSite === true, tel: t(o.tel),
-      formeJuridique: t(o.formeJuridique), adresse: t(o.adresse), naf: t(o.naf) }, tv ? { tva: tv } : {}) };
+      formeJuridique: t(o.formeJuridique), adresse: t(o.adresse), naf: t(o.naf) }, tv ? { tva: tv } : {}, cat ? { categorie: cat.id } : {}) };
+  },
+  techCategoriesActivite: function () { return this.techRef().categoriesActivite || []; },
+  techCategorieActivite: function (id) { var k = String(id || '').trim(); return this.techCategoriesActivite().filter(function (c) { return c.id === k; })[0] || null; },
+  techMarchandCategorieSet: function (id, cat, par) {
+    var m = this.techMarchand(id); if (!m) return { ok: false, motif: 'Marque inconnue.' };
+    var c = this.techCategorieActivite(cat); if (!c) return { ok: false, champ: 'categorie', motif: 'Choisis ta catégorie d’activité dans la liste.' };
+    if (!this._techMarchandMaj(m.id, { categorie: c.id })) return this._refusEcriture('La catégorie d’activité');
+    this._journal('tech_marchand_categorie', m.id, { categorie: c.id, par: par || m.email });
+    return { ok: true, marchand: this.techMarchand(m.id), categorie: c };
   },
   /* la fiche naît du COMPTE, en brouillon : elle ne porte que l'adresse e-mail vérifiée, et n'existe pour personne d'autre */
   _techMarchandBrouillon: function (c) {
@@ -6362,6 +6848,7 @@ chercher: function (q, f) {
       if (o.marqueStatut && x.marqueStatut !== o.marqueStatut) return false;
       if (o.modeId && x.modeId !== o.modeId) return false;
       if (o.remise && x.remiseRef !== o.remise) return false;
+      if (o.par && String(x.par || '').toLowerCase() !== String(o.par).toLowerCase()) return false;   // (24/09, nuit) les ventes d'UN vendeur : le collaborateur ne voit que les siennes
       if (b && !(x.at >= b[0] && x.at < b[1])) return false;
       return true;
     }).sort(function (a, c) { return c.at - a.at; });
@@ -6971,6 +7458,51 @@ chercher: function (q, f) {
     this._journal('tech_site_marque', m.id, { domaine: st.domaine, par: par || id });
     return { ok: true, site: this.techMarchandSite(m.id) };
   },
+  /* ══ (24/09, nuit — fondatrice : « ajoute Boutique dans l'app utilisateur : la liste des boutiques, filtre, recherche ; si je clique
+     dessus, ça présente les articles publiés et elle renseigne son code ; si titulaire de l'abonnement, ça renvoie sur le site de la
+     marque » ; « le bon est achetable, utilisé uniquement sur le site de la marque — jamais sur notre site : on les vend, leur
+     consommation se fait sur le site partenaire, soit le widget / l'API intégrés, soit la boutique liée à l'abonnement »)
+     OÙ LE BON D'UNE MARQUE SE DÉPENSE — une règle, lue par Mes bons (la boutique, le détail d'un bon) :
+       · la BOUTIQUE LIÉE À SON ABONNEMENT (techMarchandSite : sa formule comprend le site, elle est validée) ;
+       · sinon SON PROPRE SITE, où le bouton ou l'API sont intégrés ;
+       · sans l'un ni l'autre, ses propres points de vente : on le dit, sans inventer d'adresse.
+     Jamais chez nous : PayEnCash vend le bon, la marque l'encaisse. ══ */
+  techMarchandDestination: function (id) {
+    var m = (typeof id === 'string') ? this.techMarchand(id) : id; if (!m) return null;
+    var st = this.techMarchandSite(m), hote = function (u) { return String(u || '').replace(/^https?:\/\//, '').replace(/\/$/, ''); };
+    if (st && st.actif) return { type: 'boutique', url: st.url, lbl: st.domaine || hote(m.siteUrl) || ('la boutique ' + m.raisonSociale), abonnement: st.formule };
+    if (/^https?:\/\//.test(m.siteUrl || '')) return { type: 'site', url: m.siteUrl, lbl: hote(m.siteUrl) };
+    return { type: 'points', url: null, lbl: 'ses propres points de vente' };
+  },
+  /* LES BOUTIQUES DU RÉSEAU — les marques qui peuvent travailler avec nous (validées, dossier, documents, contrat :
+     techMarchandPeutTravailler), avec ce que Mes bons en montre : leurs articles publiés encore disponibles, leurs catégories, et où
+     leur bon se dépense. `o.q` cherche dans le nom, le site, les articles et les catégories. Dérivé à chaque lecture. */
+  techBoutiques: function (o) {
+    o = o || {};
+    var self = this, norm = function (s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }, q = norm(o.q);
+    return this.techMarchands({ statut: 'validated' }).filter(function (m) { return self.techMarchandPeutTravailler(m.id).ok; }).map(function (m) {
+      var arts = self.techArticles({ marchandId: m.id }).filter(function (a) { return !self.techArticleStock(a).epuise; });
+      var cats = []; arts.forEach(function (a) { if (a.categorie && cats.indexOf(a.categorie) === -1) cats.push(a.categorie); });
+      var ca = self.techCategorieActivite(m.categorie);
+      /* (24/09, nuit — « le bon doit être achetable ») SON LIEN DE VENTE, s'il en a un : le montant se choisit, puis le bon s'obtient au
+         comptoir d'un commerce du réseau ou auprès d'un distributeur nomade — la même porte que son site et ses visuels */
+      var lv = self.techVenteLien(m.id);
+      /* (24/09, nuit — fondatrice : « ça doit provenir de ses publications ou du site issu de l'app Solution, de l'abonnement : il sera
+         connecté ») LA VITRINE EST CELLE DE SON SITE : sa couleur, son accroche et son domaine, posés dans Compte › Abonnement
+         (techMarchandSite) — la boutique de Mes bons et son site disent la même chose, d'une seule source. */
+      var st = self.techMarchandSite(m) || {};
+      return { id: m.id, nom: m.raisonSociale, siteUrl: m.siteUrl || null, destination: self.techMarchandDestination(m), articles: arts, categories: cats,
+        categorie: ca ? ca.id : null, categorieLbl: ca ? ca.lbl : null, achat: lv ? { slug: lv.slug, url: self.techVenteLienUrl(lv.slug) } : null,
+        vitrine: { couleur: /^#[0-9a-fA-F]{6}$/.test(st.couleur || '') ? st.couleur : null, accroche: st.accroche || null,
+          domaine: st.domaine || String(m.siteUrl || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '') || null, siteActif: !!st.actif },
+        /* D'OÙ VIENNENT SES ARTICLES : ses publications dans PayEnCash Solution — l'API du site hébergé (ref.tech.siteHebergement) n'est
+           pas encore branchée, on ne prétend donc pas la lire */
+        source: 'publications',
+        texte: norm([m.raisonSociale, m.siteUrl, ca && ca.lbl].concat(cats).concat(arts.map(function (a) { return a.modele; })).join(' ')) };
+    }).filter(function (b) { return !q || b.texte.indexOf(q) !== -1; })
+      .sort(function (a, b) { return String(a.nom).localeCompare(String(b.nom), 'fr'); });
+  },
+  techBoutique: function (id) { return this.techBoutiques().filter(function (b) { return b.id === id; })[0] || null; },
   techMarchandSiteUrl: function (id) {
     var base = (typeof location !== 'undefined' && location.href) ? location.href : '';
     var i = base.indexOf('/ui/');
@@ -7296,6 +7828,12 @@ chercher: function (q, f) {
     if (o.marchandId) l = l.filter(function (x) { return x.marchandId === o.marchandId; });
     if (o.revendeurId) l = l.filter(function (x) { return x.revendeurId === o.revendeurId; });
     if (o.etat) l = l.filter(function (x) { return x.etat === o.etat; });
+    /* (24/09, nuit) LES BONS D'UN VENDEUR : la vente qui a fait naître le bon porte qui l'a vendu (`par`) — on ne le recopie pas sur le bon */
+    if (o.par) {
+      var qui = String(o.par).toLowerCase(), parVente = {};
+      this.techVentesGet().forEach(function (v) { parVente[v.reference] = String(v.par || '').toLowerCase(); });
+      l = l.filter(function (x) { return x.venteRef && parVente[x.venteRef] === qui; });
+    }
     return l.sort(function (a, b) { return (b.emisLe || 0) - (a.emisLe || 0); });
   },
   /* L'ÉMISSION — elle exige un contrat VIVANT entre ce commerçant et ce revendeur. Sans contrat, pas de
@@ -7359,6 +7897,19 @@ chercher: function (q, f) {
        de l'offre qu'elle a choisie. Un refus se dit ici, avant d'émettre : jamais un bon sans ligne à prélever. */
     var peut = this.techPeutVendre(o.revendeurId, m.id, montant);
     if (!peut.ok) return { ok: false, refus: peut.refus, motif: peut.motif, encours: peut.encours || null };
+    /* (24/09, nuit — « voir le bon acheté qu'il a généré ») LE BON VENDU SUR L'ORDRE D'UN BON PROPOSÉ LE DIT : c'est ce lien qui rend
+       à la marque — et au collaborateur qui a proposé — le bon que son partage a fait acheter. Un ordre d'une autre marque, ou qui
+       n'attend plus rien, ne se vend pas. */
+    var ordre = null;
+    if (o.ordre) {
+      var ox = this.techLien(o.ordre), ov = ox ? this.techOrdreVente(ox.slug) : null;
+      if (!ox || ox.marchandId !== m.id) return { ok: false, refus: 'ordre', motif: 'Cet ordre de vente n’est pas un bon proposé par ' + m.raisonSociale + '.' };
+      if (ox.etat !== 'open' && ox.etat !== 'partial') return { ok: false, refus: 'ordre', motif: 'Ce bon proposé est « ' + this.techLienEtatLbl(ox.etat).toLowerCase() + ' » : il n’y a plus rien à vendre dessus.' };
+      /* (24/09, nuit) un ordre déjà acheté ne se revend pas, et on ne vend pas plus que ce qu'il demande encore */
+      if (!ov.vendable) return { ok: false, refus: 'ordre', motif: 'Ce bon proposé a déjà été acheté (' + this.eur(ov.vendu) + ') : il n’y a plus rien à vendre dessus.' };
+      if (montant > ov.montant + 0.004) return { ok: false, refus: 'ordre', champ: 'montant', motif: 'Ce bon proposé n’attend plus que ' + this.eur(ov.montant) + ' : c’est le montant à vendre.' };
+      ordre = ox.slug;
+    }
     /* ══ (23/09) LE CODE VIENT D'UNE TRANCHE ÉDITÉE PAR LA MARQUE, S'IL Y EN A ; sinon il s'édite à la volée
        et COMPTE dans le quota du mois. Au bout du quota, la vente est refusée AVANT d'écrire quoi que ce soit —
        et le refus dit à quoi ça tient (le forfait de la marque), pas « erreur ». */
@@ -7385,7 +7936,7 @@ chercher: function (q, f) {
         site: m.siteUrl, revendeurId: o.revendeurId, montant: montant, solde: montant,
         etat: 'allocated', emisLe: now, expireLe: exp.getTime(), venduLe: null, utiliseLe: null, annuleLe: null,
         venteRef: pr.vente.reference, prixPoint: pr.vente.prixPoint, prixMarque: pr.vente.prixMarque,   // le bon porte la vente qui le paiera
-        moyen: this.MOYENS_COMPTOIR[o.moyen] ? o.moyen : null };
+        moyen: this.MOYENS_COMPTOIR[o.moyen] ? o.moyen : null, ordre: ordre };
       l.push(b);
     }
     if (!this._techBonsPut(l)) return this._refusEcriture('L\'émission du bon');
@@ -7486,9 +8037,8 @@ chercher: function (q, f) {
      l'achète au comptoir d'un commerce du réseau (nous l'achetons à la marque à ce moment-là), puis il
      l'UTILISE chez la marque, et chez elle seule — réseau limité. Le lien porte cette proposition ; la page
      du client dit où acheter le bon, et l'app « Mes bons » sert à l'utiliser.
-     L'USAGE D'UN BON PASSE PAR L'APP « MES BONS », TOUJOURS (23/09 : « app obligatoire pour utiliser un bon de
-     marque, ça permet de retracer ») : techLienUtiliserBon exige le compte du porteur (`par`), et chaque usage
-     le garde. Aucun fonds ne transite, à aucun moment : nous tenons l'état d'un titre, pas d'un paiement.
+     L'USAGE D'UN BON SE TRACE (23/09 : « ça permet de retracer ») : par l'app « Mes bons », avec le compte du porteur, ou
+     (24/09, nuit) par son code saisi dans la fenêtre de paiement de la marque (`via: 'code'`) — chaque usage garde qui, et comment. Aucun fonds ne transite, à aucun moment : nous tenons l'état d'un titre, pas d'un paiement.
      PLUSIEURS BONS SONT ADMIS sur un même bon proposé (règle du 19/09, soir) : ce qui manque encore se
      décompte bon après bon, et la proposition est « couverte » quand plus rien ne manque. ═══════════════ */
   TECH_LIEN_ETATS: { open: 'Proposé', partial: 'Entamé', used: 'Couvert', cancelled: 'Annulé', expired: 'Expiré' },
@@ -7509,9 +8059,37 @@ chercher: function (q, f) {
     return l;
   },
   techLien: function (slug) {
-    var x = this.techLiensGet().filter(function (y) { return y.slug === slug || y.id === slug; })[0];
+    var q = String(slug == null ? '' : slug).trim(), ks = this._techRefOrdreNorme(q);
+    var x = this.techLiensGet().filter(function (y) { return y.slug === q || y.id === q || (y.code && ks.indexOf(y.code.replace(/[^A-Z0-9]/g, '')) > -1); })[0];
     return x ? this._techLienVif(x) : null;
   },
+  /* (24/09, nuit) LA RÉFÉRENCE D'UN BON PROPOSÉ — tirée à sa naissance ; un bon proposé plus ancien n'en a pas : c'est alors son slug,
+     qui se saisit aussi. Le tirage refuse les caractères qu'on confond à l'oral ou à l'écrit, et une référence déjà prise. */
+  _techRefOrdre: function () {
+    var R = this.techRef(), n = +R.refOrdreLongueur || 6, abc = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+    if (!(typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues)) return null;
+    var pris = {}; this.techLiensGet().forEach(function (y) { if (y.code) pris[y.code] = 1; });
+    for (var essai = 0; essai < 20; essai++) {
+      var buf = new Uint8Array(n), s = ''; window.crypto.getRandomValues(buf);
+      for (var i = 0; i < n; i++) s += abc[buf[i] % abc.length];
+      var code = String(R.prefixeOrdre || '') + s;
+      if (!pris[code]) return code;
+    }
+    return null;
+  },
+  /* ce qu'on a saisi, ramené aux formes de comparaison : majuscules, ni espace ni tiret, le préfixe facultatif — « 7kx2qm » vaut
+     « OV-7KX2QM ». Deux formes quand la saisie a la longueur d'une référence nue : une référence tirée peut commencer par les
+     lettres du préfixe, et « OVAB12 » tapé nu doit encore la trouver. */
+  _techRefOrdreNorme: function (q) {
+    var s = String(q || '').toUpperCase().replace(/[^A-Z0-9]/g, ''), pre = String(this.techRef().prefixeOrdre || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!s) return [];
+    var n = +this.techRef().refOrdreLongueur || 6;
+    return (pre && s.length === n) ? [pre + s, s] : [s];
+  },
+  techLienCode: function (x) { return x ? (x.code || x.slug) : ''; },
+  /* (24/09, nuit) LA RÉFÉRENCE QUE LE CLIENT LIT : celle de la marque (sa commande, son article) — jamais la trace interne d'un bon
+     proposé né d'un lien de vente (« Lien de vente <slug> »), qui ne dit rien à celui qui achète. `origineLien` fait foi. */
+  techLienRefClient: function (x) { if (!x || !x.reference) return ''; return (x.origineLien && this.techVenteLienParSlug(x.origineLien)) ? '' : x.reference; },
   techLiens: function (o) {
     o = o || {};
     var d = this;
@@ -7519,7 +8097,34 @@ chercher: function (q, f) {
     if (o.marchandId) l = l.filter(function (x) { return x.marchandId === o.marchandId; });
     if (o.etat) l = l.filter(function (x) { return x.etat === o.etat; });
     if (o.vivantes) l = l.filter(function (x) { return x.etat === 'open' || x.etat === 'partial'; });
+    if (o.collaborateur !== undefined) l = l.filter(function (x) { return d.techLienCollaborateur(x) === o.collaborateur; });   // (24/09, nuit) null : ceux de la marque elle-même
     return l.sort(function (a, b) { return (b.creeLe || 0) - (a.creeLe || 0); });
+  },
+  /* (24/09, nuit) QUI A PROPOSÉ CE BON — le collaborateur qui l'a créé, ou celui dont le lien de vente l'a fait naître ; null : la
+     marque elle-même. Dérivé : un bon proposé né d'un lien ne recopie pas l'auteur du lien. */
+  techLienCollaborateur: function (x) {
+    if (!x) return null;
+    if (x.collaborateur) return x.collaborateur;
+    var v = x.origineLien ? this.techVenteLienParSlug(x.origineLien) : null;
+    return (v && v.collaborateur) || null;
+  },
+  /* LES BONS D'UN BON PROPOSÉ — achetés sur son ordre (au comptoir, ou remis au rendez-vous d'un nomade) et ceux qui l'ont couvert
+     depuis Mes bons : une liste, dérivée, sans doublon. C'est elle qui dit « le bon acheté que ce partage a produit ». */
+  techLienBons: function (slug) {
+    var x = this.techLien(slug); if (!x) return [];
+    var self = this, vus = {}, out = [];
+    var pousser = function (b) { if (b && !vus[b.code]) { vus[b.code] = 1; out.push(b); } };
+    this.techBonsGet().forEach(function (b) { if (b.ordre === x.slug) pousser(b); });
+    (x.usages || []).forEach(function (p) { if (p.code) pousser(self.techBon(p.code)); });
+    this.techRencontresLien(x.slug).forEach(function (r) { (r.codes || []).forEach(function (c) { pousser(self.techBon(c)); }); });
+    return out.sort(function (a, b) { return (b.emisLe || 0) - (a.emisLe || 0); });
+  },
+  // un collaborateur de CETTE marque, dont l'accès est actif — le seul qui puisse proposer ou partager à son nom
+  _techCollabActif: function (marchandId, compteId) {
+    var c = this.compte(compteId);
+    if (!c || !c.collab || c.collab.type !== 'marque' || c.collab.parentId !== marchandId) return { ok: false, motif: 'Ce collaborateur n’appartient pas à cette marque.' };
+    if (c.statut !== 'actif') return { ok: false, motif: 'L’accès de ' + this.collaborateurNomAffiche(c) + ' n’est pas actif (' + (this.COLLAB_STATUTS[c.statut] || c.statut) + ').' };
+    return { ok: true, compte: c };
   },
   /* ══ (23/09, fondatrice : « la possibilité de générer un lien à partager par Snap, WhatsApp, TikTok etc.,
      pour vendre un bon d'achat / carte cadeau — démarche commerciale ») LE LIEN DE VENTE ═════════════════
@@ -7644,25 +8249,51 @@ chercher: function (q, f) {
 
   techVenteLiensGet: function () { try { return JSON.parse(localStorage.getItem('pec-tech-liens-vente') || '[]') || []; } catch (e) { return []; } },
   _techVenteLiensPut: function (l) { if (!this._ecrit('pec-tech-liens-vente', l)) return false; try { window.dispatchEvent(new Event('pec-bus')); } catch (e) {} return true; },
-  techVenteLien: function (marchandId) { return this.techVenteLiensGet().filter(function (x) { return x.marchandId === marchandId; })[0] || null; },
+  /* le lien SANS montant de la marque (celui qui l'ouvre choisit sa somme) — un seul par marque ; (24/09, nuit) et un par collaborateur */
+  techVenteLien: function (marchandId, collaborateurId) {
+    var k = collaborateurId || null;
+    return this.techVenteLiensGet().filter(function (x) { return x.marchandId === marchandId && !(x.montant > 0) && (x.collaborateur || null) === k; })[0] || null;
+  },
+  /* (24/09, nuit) TOUS SES LIENS DE VENTE : le lien sans montant d'abord, puis ceux à montant précis, du plus petit au plus grand.
+     Ceux de la marque elle-même par défaut ; `o.collaborateur` : ceux d'un collaborateur ; 'tous' : tous. */
+  techVenteLiens: function (marchandId, o) {
+    var k = (o && o.collaborateur !== undefined) ? o.collaborateur : null;
+    return this.techVenteLiensGet().filter(function (x) { return x.marchandId === marchandId && (k === 'tous' || (x.collaborateur || null) === k); })
+      .sort(function (a, b) { return (+(a.montant > 0) - +(b.montant > 0)) || ((a.montant || 0) - (b.montant || 0)); });
+  },
   techVenteLienParSlug: function (slug) { return this.techVenteLiensGet().filter(function (x) { return x.slug === slug; })[0] || null; },
-  /* UN SEUL LIEN PAR MARQUE : on le rend s'il existe, on ne multiplie pas les adresses d'un même partage. */
-  techVenteLienCreer: function (marchandId, par) {
+  /* UN SEUL LIEN PAR MARQUE ET PAR MONTANT : on le rend s'il existe, on ne multiplie pas les adresses d'un même partage.
+     (24/09, nuit — fondatrice : « même logique : proposer un montant précis pour mon lien de vente à partager ») `o.montant`
+     fait un lien À MONTANT PRÉCIS : celui qui l'ouvre voit ce montant et continue, sans rien saisir ; sans montant, c'est le
+     lien d'origine, où l'on choisit sa somme. Un montant se contrôle comme un bon : au moins le minimum d'un bon (bonsRef). */
+  techVenteLienCreer: function (marchandId, par, o) {
+    o = o || {};
     var m = this.techMarchand(marchandId); if (!m) return { ok: false, motif: 'Marque inconnue.' };
     if (m.statut !== 'validated') return { ok: false, motif: 'Cette marque n\'est pas vérifiée — aucun lien ne part à son nom.' };
     if (!this.techMarchandConforme(m.id)) return { ok: false, motif: 'Sa déclaration « réseau limité » n\'est pas validée — rien ne s\'ouvre avant.' };
     var trav = this.techMarchandPeutTravailler(m.id);
     if (!trav.ok) return { ok: false, refus: 'marque', motif: 'Avant de partager un lien : ' + trav.manque[0].libelle, href: trav.href, manque: trav.manque };
-    var deja = this.techVenteLien(m.id); if (deja) return { ok: true, lien: deja, reprise: true };
+    var montant = null;
+    if (o.montant != null && String(o.montant).trim() !== '') {
+      montant = Math.round((parseFloat(String(o.montant).replace(',', '.')) || 0) * 100) / 100;
+      var B = this.bonsRef ? this.bonsRef() : {};
+      if (!(montant > 0)) return { ok: false, champ: 'montant', motif: 'Un lien à montant précis porte un montant.' };
+      if (B.minimum && montant < +B.minimum) return { ok: false, champ: 'montant', motif: 'Un bon d’achat commence à ' + this.eur(B.minimum) + ' : c’est le plus petit montant qu’un lien peut proposer.' };
+    }
+    /* (24/09, nuit) UN COLLABORATEUR A SES PROPRES LIENS : ce que son partage produit lui revient, et à lui seul */
+    var collab = o.collaborateur || null, cb = null;
+    if (collab) { var ca = this._techCollabActif(m.id, collab); if (!ca.ok) return ca; cb = ca.compte; }
+    var deja = montant ? this.techVenteLiens(m.id, { collaborateur: collab }).filter(function (x) { return x.montant === montant; })[0] : this.techVenteLien(m.id, collab);
+    if (deja) return { ok: true, lien: deja, reprise: true };
     var alea = this._techAlea(6);
     if (!alea) return { ok: false, motif: 'Ce navigateur ne sait pas tirer un identifiant sûr — aucun lien ne sera inventé.' };
     var base = String(m.raisonSociale || m.id).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 18);
-    var x = { slug: (base || 'marque') + '-' + alea.toLowerCase(), marchandId: m.id, marchand: m.raisonSociale,
-      site: m.siteUrl, creeLe: Date.now(), creePar: par || null, ouvertures: 0, derniereOuverture: null };
+    var x = { slug: (base || 'marque') + (cb ? '-' + (this._slug((cb.profil || {}).prenom, 12) || 'collab') : '') + (montant ? '-' + String(montant).replace('.', '-') : '') + '-' + alea.toLowerCase(), marchandId: m.id, marchand: m.raisonSociale,
+      site: m.siteUrl, montant: montant, collaborateur: collab, creeLe: Date.now(), creePar: par || null, ouvertures: 0, derniereOuverture: null };
     var l = this.techVenteLiensGet(); l.push(x);
     if (!this._techVenteLiensPut(l)) return this._refusEcriture('Le lien de vente');
-    this._journal('tech_lien_vente_cree', x.slug, { par: par || null, marchand: m.id });
+    this._journal('tech_lien_vente_cree', x.slug, { par: par || null, marchand: m.id, montant: montant, collaborateur: collab });
     return { ok: true, lien: x };
   },
   /* L'OUVERTURE SE COMPTE À LA SOURCE : c'est la page ouverte qui la déclare, pas un calcul d'écran. */
@@ -7674,17 +8305,19 @@ chercher: function (q, f) {
     if (!this._techVenteLiensPut(l)) return { ok: false, motif: 'Écriture refusée.' };
     return { ok: true, lien: l[i] };
   },
-  /* CE QUE LE PARTAGE A PRODUIT — DÉRIVÉ des bons proposés nés du lien et des bons qui les ont couverts. */
-  techVenteLienStats: function (marchandId) {
-    var v = this.techVenteLien(marchandId);
+  /* CE QUE LE PARTAGE A PRODUIT — DÉRIVÉ des bons proposés nés du lien et des bons qui les ont couverts. Sans slug, le lien
+     sans montant de la marque ; (24/09, nuit) avec `slug`, n'importe lequel de ses liens (à montant précis compris). */
+  techVenteLienStats: function (marchandId, slug) {
+    var v = slug ? this.techVenteLienParSlug(slug) : this.techVenteLien(marchandId);
     if (!v) return { lien: null, ouvertures: 0, demandes: 0, bons: 0, valeur: 0 };
     var self = this;
     var dem = this.techLiensGet().filter(function (x) { return x.origineLien === v.slug; });
-    var bons = 0, valeur = 0;
+    /* (24/09, nuit) LES BONS ACHETÉS sur l'ordre de ces bons proposés, et ceux qui les ont couverts (techLienBons) — annulés exclus */
+    var vus = {}, bons = 0, valeur = 0;
     dem.forEach(function (d) {
-      (d.usages || []).forEach(function (p) {
-        var b = p.code ? self.techBon(p.code) : null;
-        if (b) { bons++; valeur += b.montant; }
+      self.techLienBons(d.slug).forEach(function (b) {
+        if (vus[b.code] || b.etat === 'cancelled') return;
+        vus[b.code] = 1; bons++; valeur += b.montant;
       });
     });
     return { lien: v, ouvertures: v.ouvertures || 0, demandes: dem.length, bons: bons,
@@ -7697,6 +8330,29 @@ chercher: function (q, f) {
     var racine = i > -1 ? base.slice(0, i) + '/ui/tech/' : '';
     return racine + '07-lien.html?v=' + encodeURIComponent(slug);
   },
+  /* ══ (24/09, nuit — fondatrice : « intègre dans l'API cet outil à insérer sur chaque pied de page ou autre d'une marque : il aide
+     à ouvrir la page client et à choisir son montant ») LE BLOC « BON D'ACHAT » D'UNE MARQUE, RÉDIGÉ UNE FOIS ═══════════════════
+     Le même pour le widget d'un pied de page (data-payencash-bon) et pour le site hébergé (11-site) : le titre, les mentions du bon
+     (réseau limité et son article, ni remboursable ni échangé, validité), où il s'achète, et l'adresse de SON lien de vente — celle
+     où le client choisit son montant. Sans lien de vente (Paiement), il n'y a rien à ouvrir : on le dit, on n'invente pas d'adresse.
+     `o.base` : l'adresse de nos pages quand l'appel vient d'un autre site (le widget la déduit de son propre script). ══ */
+  techBlocBon: function (marchandId, o) {
+    o = o || {};
+    var m = this.techMarchand(marchandId); if (!m) return { ok: false, motif: 'Marque inconnue.' };
+    if (m.statut !== 'validated') return { ok: false, motif: m.raisonSociale + ' n’est pas encore vérifiée : son bon d’achat ne se propose pas encore.' };
+    var v = this.techVenteLien(m.id);
+    if (!v) return { ok: false, motif: 'Aucun lien de vente pour ' + m.raisonSociale + ' — crée-le dans ton espace (Paiement) : c’est lui que ce bloc ouvre.' };
+    var R = this.techRef(), S = R.seuils || {}, site = this.techMarchandSite(m) || {}, B = this.bonsRef();
+    var dom = site.domaine || String(m.siteUrl || '').replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    var art = S.reseauLimiteSource ? this.refArticle(S.reseauLimiteSource) : '';
+    var reseau = String(R.nom || 'PayEnCash').replace(/\s+Solution$/i, '');
+    return { ok: true, marchandId: m.id, marque: m.raisonSociale, couleur: site.couleur || null, domaine: dom, slug: v.slug,
+      url: o.base ? o.base + '07-lien.html?v=' + encodeURIComponent(v.slug) : this.techVenteLienUrl(v.slug),
+      titre: 'Un bon d’achat ' + m.raisonSociale + ', au montant que tu veux',
+      mentions: 'Valable uniquement sur ' + dom + (art ? ' (' + art + ')' : '') + '. Ni remboursable en espèces, ni échangé contre de la monnaie · valable ' + B.validiteMois + ' mois.',
+      ou: 'Il s’achète dans un ' + this.terme('commerce', 'client') + ' ' + reseau + ', ou auprès d’un ' + this.terme('nomade', 'client') + ' qui se déplace.',
+      cta: 'Choisir mon montant', source: S.reseauLimiteSource || null };
+  },
 
   techLienCreer: function (o) {
     o = o || {};
@@ -7705,6 +8361,8 @@ chercher: function (q, f) {
     if (!this.techMarchandConforme(m.id)) return { ok: false, motif: 'Sa déclaration « réseau limité » n\'est pas validée — rien ne s\'ouvre avant.' };
     var montant = Math.round((parseFloat(String(o.montant == null ? '' : o.montant).replace(',', '.')) || 0) * 100) / 100;
     if (!(montant > 0)) return { ok: false, champ: 'montant', motif: 'Un bon proposé porte un montant.' };
+    var collab = o.collaborateur || null;
+    if (collab) { var ca = this._techCollabActif(m.id, collab); if (!ca.ok) return ca; }
     var R = this.techRef();
     var l = this.techLiensGet();
     var seq = this._seq('tech-liens', this._seqPlancher(l, '^TLK-0*(\\d+)$', 'id'));
@@ -7716,17 +8374,21 @@ chercher: function (q, f) {
     var base = String(m.raisonSociale || m.id).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
       .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 18);
     var now = Date.now();
-    var x = { id: 'TLK-' + String(seq).padStart(5, '0'), slug: (base || 'lien') + '-' + alea.toLowerCase(),
+    /* (24/09, nuit) LA RÉFÉRENCE À SAISIR si le flashcode ne passe pas — courte, sans caractère ambigu, tirée du générateur sûr, unique */
+    var code = this._techRefOrdre(); if (!code) return { ok: false, motif: 'Ce navigateur ne sait pas tirer une référence sûre — aucun bon ne sera proposé.' };
+    var x = { id: 'TLK-' + String(seq).padStart(5, '0'), slug: (base || 'lien') + '-' + alea.toLowerCase(), code: code,
       marchandId: m.id, marchand: m.raisonSociale, site: m.siteUrl, montant: montant,
       reference: String(o.reference || '').trim() || null, client: String(o.client || '').trim() || null,
       /* (23/09) D'OÙ IL VIENT : né d'un lien de vente partagé ou d'un article, il le dit — c'est ainsi que la
          marque sait ce que son partage a produit, sans qu'on invente un compteur ailleurs. */
       origineLien: String(o.origineLien || '').trim() || null,
+      /* (24/09, nuit) PROPOSÉ PAR UN COLLABORATEUR : il le dit, et ce que le bon fait acheter lui revient (techLienCollaborateur) */
+      collaborateur: collab, par: o.par || null,
       etat: 'open', creeLe: now, expireLe: now + (R.lienValiditeJours * 86400000), couvertLe: null, annuleLe: null,
       usages: [] };
     l.push(x);
     if (!this._techLiensPut(l)) return this._refusEcriture('Le bon proposé');
-    this._journal('tech_lien_cree', x.id, { marchand: m.id, montant: montant, reference: x.reference });
+    this._journal('tech_lien_cree', x.id, { marchand: m.id, montant: montant, reference: x.reference, collaborateur: collab });
     return { ok: true, lien: this.techLien(x.slug) };
   },
   /* ══ (21/09, fondatrice : « lorsqu'il clique sur PayEnCash Technologie, la modale qui s'ouvre doit être
@@ -7777,11 +8439,20 @@ chercher: function (q, f) {
      Rend null s'il n'existe pas ou n'attend plus rien — on ne fait pas vendre pour une proposition couverte. */
   techOrdreVente: function (slug) {
     var x = this.techLien(slug); if (!x) return null;
-    var m = this.techMarchand(x.marchandId) || {};
-    return { slug: x.slug, reference: x.reference, marchandId: x.marchandId, marchand: x.marchand || m.raisonSociale,
-      site: x.site || m.siteUrl, montant: x.restant, montantDemande: x.montant, etat: x.etat,
+    var m = this.techMarchand(x.marchandId) || {}, r2 = function (v) { return Math.round(v * 100) / 100; };
+    /* (24/09, nuit) CE QUI RESTE À VENDRE, pas seulement ce qui reste à utiliser. Un bon acheté au comptoir sur cet ordre n'était compté
+       qu'une fois UTILISÉ depuis Mes bons : entre les deux, l'ordre se revendait — un second commerce pouvait émettre un second bon
+       pour la même proposition. On retire donc les bons déjà vendus sur l'ordre (annulés exclus) et, des usages, ceux d'autres bons
+       seulement : un bon vendu sur l'ordre puis utilisé dessus ne compte pas deux fois. */
+    var surOrdre = this.techBonsGet().filter(function (b) { return b.ordre === x.slug && b.etat !== 'cancelled'; }), vus = {};
+    surOrdre.forEach(function (b) { vus[b.code] = 1; });
+    var vendu = r2(surOrdre.reduce(function (a, b) { return a + (b.montant || 0); }, 0));
+    var prisAutres = r2((x.usages || []).filter(function (u) { return !vus[u.code]; }).reduce(function (a, u) { return a + (u.pris || 0); }, 0));
+    var aVendre = r2(Math.max(0, x.montant - vendu - prisAutres));
+    return { slug: x.slug, code: this.techLienCode(x), reference: x.reference, marchandId: x.marchandId, marchand: x.marchand || m.raisonSociale,
+      site: x.site || m.siteUrl, montant: aVendre, montantDemande: x.montant, vendu: vendu, bonsVendus: surOrdre.length, etat: x.etat,
       etatLbl: this.techLienEtatLbl(x.etat), client: x.client || null, expireLe: x.expireLe,
-      vendable: (x.etat === 'open' || x.etat === 'partial') && x.restant > 0 };
+      vendable: (x.etat === 'open' || x.etat === 'partial') && aVendre > 0 };
   },
   /* LE BLOC DU FLASHCODE — écrit UNE fois pour les trois cartes « À régler » (Mode, Fly, la page d'une boutique) :
      même forme, mêmes mots, un seul endroit où les changer. `url` est l'ordre de vente, `ref` ce qu'on lit dessous.
@@ -7795,10 +8466,13 @@ chercher: function (q, f) {
     if (!o.url) return '';
     var e = this.esc.bind(this);
     var qr = (typeof window !== 'undefined' && window.PEC_QR) ? window.PEC_QR.svg(o.url, { size: 112 }) : '';
+    /* (24/09, nuit — fondatrice) LA RÉFÉRENCE DU BON À ACHETER, SOUS LE FLASHCODE : si le scan ne passe pas, le commerce la saisit dans
+       « Marques » et retrouve le même ordre de vente. `o.code` est cette référence ; `o.ref`, celle que la marque a donnée (sa commande). */
     return '<div class="pec-ordre-qr">' + (qr || '<span>Flashcode indisponible sur cet appareil — la référence suffit.</span>') + '</div>'
       + '<div class="pec-ordre-txt"><b>À présenter au point de vente ou au distributeur nomade</b>'
       + (o.entite ? '<span class="entite">Bon à t’acheter : <b>' + e(o.entite) + '</b></span>' : '')
       + '<span>Il y lit le bon à te vendre et son montant : tu n’as rien à dicter. Ce flashcode n’est pas un moyen de paiement — il dit quoi vendre.</span>'
+      + (o.code ? '<span class="code">Si le scan ne passe pas, réf. du bon à acheter : <b data-ref-ordre>' + e(o.code) + '</b></span>' : '')
       + (o.ref ? '<span class="ref">' + e(o.ref) + '</span>' : '') + '</div>';
   },
   techLienUrl: function (slug) {
@@ -7811,20 +8485,49 @@ chercher: function (q, f) {
      (23/09, fondatrice : « l'app est obligatoire pour utiliser un bon de marque, ça permet de retracer ») LE
      PORTEUR EST EXIGÉ : `o.par` est le compte client de l'app « Mes bons », et l'usage le garde. Une page sans
      compte (le lien partagé, la fenêtre du widget) ne peut donc pas utiliser un bon : elle mène à l'app. */
+  /* ══ (24/09, nuit) LA VIGILANCE SUIT LE CODE SAISI AU PAIEMENT ══════════════════════════════════════════════════════════════
+     Dans l'app Mes bons, un porteur qui dépasse un palier (kycPorteurRef : bons achetés en espèces, ou par carte, sur la fenêtre
+     glissante) vérifie son identité avant de ranger un bon — la politique de prévention de la fraude, et la raison pour laquelle
+     l'app était « obligatoire, pour retracer » (23/09). Sans compte, la fenêtre de paiement ne connaît pas le porteur ; elle
+     connaît la COMMANDE. Les bons posés par code sur ce bon proposé, plus celui qu'on présente, ne franchissent donc pas un
+     palier ; au-delà, le bon s'utilise depuis l'app, avec le compte et l'identité vérifiée. Les seuils viennent du référentiel. ══ */
+  techLienCodeRecevable: function (slug, code) {
+    var x = this.techLien(slug); if (!x) return { ok: false, motif: 'Bon proposé inconnu.' };
+    var b = this.techBon(code); if (!b) return { ok: true };   // la forme et l'existence du code : techBonVerifier les tranche
+    var P = this.kycPorteurRef(), now = Date.now(), deb = now - (+P.fenetreJours || 0) * 86400000, self = this;
+    var codes = (x.usages || []).filter(function (u) { return u.via === 'code'; }).map(function (u) { return u.code; });
+    if (codes.indexOf(b.code) === -1) codes.push(b.code);
+    var esp = 0, cb = 0;
+    codes.forEach(function (c) {
+      var y = self.techBon(c); if (!y) return;
+      var t = y.venduLe || y.emisLe || 0; if (!(t >= deb && t <= now)) return;
+      if (y.moyen === 'especes') esp += y.montant || 0; else if (y.moyen === 'carte') cb += y.montant || 0;
+    });
+    var trop = (P.especesEur > 0 && esp > P.especesEur) ? 'especes' : (P.carteEur > 0 && cb > P.carteEur) ? 'carte' : null;
+    if (!trop) return { ok: true };
+    return { ok: false, refus: 'vigilance', moyen: trop,
+      motif: 'Au-delà de ' + this.eur(trop === 'especes' ? P.especesEur : P.carteEur) + ' de bons achetés ' + (trop === 'especes' ? 'en espèces' : 'par carte')
+        + ' sur une même commande, un bon s’utilise depuis l’app Mes bons, avec ton compte et ton identité vérifiée.' };
+  },
   techLienUtiliserBon: function (slug, code, o) {
     o = o || {};
     var par = String(o.par || '').trim();
-    if (!par) return { ok: false, refus: 'porteur', motif: 'Un bon de marque s\'utilise depuis l\'app Mes bons, avec ton compte — c\'est ce qui permet de retracer chaque usage.' };
+    /* (24/09, nuit — fondatrice : « la modale de paiement dans l'API du site client doit permettre d'enregistrer son numéro de bon
+       pour payer ; si pas de bon, où acheter un bon ») LE CODE SE SAISIT AUSSI DANS LA FENÊTRE DE PAIEMENT DE LA MARQUE (`via:
+       'code'`) : l'usage garde la commande (ce bon proposé) et la saisie. L'app Mes bons reste l'autre porte, avec son compte. */
+    if (!par && o.via === 'code') par = 'code saisi au paiement';
+    if (!par) return { ok: false, refus: 'porteur', motif: 'Pour couvrir cette commande avec ton bon, ouvre-le dans l\'app Mes bons, avec ton compte — c\'est ce qui permet de retracer chaque usage.' };
     var x = this.techLien(slug); if (!x) return { ok: false, motif: 'Bon proposé inconnu.' };
     if (x.etat === 'cancelled') return { ok: false, motif: 'Ce bon proposé a été annulé par la marque.' };
     if (x.etat === 'expired') return { ok: false, motif: 'Ce bon proposé a expiré le ' + new Date(x.expireLe).toLocaleDateString('fr-FR') + '.' };
     if (x.etat === 'used') return { ok: false, motif: 'Ce bon proposé est déjà couvert : rien ne manque plus.' };
+    if (o.via === 'code') { var vg = this.techLienCodeRecevable(slug, code); if (!vg.ok) return vg; }
     var u = this.techBonUtiliser(code, { marchandId: x.marchandId, montant: x.restant });
     if (!u.ok) return u;
     var l = this.techLiensGet(), i = -1;
     for (var k = 0; k < l.length; k++) if (l[k].id === x.id) i = k;
     if (i < 0) return { ok: false, motif: 'Bon proposé introuvable.' };
-    (l[i].usages = l[i].usages || []).push({ code: u.bon.code, pris: u.pris, at: Date.now(), par: par });
+    (l[i].usages = l[i].usages || []).push({ code: u.bon.code, pris: u.pris, at: Date.now(), par: par, via: o.via === 'code' ? 'code' : 'app' });
     var pris = l[i].usages.reduce(function (a, p) { return a + (p.pris || 0); }, 0);
     var reste = Math.round((l[i].montant - pris) * 100) / 100;
     if (reste <= 0) { l[i].etat = 'used'; l[i].couvertLe = Date.now(); }
@@ -7846,12 +8549,14 @@ chercher: function (q, f) {
   },
   /* ══ (21/09, fondatrice : « et pour payer, comment tu paies — pourquoi c'est pas comme Fly et Mode, la
      carte etc. ») UN REVENDEUR SE DÉPLACE — LA RENCONTRE D'UNE BOUTIQUE CONNECTÉE ═══════════════════════════
+     (24/09, nuit) LE MAGASIN ET LES ÉTATS RESTENT ; LA DEMANDE, ELLE, EST DÉSORMAIS DIRIGÉE : le client choisit son distributeur nomade
+     (techMiseEnRelationDemander, plus bas) — la diffusion à toute une commune, décrite ci-dessous au passé, est partie.
      Le chemin « un agent se déplace » de la page d'une boutique ne montrait qu'une liste de noms, avec un
      lien pour écrire : ni carte, ni adresse, ni demande — rien de ce que Mode et Fly font. Il fait désormais
      la même chose. Le client dit OÙ (une adresse, relevée de sa position ou cherchée), la demande part aux
      revendeurs MOBILES de CETTE boutique, l'un d'eux la prend depuis son espace, vient, reçoit le prix POUR
      SON PROPRE COMPTE et émet le bon (techBonEmettre — son contrat vivant fait la loi) ; le code est rattaché
-     à la rencontre, et le client règle la demande avec, dans « En ligne ».
+     à la rencontre, et le client le pose sur sa commande, dans « J'ai un bon » (24/09, nuit).
      CE QUI DIFFÈRE DE LA RENCONTRE PAYENCASH, ET POURQUOI :
        · pas de compte client ici : l'adresse n'entre dans aucun carnet, et le client laisse le NUMÉRO où le
          revendeur l'appellera. Seul le revendeur qui a PRIS la demande le lit, et il s'efface dès qu'elle
@@ -7889,78 +8594,15 @@ chercher: function (q, f) {
     var l = '0' + n.slice(3);
     return l.replace(/(\d{2})(?=\d)/g, '$1 ').trim();
   },
-  // ceux qui peuvent la prendre : les mobiles de la boutique, dans la ville du rendez-vous (sans ville déclarée : partout)
-  techRevendeursMobilesVille: function (marchandId, ville) {
-    var d = this, v = this._sansAccent(String(ville || '').trim());
-    return this.techRevendeursMobiles(marchandId).filter(function (r) { return !r.ville || !v || d._sansAccent(r.ville) === v; });
-  },
-  /* LE CONTRÔLE À BLANC — les mêmes refus que la demande, sans rien écrire : l'écran l'appelle AVANT d'ouvrir
-     la mise en relation, pour ne pas faire lire une modale à quelqu'un qu'on refusera ensuite. */
-  techRencontreVerifier: function (o) {
-    o = o || {};
-    var x = this.techLien(o.slug);
-    if (!x) return { ok: false, motif: 'Bon proposé inconnu.' };
-    if (x.etat !== 'open' && x.etat !== 'partial') return { ok: false, motif: 'Cette demande n\'attend plus de règlement (' + this.techLienEtatLbl(x.etat).toLowerCase() + ') : personne n\'a à se déplacer.' };
-    if (!(x.restant > 0)) return { ok: false, motif: 'Il ne reste rien à régler sur cette demande.' };
-    if (!this.techRevendeursMobiles(x.marchandId).length) return { ok: false, motif: 'Aucun ' + this.terme('nomade', 'client') + ' ne se déplace pour ' + x.marchand + ' pour l\'instant.' };
-    var a = o.adresse || {};
-    var num = String(a.numero || '').trim(), voie = String(a.voie || '').trim(), cp = String(a.cp || '').trim(), ville = String(a.ville || '').trim();
-    if (!num || !voie) return { ok: false, champ: 'adresse', motif: 'Dis où il vient te rejoindre : le numéro et la voie.' };
-    if (!/^\d{5}$/.test(cp)) return { ok: false, champ: 'cp', motif: 'Le code postal a cinq chiffres.' };
-    if (!ville) return { ok: false, champ: 'ville', motif: 'Il manque la commune — c\'est elle qui dit à quels ' + this.terme('nomade', 'clientPluriel') + ' proposer la rencontre.' };
-    /* UNE DEMANDE QUE PERSONNE NE VERRA NE PART PAS : un revendeur voit celles de SA commune (ou toutes, s'il n'en a
-       pas déclaré). S'il n'y en a aucun ici, on le dit tout de suite plutôt que de laisser attendre pour rien. */
-    var joignables = this.techRevendeursMobilesVille(x.marchandId, ville).length;
-    if (!joignables) return { ok: false, champ: 'ville', motif: 'Aucun ' + this.terme('nomade', 'client') + ' ne se déplace à ' + ville + ' pour l\'instant — cherche plutôt « ' + ((this.PARTENAIRE_MODES.sedentaire || {}).clientLbl || '') + ' », ou règle « En ligne » si tu as déjà un bon.' };
-    var vivante = this.techRencontresLien(x.slug).filter(function (r) { return r.statut === 'demandee' || r.statut === 'acceptee'; })[0];
-    if (vivante) return { ok: false, motif: 'Une rencontre est déjà en cours pour cette demande (' + vivante.ref + ') : attends-la, ou annule-la avant d\'en demander une autre.', rencontre: vivante };
-    var geo = (a.geo && isFinite(a.geo.lat) && isFinite(a.geo.lng)) ? { lat: a.geo.lat, lng: a.geo.lng } : null;
-    return { ok: true, lien: x, montant: x.restant, ville: ville,
-      lieu: num + ' ' + voie + ', ' + cp + ' ' + ville,
-      adresse: { numero: num, voie: voie, cp: cp, ville: ville, etage: String(a.etage || '').trim() || null,
-        porte: String(a.porte || '').trim() || null, instructions: String(a.instructions || '').trim() || null },
-      geo: geo || (this.villeGeo ? this.villeGeo(ville) : null), geoApprox: !geo, joignables: joignables };
-  },
-  techRencontreDemander: function (o) {
-    o = o || {};
-    var v = this.techRencontreVerifier(o);
-    if (!v.ok) return v;
-    var tel = this._telFr(o.tel);
-    if (!tel) return { ok: false, champ: 'tel', motif: 'Laisse un numéro où il peut t\'appeler (06 12 34 56 78) : c\'est lui qui confirme le rendez-vous.' };
-    var canal = ({ appel: 1, whatsapp: 1, facetime: 1 })[o.canal] ? o.canal : 'appel';
-    /* L'ACCORD EST CELUI QU'IL A LU, mot pour mot, et il voyage avec la rencontre : sans compte, il n'y a pas
-       d'autre endroit où le ranger — et sans lui, personne n'appelle personne. */
-    var accord = String(o.consentement || '').trim();
-    if (!accord) return { ok: false, champ: 'consentement', motif: 'Coche l\'accord : il ne t\'appelle pas sans ton autorisation.' };
-    var l = this.techRencontresGet();
-    var seq = this._seq('tech-rencontres', this._seqPlancher(l, '^TRV-0*(\\d+)$', 'id'));
-    if (seq == null) return this._refusEcriture('La demande de rencontre');
-    var x = v.lien, now = Date.now(), id = 'TRV-' + String(seq).padStart(5, '0');
-    var r = { id: id, ref: id, lienSlug: x.slug, lienId: x.id, marchandId: x.marchandId, marchand: x.marchand,
-      montant: v.montant, ville: v.ville, lieu: v.lieu, adresse: v.adresse, aide: this.adresseAide(v.adresse) || null,
-      geo: v.geo, geoApprox: v.geoApprox, tel: tel, canal: canal, note: String(o.note || '').trim().slice(0, 200) || null,
-      consentement: accord.slice(0, 400), consentiTs: now,
-      statut: 'demandee', creeTs: now, expireTs: now + this.rencontreFenetreMin() * 60000,
-      revendeurId: null, revendeur: null, codes: [], joignables: v.joignables };
-    l.unshift(r);
-    if (!this._techRencontresPut(l)) return this._refusEcriture('La demande de rencontre');
-    this._journal('tech_rencontre_demandee', id, { marchand: x.marchandId, lien: x.id, ville: v.ville, montant: v.montant, joignables: v.joignables });
-    return { ok: true, rencontre: r };
-  },
-  /* CE QU'UN REVENDEUR MOBILE VOIT : les demandes VIVANTES des boutiques avec qui il a un contrat en cours, dans
-     sa ville — et les siennes. Avant qu'il la prenne, il ne lit ni le numéro ni l'étage : la commune, le montant,
-     la rue. Le reste se découvre en acceptant. */
+  /* (24/09, nuit — fondatrice : « aligne partout : dans un point de vente / un distributeur se déplace ; prends celui qui est le plus
+     complet ») UNE SEULE RENCONTRE : CELLE DU DISTRIBUTEUR NOMADE CHOISI. La demande diffusée à tous les nomades d'une commune (le
+     premier qui la prend) est partie : sur la carte de Mes bons comme sur la page d'un bon proposé, le client choisit le sien, à SON
+     tarif pour sa distance, et la demande part à lui seul (techMiseEnRelationDemander). Ce qu'un distributeur nomade voit : les demandes
+     qui lui sont adressées — et elles seules. */
+  _rencontreChoisie: function (r) { return !!(r && (r.choisi || r.origine === 'carte')); },
   techRencontresRevendeur: function (revendeurId) {
-    var d = this, rv = this.techRevendeur(revendeurId);
-    if (!rv || this.partenaireMode(rv) !== 'mobile') return [];
-    var v = this._sansAccent(String(rv.ville || '').trim());
-    return this.techRencontresGet().map(function (r) { return d._techRencontreVive(r); }).filter(function (r) {
-      if (r.revendeurId === revendeurId) return true;
-      return r.statut === 'demandee' && !r.revendeurId && (!v || d._sansAccent(r.ville) === v);   // (23/09, nuit) plus de contrat par marque : tout nomade de la ville la voit
-    }).map(function (r) {
-      if (r.revendeurId === revendeurId) return r;
-      return Object.assign({}, r, { tel: null, adresse: { voie: r.adresse.voie, cp: r.adresse.cp, ville: r.adresse.ville }, aide: null, note: null });
-    });
+    var d = this;
+    return this.techRencontresGet().map(function (r) { return d._techRencontreVive(r); }).filter(function (r) { return r.revendeurId === revendeurId; });
   },
   _techRencontreMaj: function (id, patch, evt, jnl) {
     var l = this.techRencontresGet(), i = -1;
@@ -7971,36 +8613,37 @@ chercher: function (q, f) {
     if (evt) this._journal(evt, id, jnl || {});
     return l[i];
   },
-  techRencontreAccepter: function (id, revendeurId) {
-    var r = this.techRencontre(id); if (!r) return { ok: false, motif: 'Rencontre inconnue.' };
-    var rv = this.techRevendeur(revendeurId); if (!rv) return { ok: false, motif: 'Partenaire du réseau inconnu.' };
-    if (this.partenaireMode(rv) !== 'mobile') return { ok: false, motif: 'Seul un ' + this.terme('nomade') + ' se déplace.' };
-    if (r.statut === 'expiree') return { ok: false, motif: 'Cette demande a expiré (' + this.rencontreFenetreMin() + ' min) — l\'utilisateur en refera une.' };
-    if (r.statut !== 'demandee') return { ok: false, motif: 'Cette rencontre est déjà ' + this.rencontreStatutLbl(r.statut).toLowerCase() + '.' };
-    /* (23/09, nuit) PLUS DE CONTRAT PAR MARQUE : ce qui compte, c'est qu'il puisse vendre CE bon au rendez-vous (garantie
-       versée, avance suffisante) — la même règle que le comptoir, sinon il se déplacerait pour une vente refusée. */
-    var pv = this.techPeutVendre(revendeurId, r.marchandId, r.montant);
-    if (!pv.ok) return { ok: false, refus: pv.refus, motif: pv.motif };
-    var m = this._techRencontreMaj(id, { statut: 'acceptee', revendeurId: rv.id, revendeur: rv.raisonSociale, accepteeTs: Date.now() },
-      'tech_rencontre_acceptee', { marchand: r.marchandId, revendeur: rv.id });
-    return m ? { ok: true, rencontre: m } : { ok: false, motif: 'Acceptation non enregistrée : le stockage a refusé.' };
-  },
   /* LA RENCONTRE A EU LIEU : le revendeur a reçu le prix, POUR SON PROPRE COMPTE, et émet le bon par la même
      porte que tout bon de la boutique (techBonEmettre, puis « vendu »). On n'inscrit ni son prix ni sa marge. */
   techRencontreServir: function (id, o) {
     o = o || {};
     var r = this.techRencontre(id); if (!r) return { ok: false, motif: 'Rencontre inconnue.' };
     if (r.statut === 'servie') return { ok: false, motif: 'Cette rencontre a déjà été servie.', servie: true };
-    if (r.statut !== 'acceptee' || r.revendeurId !== o.revendeurId) return { ok: false, motif: 'Prends d\'abord la demande : seul le ' + this.terme('nomade') + ' qui l\'a acceptée la sert.' };
+    var carte = !r.lienSlug;
+    if (r.statut !== 'acceptee' || r.revendeurId !== o.revendeurId) return { ok: false, motif: (this._rencontreChoisie(r) && r.statut === 'demandee' && r.revendeurId === o.revendeurId)
+      ? 'Appelle d\'abord ton client et valide le rendez-vous : c\'est l\'appel qui l\'engage.'
+      : 'Prends d\'abord la demande : seul le ' + this.terme('nomade') + ' qui l\'a acceptée la sert.' };
     if (o.prixRecu !== true) return { ok: false, champ: 'prixRecu', motif: 'Confirme d\'abord avoir reçu le prix : un bon ne s\'émet qu\'une fois payé.' };
-    var x = this.techLien(r.lienSlug);
-    if (!x || (x.etat !== 'open' && x.etat !== 'partial')) return { ok: false, motif: 'Ce bon proposé n\'attend plus rien (' + (x ? this.techLienEtatLbl(x.etat).toLowerCase() : 'introuvable') + ') : n\'émets pas de bon, annule la rencontre.' };
-    var em = this.techBonEmettre({ marchandId: r.marchandId, revendeurId: r.revendeurId, montant: r.montant });
+    var x = null, marchandId = r.marchandId, montant = r.montant;
+    if (!carte) {
+      x = this.techLien(r.lienSlug);
+      if (!x || (x.etat !== 'open' && x.etat !== 'partial')) return { ok: false, motif: 'Ce bon proposé n\'attend plus rien (' + (x ? this.techLienEtatLbl(x.etat).toLowerCase() : 'introuvable') + ') : n\'émets pas de bon, annule la rencontre.' };
+    } else {
+      /* (24/09, nuit) LA MISE EN RELATION DE LA CARTE n'a pas de bon proposé : la marque et le montant se sont dits au téléphone —
+         ceux de la demande s'ils y sont, sinon ceux que la caisse pose. */
+      marchandId = o.marchandId || r.marchandId;
+      montant = (o.montant != null && String(o.montant).trim() !== '') ? o.montant : r.montant;
+      if (!marchandId) return { ok: false, champ: 'marque', motif: 'Choisis la marque du bon que ton client t\'achète.' };
+      if (montant == null || String(montant).trim() === '') return { ok: false, champ: 'montant', motif: 'Saisis le montant du bon que ton client t\'achète.' };
+    }
+    var em = this.techBonEmettre({ marchandId: marchandId, revendeurId: r.revendeurId, montant: montant, ordre: x ? x.slug : null, par: o.par, moyen: o.moyen || null });
     if (!em.ok) return em;
     this.techBonVendu(em.bon.code);
     // le numéro du client ne sert plus : il s'efface avec le rendez-vous
-    var m = this._techRencontreMaj(id, { statut: 'servie', servieTs: Date.now(), codes: [em.bon.code], tel: null },
-      'tech_rencontre_servie', { marchand: r.marchandId, revendeur: r.revendeurId, bon: em.bon.id });
+    var patchS = { statut: 'servie', servieTs: Date.now(), codes: [em.bon.code], tel: null };
+    if (carte) { patchS.marchandId = em.bon.marchandId; patchS.marchand = em.bon.marchand; patchS.montant = em.bon.montant; }
+    var m = this._techRencontreMaj(id, patchS,
+      'tech_rencontre_servie', { marchand: marchandId, revendeur: r.revendeurId, bon: em.bon.id, origine: r.origine || 'lien' });
     if (!m) return { ok: false, motif: 'Rencontre non enregistrée : le stockage a refusé.' };
     return { ok: true, rencontre: m, bon: this.techBon(em.bon.code), ticket: em.ticket || '' };
   },
@@ -8012,6 +8655,146 @@ chercher: function (q, f) {
       motifAnnulation: String(motif || '').trim().slice(0, 200) || null, tel: null },
       'tech_rencontre_annulee', { marchand: r.marchandId, par: par || null });
     return m ? { ok: true, rencontre: m } : { ok: false, motif: 'Annulation non enregistrée : le stockage a refusé.' };
+  },
+  /* ══ (24/09, nuit — fondatrice : « la mise en relation ; prise de contact téléphonique à valider : c'est le distributeur nomade qui
+     appelle ; notification lorsqu'il reçoit une demande ; attention flux complet, réussis un flux sans erreur ») LA MISE EN RELATION
+     DEPUIS LA CARTE DE MES BONS ═══════════════════════════════════════════════════════════════════════════════════════════════════
+     Le client ne lance pas un appel à tous : il CHOISIT son distributeur nomade, dans la liste de ceux qui viennent jusqu'à lui, au
+     tarif que chacun affiche pour SA distance (nomadesAutour). La demande part à lui seul (`revendeurId` posé dès la création) ; il
+     est prévenu (son fil, et un SMS au catalogue des messages) ; il APPELLE le client, et c'est l'appel qui valide le rendez-vous
+     (techRencontreValider) ; il vient, le client lui achète son bon, il le vend depuis sa caisse (03-vendre?rdv=) — la rencontre est
+     servie, le code rattaché, le numéro effacé ; le client peut la noter. Sans appel dans les `reponseMin` minutes, elle expire, et le
+     client en choisit un autre. Une seule demande vivante par client : c'est un choix, pas un appel d'offres.
+     Même magasin, mêmes états que la rencontre d'un bon proposé (RENCONTRE_STATUTS) ; `origine: 'carte'` les distingue. Le tarif de
+     déplacement lu au moment de la demande voyage avec elle — c'est celui que le client a accepté ; le prix du bon, lui, n'y est
+     jamais écrit : il n'est pas le nôtre. ══ */
+  techMiseEnRelationVerifier: function (o) {
+    o = o || {};
+    /* DEPUIS LA PAGE D'UN BON PROPOSÉ (`slug`) : ce que le distributeur nomade vendra est déjà écrit — la marque, et ce qui manque
+       encore ; le client dit OÙ, par une adresse complète (numéro, voie, code postal, commune). */
+    var x = null, adr = null;
+    if (o.slug) {
+      x = this.techLien(o.slug);
+      if (!x) return { ok: false, motif: 'Bon proposé inconnu.' };
+      if (x.etat !== 'open' && x.etat !== 'partial') return { ok: false, motif: 'Cette proposition n\'attend plus rien (' + this.techLienEtatLbl(x.etat).toLowerCase() + ') : personne n\'a à se déplacer.' };
+      if (!(x.restant > 0)) return { ok: false, motif: 'Il ne reste rien à acheter sur cette proposition.' };
+      var ovx = this.techOrdreVente ? this.techOrdreVente(x.slug) : null;
+      if (ovx && !ovx.vendable) return { ok: false, motif: 'Le bon de cette proposition est déjà acheté : personne n\'a à se déplacer.' };
+      var vivL = this.techRencontresLien(x.slug).filter(function (r) { return r.statut === 'demandee' || r.statut === 'acceptee'; })[0];
+      if (vivL) return { ok: false, rencontre: vivL, motif: 'Une rencontre est déjà en cours pour cette proposition (' + vivL.ref + ') : attends-la, ou annule-la avant d\'en demander une autre.' };
+    }
+    if (o.adresse) {
+      var a = o.adresse, num = String(a.numero || '').trim(), voie = String(a.voie || '').trim(), cp = String(a.cp || '').trim(), vil = String(a.ville || '').trim();
+      if (!num || !voie) return { ok: false, champ: 'adresse', motif: 'Dis où te rejoindre : le numéro et la voie.' };
+      if (!/^\d{5}$/.test(cp)) return { ok: false, champ: 'cp', motif: 'Le code postal a cinq chiffres.' };
+      if (!vil) return { ok: false, champ: 'ville', motif: 'Il manque la commune : c\'est d\'elle que se mesure la distance, et donc le tarif.' };
+      adr = { numero: num, voie: voie, cp: cp, ville: vil, etage: String(a.etage || '').trim() || null, porte: String(a.porte || '').trim() || null,
+        instructions: String(a.instructions || '').trim() || null };
+      if (!o.pos) { var g = (a.geo && isFinite(a.geo.lat) && isFinite(a.geo.lng)) ? a.geo : (this.villeGeo ? this.villeGeo(vil, cp) : null); if (g) { o.pos = g; o.posApprox = !(a.geo && isFinite(a.geo.lat)); } }
+      if (!o.lieu) o.lieu = num + ' ' + voie + ', ' + cp + ' ' + vil;
+      if (!o.ville) o.ville = vil;
+    }
+    var pos = (o.pos && isFinite(o.pos.lat) && isFinite(o.pos.lng)) ? { lat: +o.pos.lat, lng: +o.pos.lng } : null;
+    if (!pos) return { ok: false, champ: 'position', motif: 'Dis d\'abord où tu es — « Me localiser », ou une adresse : c\'est de là que se mesurent la distance, et donc le tarif.' };
+    var p = this.partenaire(o.partenaireId);
+    if (!p || !this.partenaireEstMobile(p)) return { ok: false, motif: this.terme('nomade', 'client', true) + ' inconnu.' };
+    var n = this.nomadesAutour({ pos: pos }).filter(function (x) { return x.id === p.id; })[0];
+    if (!n) return { ok: false, motif: p.enseigne + ' ne vient pas jusqu\'ici, ou ne peut pas vendre en ce moment : choisis un autre ' + this.terme('nomade', 'client') + '.' };
+    var marque = null, montant = null;
+    if (x) { marque = { id: x.marchandId, nom: x.marchand }; montant = x.restant; }
+    else if (o.marchandId) {
+      var m = this.techMarchand(o.marchandId);
+      if (!m || !this.techMarchandPeutTravailler(m.id).ok) return { ok: false, champ: 'marque', motif: 'Cette marque ne vend pas ses bons en ce moment : choisis-en une autre, ou dis-le-lui au téléphone.' };
+      marque = { id: m.id, nom: m.raisonSociale };
+    }
+    var brut = x ? '' : String(o.montant == null ? '' : o.montant).replace(/\s|€/g, '').replace(',', '.');
+    if (brut !== '') {
+      montant = Math.round((parseFloat(brut) || 0) * 100) / 100;
+      var B0 = this.bonsRef();
+      if (!/^\d+(\.\d{1,2})?$/.test(brut) || !(montant >= B0.minimum)) return { ok: false, champ: 'montant', motif: 'Un bon d\'achat part de ' + this.eur(B0.minimum) + ' — ou laisse le montant vide, et dis-le-lui au téléphone.' };
+    }
+    var vive = this._techRencontreMiseVivante({ clientId: o.clientId || null, tel: o.tel ? this._telFr(o.tel) : null });
+    if (vive) return { ok: false, rencontre: vive, motif: 'Tu as déjà une demande en cours avec ' + vive.revendeur + ' (' + vive.ref + ') : attends son appel, ou annule-la pour en choisir un autre.' };
+    return { ok: true, nomade: n, pos: pos, posApprox: !!o.posApprox, marque: marque, montant: montant, lien: x, adresse: adr,
+      lieu: String(o.lieu || '').trim().slice(0, 160) || null, ville: String(o.ville || '').trim() || null };
+  },
+  // la demande encore vivante d'un client — demandée ou validée, par son compte ou par son numéro
+  _techRencontreMiseVivante: function (o) {
+    var d = this;
+    return this.techRencontresGet().map(function (r) { return d._techRencontreVive(r); }).filter(function (r) {
+      return d._rencontreChoisie(r) && (r.statut === 'demandee' || r.statut === 'acceptee')
+        && ((o.clientId && r.clientId === o.clientId) || (o.tel && r.tel === o.tel));
+    })[0] || null;
+  },
+  techMiseEnRelationDemander: function (o) {
+    o = o || {};
+    var v = this.techMiseEnRelationVerifier(o); if (!v.ok) return v;
+    var tel = this._telFr(o.tel);
+    if (!tel) return { ok: false, champ: 'tel', motif: 'Laisse le numéro où t\'appeler (06 12 34 56 78) : c\'est par cet appel que le rendez-vous se valide.' };
+    var vive = this._techRencontreMiseVivante({ tel: tel });
+    if (vive) return { ok: false, rencontre: vive, motif: 'Une demande est déjà en cours à ce numéro, avec ' + vive.revendeur + ' (' + vive.ref + ') : attends son appel, ou annule-la.' };
+    var accord = String(o.consentement || '').trim();
+    if (!accord) return { ok: false, champ: 'consentement', motif: 'Coche l\'accord : personne ne t\'appelle sans ton autorisation.' };
+    var l = this.techRencontresGet();
+    var seq = this._seq('tech-rencontres', this._seqPlancher(l, '^TRV-0*(\\d+)$', 'id'));
+    if (seq == null) return this._refusEcriture('La demande de mise en relation');
+    var R = this.nomadeRef(), n = v.nomade, now = Date.now(), id = 'TRV-' + String(seq).padStart(5, '0');
+    var r = { id: id, ref: id, origine: v.lien ? 'lien' : 'carte', choisi: true, lienSlug: v.lien ? v.lien.slug : null, lienId: v.lien ? v.lien.id : null,
+      revendeurId: n.revendeurId, partenaireId: n.id, revendeur: n.enseigne,
+      clientId: o.clientId || null, prenom: String(o.prenom || '').trim().slice(0, 40) || null,
+      marchandId: v.marque ? v.marque.id : null, marchand: v.marque ? v.marque.nom : null, montant: v.montant,
+      geo: v.pos, geoApprox: v.posApprox, lieu: v.lieu, ville: v.ville, adresse: v.adresse, aide: v.adresse ? (this.adresseAide(v.adresse) || null) : null,
+      km: n.km, distTxt: n.distTxt, palier: n.palier, tarif: n.tarif,
+      tel: tel, canal: 'appel', note: String(o.note || '').trim().slice(0, 200) || null,
+      consentement: accord.slice(0, 400), consentiTs: now,
+      statut: 'demandee', creeTs: now, expireTs: now + R.reponseMin * 60000, codes: [] };
+    l.unshift(r);
+    if (!this._techRencontresPut(l)) return this._refusEcriture('La demande de mise en relation');
+    this._journal('tech_rencontre_demandee', id, { origine: r.origine, choisi: true, lien: r.lienId, revendeur: n.revendeurId, partenaire: n.id, nom: n.enseigne, km: n.km,
+      palier: n.palier.lbl, tarif: n.tarif, marchand: r.marchandId, par: o.clientId || 'client' });
+    return { ok: true, rencontre: r };
+  },
+  /* LE RENDEZ-VOUS SE VALIDE AU TÉLÉPHONE — le distributeur nomade appelle le client (le numéro est dans la demande : le client l'a
+     donné à LUI, avec son accord) ; l'appel passé et le rendez-vous convenu, il le valide ici, avec l'heure dite s'il veut. Tant que
+     ce n'est pas fait, rien ne se sert. Il faut encore qu'il puisse vendre (garantie, avance) : il ne se déplace pas pour un refus. */
+  techRencontreValider: function (id, revendeurId, o) {
+    o = o || {};
+    var r = this.techRencontre(id); if (!r) return { ok: false, motif: 'Demande inconnue.' };
+    if (!this._rencontreChoisie(r)) return { ok: false, motif: 'Cette rencontre n\'est pas adressée à un distributeur nomade choisi.' };
+    if (r.revendeurId !== revendeurId) return { ok: false, motif: 'Cette demande est adressée à un autre ' + this.terme('nomade') + '.' };
+    if (r.statut === 'expiree') return { ok: false, motif: 'Cette demande a expiré : personne ne l\'a validée dans les ' + this.nomadeRef().reponseMin + ' min — le client en a peut-être choisi un autre.' };
+    if (r.statut !== 'demandee') return { ok: false, motif: 'Cette demande est déjà ' + this.rencontreStatutLbl(r.statut).toLowerCase() + '.' };
+    if (o.appele !== true) return { ok: false, champ: 'appele', motif: 'Appelle d\'abord ton client : le rendez-vous se valide au téléphone.' };
+    var pv = this.techPeutVendre(revendeurId, r.marchandId || null, r.montant || 0);
+    if (!pv.ok) return { ok: false, refus: pv.refus, motif: pv.motif };
+    var heure = String(o.heure || '').trim().slice(0, 40) || null;
+    var m = this._techRencontreMaj(id, { statut: 'acceptee', accepteeTs: Date.now(), valideeParTel: true, rdvHeure: heure },
+      'tech_rencontre_acceptee', { origine: r.origine || 'carte', choisi: true, revendeur: revendeurId, heure: heure });
+    return m ? { ok: true, rencontre: m } : { ok: false, motif: 'Validation non enregistrée : le stockage a refusé.' };
+  },
+  // les mises en relation d'UN client — par son compte s'il est connecté, sinon celles faites depuis CET appareil (leurs références)
+  techRencontresClient: function (o) {
+    o = o || {}; var d = this, ids = o.ids || [];
+    return this.techRencontresGet().map(function (r) { return d._techRencontreVive(r); }).filter(function (r) {
+      return d._rencontreChoisie(r) && ((o.clientId && r.clientId === o.clientId) || ids.indexOf(r.id) !== -1);
+    }).sort(function (a, b) { return (b.creeTs || 0) - (a.creeTs || 0); });
+  },
+  /* LA NOTE D'UNE RENCONTRE SERVIE — une par rencontre, de 1 à 5 : c'est d'elles que se DÉRIVE la note d'un distributeur nomade
+     (distributeurNote), jamais d'une étoile écrite d'avance. */
+  distributeurNoter: function (rencontreId, note, o) {
+    o = o || {};
+    var r = this.techRencontre(rencontreId);
+    if (!r || r.statut !== 'servie' || !r.partenaireId) return { ok: false, motif: 'On note un ' + this.terme('nomade', 'client') + ' après une rencontre servie.' };
+    var n = Math.round(+note);
+    if (!(n >= 1 && n <= 5)) return { ok: false, champ: 'note', motif: 'Une note va de 1 à 5.' };
+    var l = this.notesDistributeurGet();
+    if (l.some(function (x) { return x.rencontreId === rencontreId; })) return { ok: false, deja: true, motif: 'Cette rencontre est déjà notée — merci.' };
+    l.unshift({ rencontreId: rencontreId, distributeurId: r.partenaireId, note: n, commentaire: String(o.commentaire || '').trim().slice(0, 280) || null,
+      clientId: r.clientId || null, at: Date.now() });
+    if (!this._ecrit('pec-distributeur-notes', l)) return this._refusEcriture('La note');
+    this._journal('distributeur_note', r.partenaireId, { rencontre: rencontreId, note: n, par: o.par || r.clientId || 'client' });
+    try { window.dispatchEvent(new Event('pec-bus')); } catch (e) {}
+    return { ok: true, note: this.distributeurNote(r.partenaireId) };
   },
   /* LE TICKET DU BON PROPOSÉ — construit ICI, avec la marque dedans : on ne peut pas en composer un sans elle.
      Son flashcode est un ORDRE DE VENTE (la marque + le montant), que le client tend au commerce du réseau. */
@@ -8035,10 +8818,11 @@ chercher: function (q, f) {
       + '<div style="' + T.m + '">' + e(this.eur(x.montant)) + '</div>'
       + (x.reference ? '<div style="' + T.c + '">' + e(x.reference) + '</div>' : '')
       + '<div style="' + T.qr + '">' + qr + '</div>'
+      + '<div style="' + T.s + ';margin-top:4px">Si le scan ne passe pas, réf. du bon à acheter :<br><b data-ref-ordre style="' + T.c + ';font-size:17px;letter-spacing:.12em">' + e(this.techLienCode(x)) + '</b></div>'
       + '<div style="' + T.s + '">Bon d\'achat <b>' + e(x.marchand) + '</b> proposé'
       + (x.client ? ' à ' + e(x.client) : '') + ', utilisable uniquement sur <b>' + e(x.site) + '</b>'
       + (x.expireLe ? ' — proposition valable jusqu\'au ' + e(new Date(x.expireLe).toLocaleDateString('fr-FR')) : '') + '.</div>'
-      + '<div style="' + T.s + ';font-weight:700">À présenter au comptoir d\'un commerce du réseau ' + e(R.nom) + ' : son écran lira <b>la marque et le montant du bon à te vendre</b>. Pour l\'utiliser ensuite chez ' + e(x.marchand) + ' : l\'app Mes bons.</div>'
+      + '<div style="' + T.s + ';font-weight:700">À présenter au comptoir d\'un commerce du réseau ' + e(R.nom) + ' : son écran lira <b>la marque et le montant du bon à te vendre</b>. Tu le dépenses ensuite sur le site de ' + e(x.marchand) + ' ; ton code se range dans l\'app Mes bons.</div>'
       + '<div style="' + T.l + '">' + e(R.nom) + ' n\'encaisse rien : ce flashcode est un <b>ordre de vente</b> (marque + montant), pas un moyen de paiement. '
       + 'Un bon ' + e(x.marchand) + ' ne s\'utilise que sur ' + e(x.site) + ' — réseau limité — et n\'est ni remboursable en espèces, ni rendu en monnaie. '
       + 'Aucun fonds ne transite par la plateforme, à aucun moment.</div>'
@@ -8098,7 +8882,7 @@ chercher: function (q, f) {
     return this._pointsTrier(l, opts);
   },
   /* ET SES REVENDEURS MOBILES — ceux qui viennent au client. On ne les épingle pas : un mobile n'a pas d'adresse.
-     On les JOINT par une demande de rencontre (techRencontreDemander), comme les distributeurs de PayEnCash. */
+     On les JOINT par une mise en relation (techMiseEnRelationDemander) : le client en choisit un, à son tarif pour sa distance. */
   techRevendeursMobiles: function (marchandId) {
     var self = this;
     return this.techReseauVente(marchandId).filter(function (r) { return r.mobile; }).map(function (r) {
@@ -8111,13 +8895,16 @@ chercher: function (q, f) {
     });
   },
 
-  /* ══ UC-8 — LA PAGE DE PAIEMENT DU COMMERÇANT : NOS TROIS CHEMINS ════════════════════════════
+  /* ══ UC-8 — LA PAGE DU BON PROPOSÉ D'UNE MARQUE : OÙ ACHETER SON BON ════════════════════════════
      Décision fondatrice du 19/09 au soir : « lorsque le e-commerce l'ajoute, il doit automatiquement avoir la
      page de paiement avec Comment tu paies : tu as un bon, chez un partenaire, un agent se déplace — c'est
      notre marque de fabrique. Il choisit PayEnCash, ça ouvre la modale avec les trois solutions. »
      Les trois chemins sont les NÔTRES, mais appliqués au réseau DU COMMERÇANT : ce sont SES revendeurs sous
      contrat vivant qui vendent SES bons (UC-8), les sédentaires d'un côté, les mobiles de l'autre. Un chemin
-     sans personne derrière ne s'affiche pas : on ne propose pas d'aller nulle part. */
+     sans personne derrière ne s'affiche pas : on ne propose pas d'aller nulle part.
+     (24/09, nuit — fondatrice : « supprime en ligne partout ; s'il a un code, il déclare avoir un bon, sinon où acheter un bon »)
+     DEUX CHEMINS, pour ACHETER : un point de vente, un distributeur nomade. Le code d'un bon déjà acheté n'est plus un chemin :
+     il se déclare à part (« J'ai un bon », sur la page du bon proposé). */
   techChemins: function (marchandId) {
     var m = this.techMarchand(marchandId);
     if (!m) return [];
@@ -8127,12 +8914,6 @@ chercher: function (q, f) {
     var sed = rv.filter(function (x) { return !x.mobile; }), mob = rv.filter(function (x) { return x.mobile; });
     var M = this.PARTENAIRE_MODES || {};
     return [
-      /* (20/09) LE PREMIER CHEMIN PORTE LE NOM DE LA MAISON : « En ligne », comme sur « Comment payer » de
-         Mode. Il s'appelait « J'ai un bon » ici et nulle part ailleurs — un même geste sous deux noms, c'est
-         deux gestes pour celui qui le lit. Et il admet PLUSIEURS bons, comme chez nous. */
-      { cle: 'enligne', titre: 'En ligne',
-        aide: 'Tu as d\u00e9j\u00e0 un bon ' + m.raisonSociale + ' : saisis son code, il se d\u00e9duit de ce qui est d\u00fb. Plusieurs bons sont admis.',
-        dispo: true, n: null },
       { cle: 'partenaire', titre: (M.sedentaire || {}).clientLbl,
         aide: sed.length ? (M.sedentaire || {}).clientAide : 'Aucun ' + this.terme('commerce', 'client') + ' pour l\'instant.',
         dispo: sed.length > 0, n: sed.length, revendeurs: sed },

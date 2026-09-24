@@ -7,6 +7,7 @@
 <link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
 <link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
 <link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-comment-payer.css"><!-- (24/09, nuit) les deux cartes du choix, le même dessin partout -->
 <script src="../assets/payencash-icons.js"></script>
 <script src="../assets/payencash-data.js"></script>
 <script src="../assets/payencash-docs.js"></script><!-- le coffre : l'identité vérifiée se lit sur le dossier du client (paliers de prévention de la fraude) -->
@@ -183,7 +184,10 @@
           <div id="bo-points"></div>
           <div class="pec-ordre" id="bo-ordre" hidden></div>
         </div>
-        <p class="bo-aide" id="bo-mobile" hidden>—</p>
+        <!-- (24/09, nuit — fondatrice : « aligne les cartes : dans un point de vente / un distributeur se déplace, partout ») LES DEUX
+             CARTES DE PARTOUT : la carte des points de vente, et le chemin complet du distributeur nomade (la page du bon proposé : on y
+             choisit le sien, à son tarif) -->
+        <div class="choix2 duo2" id="bo-duo" style="margin-top:12px"></div>
       </div>
 
       </div>
@@ -241,6 +245,9 @@
     var Q = new URLSearchParams(location.search);
     var SLUG = Q.get('o') || '', CODE0 = B.formater(Q.get('code') || '');
     var ordrePeint = '';
+    /* (24/09, nuit) OUVRIR LE LIEN SOUS SON COMPTE, C'EST L'AVOIR REÇU : il rejoint la section « Bons proposés » de la page
+       Mes bons — sous la clé de CE compte seulement (PEC_BONS.propositionRecue). La garde a déjà fermé la page sans session. */
+    if (SLUG && D.techLien(SLUG)) B.propositionRecue(SLUG);
 
     /* LE CADRE D'UN BON DE MARQUE — une ligne, aux mots du référentiel : chez elle seule (réseau limité, article cité
        depuis techRef().seuils.reseauLimiteSource), ni remboursable ni rendu en monnaie, et le rôle de PayEnCash. */
@@ -260,7 +267,7 @@
       $('bo-lbl').textContent = couvert ? 'Couvert' : (x.pris > 0 ? 'Il manque encore' : 'Montant du bon');
       $('bo-montant').textContent = D.eur(couvert ? x.montant : x.restant).replace(/\s*€\s*$/, '');
       var ref = [];
-      if (x.reference) ref.push('Réf. ' + x.reference);
+      if (D.techLienRefClient(x)) ref.push('Réf. ' + D.techLienRefClient(x));   // (24/09, nuit) jamais la trace interne d'un lien de vente
       if (x.client) ref.push('pour ' + x.client);
       if (x.pris > 0) ref.push(D.eur(x.pris) + ' déjà pris sur ' + D.eur(x.montant));
       $('bo-ref').textContent = ref.join(' · ') || 'Bon proposé ' + x.slug;
@@ -301,7 +308,7 @@
       $('bo-bons').innerHTML = l.map(function (r) { return carteBon(r, x, ferme); }).join('');
       $('bo-vide').hidden = !!l.length;
       $('bo-vide-t').textContent = 'Tu n’as pas encore de bon ' + x.marchand;
-      $('bo-vide-s').textContent = ferme ? 'Ce bon proposé n’attend plus rien.' : 'Un bon ' + x.marchand + ' s’achète au comptoir d’un commerce du réseau PayEnCash, au montant proposé. Tu ranges ensuite son code ici : il s’utilise tout de suite.';
+      $('bo-vide-s').textContent = ferme ? 'Ce bon proposé n’attend plus rien.' : 'Un bon ' + x.marchand + ' s’achète dans un ' + D.terme('commerce', 'client') + ' PayEnCash ou auprès d’un ' + D.terme('nomade', 'client') + ', au montant proposé. Tu ranges ensuite son code ici : il s’utilise tout de suite.';
       // où l'acheter : tant que le bon proposé est ouvert et que ce que tu as ne suffit pas
       var manque = !ferme && dispo < x.restant;
       $('bo-acheter').hidden = !manque;
@@ -320,13 +327,16 @@
         return '<div class="bo-pt"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg></span>' +
           '<span class="t"><b>' + esc(p.enseigne) + '</b><small>' + esc([p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || 'adresse non renseignée') + (p.geoApprox ? ' · position approchée' : '') + '</small></span></div>';
       }).join('');
-      var zo = $('bo-ordre'), url = D.techOrdreVenteUrl ? D.techOrdreVenteUrl(x.slug) : null;
-      var sig = url ? x.slug + '|' + x.restant : '';
+      /* (24/09, nuit) le flashcode tant qu'il reste quelque chose À VENDRE : un bon déjà acheté sur cet ordre ne se revend pas */
+      var ov = D.techOrdreVente(x.slug), zo = $('bo-ordre'), url = (ov && ov.vendable && D.techOrdreVenteUrl) ? D.techOrdreVenteUrl(x.slug) : null;
+      var sig = url ? x.slug + '|' + ov.montant : '';
       zo.hidden = !sig;
-      if (sig !== ordrePeint) { ordrePeint = sig; zo.innerHTML = sig ? D.ordreVenteBlocHTML({ url: url, ref: x.reference || x.slug, entite: 'un bon ' + x.marchand + ', utilisable uniquement chez elle' }) : ''; }
-      var mob = D.techRevendeursMobiles ? D.techRevendeursMobiles(x.marchandId) : [], zm = $('bo-mobile');
-      zm.hidden = !mob.length;
-      zm.innerHTML = mob.length ? esc(mob.length + ' ' + D.terme('nomade', mob.length > 1 ? 'pluriel' : 'nom') + ' vend' + (mob.length > 1 ? 'ent' : '') + ' aussi les bons ' + x.marchand + ' en venant jusqu’à toi. ') + '<a class="bo-lien" href="../tech/07-lien.html?l=' + encodeURIComponent(x.slug) + '">Demander une rencontre depuis la page du bon proposé →</a>' : '';
+      if (sig !== ordrePeint) { ordrePeint = sig; zo.innerHTML = sig ? D.ordreVenteBlocHTML({ url: url, code: D.techLienCode(x), ref: D.techLienRefClient(x), entite: 'un bon ' + x.marchand + ', utilisable uniquement chez elle' }) : ''; }
+      var MO = D.PARTENAIRE_MODES, nbN = (D.agentsMobiles ? D.agentsMobiles({}) : []).filter(function (a) { var dp = D.partenaireDeplacement(a.id); return dp && dp.pret && D.partenaireDisponible(a.id); }).length;
+      $('bo-duo').innerHTML = '<a class="tap" href="03-rechercher.html" data-duo="points"><span class="ic2"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-store"/></svg></span><span class="txt2"><b>' + esc(MO.sedentaire.clientLbl) + '</b><small>'
+          + esc(pts.length ? pts.length + ' ' + D.terme('commerce', pts.length > 1 ? 'clientPluriel' : 'client') + ' · la carte' : 'Aucun ' + D.terme('commerce', 'client') + ' pour l’instant.') + '</small></span></a>'
+        + '<a class="tap" href="../tech/07-lien.html?l=' + encodeURIComponent(x.slug) + '&ou=nomade" data-duo="nomades"><span class="ic2"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-map-pin"/></svg></span><span class="txt2"><b>' + esc(MO.mobile.clientLbl) + '</b><small>'
+          + esc(nbN ? nbN + ' disponible' + (nbN > 1 ? 's' : '') + ' · choisis le tien' : 'Aucun ' + D.terme('nomade', 'client') + ' disponible pour l’instant.') + '</small></span></a>';
     }
 
     function rendre() {

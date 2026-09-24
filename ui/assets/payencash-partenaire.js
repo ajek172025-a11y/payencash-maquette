@@ -31,6 +31,10 @@
      PEC_PART.surBus(fn)        → fn rejouée sur 'pec-bus' et 'storage' (écrans non sourds)
      PEC_PART.marque(mode)      → le logo de l'app : COMMERCE (sédentaire) ou COURSIER (mobile) — onglet, écran
                                   d'accueil, en-tête ; sans argument, celui du point connecté (PARTENAIRE sans point)
+     PEC_PART.collab()          → (24/09, nuit) l'accès collaborateur de la session (PEC_DATA.collaborateur), ou null
+     PEC_PART.vendeur()         → le filtre « mes ventes » : l'identifiant du collaborateur, null pour le titulaire (il voit tout)
+     PEC_PART.reserveTitulaire()→ une page du titulaire (relevés, Mon point, notifications) renvoie un collaborateur à l'accueil
+     PEC_PART.menu()            → la barre de navigation, écrite UNE fois : celle du titulaire, ou celle du collaborateur
    ══════════════════════════════════════════════════════════════════════════════════════════════ */
 (function () {
   var P = {};
@@ -48,8 +52,49 @@
   P.pointId = function () {
     var D = P.D(); if (!D) return null;
     var c = P.compteSession();
-    if (c) return c.refId || null;
+    if (c) return D.comptePoint ? D.comptePoint(c) : (c.refId || null);   // (24/09, nuit) un collaborateur vend pour le point qui l'a invité
     return D.partenaireActifId ? D.partenaireActifId() : null;
+  };
+  /* ══ (24/09, nuit — fondatrice : « un partenaire du réseau, sauf micro, peut ajouter un collaborateur… il voit ses ventes
+     exclusivement, et le compte principal a accès à tout ») LE COLLABORATEUR DANS L'APP ══════════════════════════════════════
+     Il entre par la même porte et vend pour le même point ; ce qui change, c'est ce qu'il VOIT : ses ventes, pas celles des autres ;
+     ni les relevés, ni le contrat, ni le mandat, ni les réglages du point. */
+  P.collab = function () { var D = P.D(), c = P.compteSession(); return (D && c && D.estCollaborateur && D.estCollaborateur(c)) ? D.collaborateur(c.id) : null; };
+  P.vendeur = function () { var k = P.collab(); return k ? k.identifiant : null; };
+  P.reserveTitulaire = function () {
+    if (!P.collab()) return false;
+    location.replace('02-accueil.html');
+    return true;
+  };
+  /* LA NAVIGATION, ÉCRITE UNE FOIS (24/09, nuit) — les sept écrans recopiaient chacun leur barre. Le titulaire a ses cinq entrées ;
+     le collaborateur les siennes : il vend, il voit SES ventes et son accès — pas les relevés ni Mon point. `aussi` rattache une page
+     à son onglet (on arrive aux bons vendus depuis l'accueil, au fil depuis la cloche). */
+  P.MENUS = {
+    titulaire: [
+      { href: '02-accueil.html', lbl: 'Accueil', ico: 'i-home', aussi: ['04-bons.html', '08-notifications.html'] },
+      { href: '03-vendre.html', lbl: 'Vendre', ico: 'i-ticket' },
+      { href: '09-marques.html', lbl: 'Marques', ico: 'i-tag' },
+      { href: '05-releves.html', lbl: 'Mes relevés', ico: 'i-banknote' },
+      { href: '07-mon-point.html', lbl: 'Mon point', ico: 'i-store' }
+    ],
+    collaborateur: [
+      { href: '02-accueil.html', lbl: 'Accueil', ico: 'i-home' },
+      { href: '03-vendre.html', lbl: 'Vendre', ico: 'i-ticket' },
+      { href: '09-marques.html', lbl: 'Marques', ico: 'i-tag' },
+      { href: '04-bons.html', lbl: 'Mes ventes', ico: 'i-receipt' },
+      { href: '10-mon-acces.html', lbl: 'Mon accès', ico: 'i-user' }
+    ]
+  };
+  P.menu = function () {
+    var items = P.MENUS[P.collab() ? 'collaborateur' : 'titulaire'];
+    [].forEach.call(document.querySelectorAll('nav[data-part-menu]'), function (nav) {
+      var actif = nav.getAttribute('data-part-menu');
+      nav.setAttribute('data-app', 'PayEnCash Partenaire');   // le nom de l'app en tête de la colonne de navigation, sur bureau
+      nav.innerHTML = items.map(function (x) {
+        var ici = x.href === actif || (x.aussi || []).indexOf(actif) !== -1;
+        return '<a class="pec-tab" href="' + x.href + '"' + (ici ? ' aria-current="page"' : '') + '><svg class="pec-ico" viewBox="0 0 24 24"><use href="#' + x.ico + '"/></svg>' + x.lbl + '</a>';
+      }).join('');
+    });
   };
   P.point = function () { var D = P.D(), id = P.pointId(); return (D && D.partenaire && id) ? D.partenaire(id) : null; };
   P.nomade = function () { var D = P.D(), p = P.point(); return !!(D && p && D.partenaireEstMobile && D.partenaireEstMobile(p)); };
@@ -228,4 +273,5 @@
 
   window.PEC_PART = P;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', P.brancher); else P.brancher();
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', P.menu); else P.menu();
 })();

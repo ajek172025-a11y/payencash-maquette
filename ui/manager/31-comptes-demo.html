@@ -52,7 +52,7 @@
          (ui/partenaire/00), un utilisateur de la sienne dans Mes bons. Le dire ici évite de chercher un identifiant qui n'existe pas. -->
     <div class="pec-notice pec-notice--info" style="margin-bottom:16px">
       <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>
-      <div><b>Aucun compte de démo pour l'espace partenaire ni pour l'app Mes bons.</b> Un commerce du réseau naît de son inscription dans l'app partenaire (<a href="../partenaire/00-inscription.html">00-inscription</a>) — zéro seed : PayEnCash valide son dossier, puis active le point dans <a href="29-partenaires.html">Commerces du réseau</a>. Un utilisateur de Mes bons naît de son inscription dans <a href="../bons/01-mes-bons.html">Mes bons</a>.</div>
+      <div id="cd-zero"><b>Aucun compte de démo pour l'espace partenaire ni pour l'app Mes bons.</b> Un commerce du réseau naît de son inscription dans l'app partenaire (<a href="../partenaire/00-inscription.html">00-inscription</a>) — zéro seed : PayEnCash valide son dossier, puis active le point dans <a href="29-partenaires.html">Commerces du réseau</a>. Un utilisateur de Mes bons naît de son inscription dans <a href="../bons/01-mes-bons.html">Mes bons</a>.</div>
     </div>
 
     <div class="pec-notice pec-notice--info" id="cd-jeu-msg" hidden style="margin-bottom:16px">
@@ -114,16 +114,28 @@
       '</tr>';
     }
 
+    /* (24/09, nuit) LE TROUSSEAU COMPLET : celui du data-layer, puis les comptes que le jeu de démonstration a créés sur CET appareil
+       (titulaires des points, seconde marque, collaborateurs, porteurs) — un compte absent ne s'affiche pas (zéro seed). */
+    function comptes() { return PEC_DATA.comptesDemo.concat((window.PEC_JEU && PEC_JEU.trousseau) ? PEC_JEU.trousseau(PEC_DATA) : []); }
     function maj() {
-      document.getElementById('cd-rows').innerHTML = PEC_DATA.comptesDemo.map(ligne).join('');
+      /* (24/09, nuit) le montage du jeu change la session de l'appareil : la garde peut avoir remplacé la page quand son rappel revient */
+      var rows = document.getElementById('cd-rows'); if (!rows) return;
+      var L = comptes();
+      rows.innerHTML = L.map(ligne).join('');
       // (07/09 — fondatrice « pourquoi pas de recherche sur cette page ») filtres par espace DÉRIVÉS des comptes
       var fz = document.getElementById('cd-filtres');
-      if (fz && !fz.children.length) {
-        var esp = []; PEC_DATA.comptesDemo.forEach(function (c) { if (esp.indexOf(c.espace) === -1) esp.push(c.espace); });
-        fz.innerHTML = '<button type="button" class="pec-filter tap" data-fval="tous" aria-pressed="true">Tous (' + PEC_DATA.comptesDemo.length + ')</button>' +
-          esp.map(function (e) { return '<button type="button" class="pec-filter tap" data-fval="' + slug(e) + '" aria-pressed="false">' + e + ' (' + PEC_DATA.comptesDemo.filter(function (c) { return c.espace === e; }).length + ')</button>'; }).join('');
+      var esp = []; L.forEach(function (c) { if (esp.indexOf(c.espace) === -1) esp.push(c.espace); });
+      var sigF = esp.map(function (e) { return e + L.filter(function (c) { return c.espace === e; }).length; }).join('|');
+      if (fz && fz.getAttribute('data-sig') !== sigF) {
+        fz.setAttribute('data-sig', sigF);
+        fz.innerHTML = '<button type="button" class="pec-filter tap" data-fval="tous" aria-pressed="true">Tous (' + L.length + ')</button>' +
+          esp.map(function (e) { return '<button type="button" class="pec-filter tap" data-fval="' + slug(e) + '" aria-pressed="false">' + e + ' (' + L.filter(function (c) { return c.espace === e; }).length + ')</button>'; }).join('');
       }
-      var tout = PEC_DATA.comptesDemo.every(function (_, i) { return reveles[i]; });
+      /* (24/09, nuit) l'encadré dit ce qui est vrai sur CET appareil : sans le jeu, aucun compte de commerce ni de Mes bons ; avec lui,
+         ceux de la liste sont nés de ses gestes */
+      var nJeu = L.length - PEC_DATA.comptesDemo.length, z0 = document.getElementById('cd-zero');
+      if (z0 && nJeu > 0) z0.innerHTML = '<b>Les ' + nJeu + ' comptes du jeu de démonstration</b> (commerces, collaborateurs, seconde marque, utilisateurs de Mes bons) sont nés de leurs vrais gestes : inscription, dossier contrôlé, validation, contrat — et, pour un collaborateur, l’accès envoyé puis son mot de passe créé. Sans le jeu, un commerce naît de son inscription dans l’app partenaire, un utilisateur de la sienne dans Mes bons.';
+      var tout = L.every(function (_, i) { return reveles[i]; });
       document.getElementById('cd-toggle-all').textContent = tout ? 'Tout masquer' : 'Tout afficher';
     }
 
@@ -139,13 +151,15 @@
         return;
       }
       if (e.target.id === 'cd-toggle-all') {
-        var tout = PEC_DATA.comptesDemo.every(function (_, i) { return reveles[i]; });
-        PEC_DATA.comptesDemo.forEach(function (_, i) { reveles[i] = !tout; });
+        var L2 = comptes(), tout = L2.every(function (_, i) { return reveles[i]; });
+        L2.forEach(function (_, i) { reveles[i] = !tout; });
         maj();
       }
     });
 
     maj();
+    /* le jeu se charge dès l'ouverture (il ne fait rien tant qu'on ne clique pas) : son trousseau complète la liste */
+    if (!window.PEC_JEU) { var sj = document.createElement('script'); sj.src = '../../tests/jeu-demo.js'; sj.onload = maj; document.head.appendChild(sj); }
     /* (24/09) MONTER LE JEU : charge tests/jeu-demo.js une fois, puis rejoue les gestes (inscriptions, dossiers, contrats,
        ventes) dans CETTE fenêtre — ce qui existe déjà est reconnu, rien n'est écrit deux fois. */
     var jb = document.getElementById('cd-jeu');

@@ -68,7 +68,7 @@
   <nav class="dc-sommaire" aria-label="Sommaire">
     <p class="pec-section-label">Sommaire</p>
     <a href="#dc-1">1 · Ce que l’API fait</a><a href="#dc-2">2 · Authentification</a><a href="#dc-3">3 · Points d’entrée</a>
-    <a href="#dc-4">4 · Le contrat-cadre</a><a href="#dc-5">5 · Ce que nous facturons</a><a href="#dc-6">6 · Ton bouton en deux lignes</a>
+    <a href="#dc-4">4 · Le contrat-cadre</a><a href="#dc-5">5 · Ce que nous facturons</a><a href="#dc-6">6 · Ton bouton en deux lignes</a><a href="#dc-7">7 · Ton bon dans ton pied de page</a>
   </nav>
 <div class="doc">
   <h1>Documentation de l’API</h1>
@@ -111,18 +111,30 @@
   <div class="bloc"><div id="dc-remu">—</div></div>
 
   <h2 id="dc-6">6 · Proposer ton bon d’achat en deux lignes</h2>
+  <!-- (24/09, nuit — fondatrice : « s'il a un code, il déclare avoir un bon ; sinon, où acheter un bon ») le code se saisit dans
+       notre page, avec la vigilance de la commande ; la phrase du 23/09 « aucun code ne se saisit » est partie avec cette décision. -->
   <p>Le bouton « Bon d’achat {ta marque} » apparaît à côté des moyens de paiement de ton site. Au clic, notre page du
-  <b>bon proposé</b> s’ouvre dans une fenêtre, sur ton site : où l’acheter — chez un commerce du réseau, ou un
-  distributeur nomade qui se déplace, avec adresses et distances — et l’app <b>Mes bons</b> pour l’utiliser chez toi. Aucun code
-  ne se saisit dans ta page ni dans la nôtre : un bon de marque s’utilise depuis l’app, avec le compte de son
-  porteur (retraçable). Une commande ouvre <b>un</b> bon proposé, retrouvé à l’identique si la fenêtre se rouvre ;
-  plusieurs bons peuvent le couvrir.</p>
+  <b>bon proposé</b> s’ouvre dans une fenêtre, sur ton site. Ton client qui a déjà un bon choisit <b>« J’ai un bon »</b> :
+  il saisit son code, voit ce qu’il couvre, et confirme — plusieurs bons peuvent couvrir une commande. Sinon,
+  <b>« Où l’acheter »</b> : dans un point de vente, ou auprès d’un distributeur nomade qui se déplace, avec
+  distances et tarifs de déplacement. Le code se saisit dans <b>notre</b> page, jamais dans la tienne : tu n’en reçois qu’un
+  aperçu voilé. <span id="dc-vigilance"></span> Une commande ouvre <b>un</b> bon proposé, retrouvé à l’identique si la
+  fenêtre se rouvre. Quand ton total change (quantité, code promo), mets à jour <code>data-montant</code> : le bouton suit.</p>
   <pre id="dc-widget">—</pre>
   <p class="mut">Quand la commande est entièrement couverte, le bouton émet l’événement <code>payencash:couvert</code> sur
   l’élément hôte : <code>{ commande, montant, bons: [{ apercu, pris }], offre, marchand }</code> — les codes n’y
   figurent qu’abrégés. C’est ton tunnel qui décide de la suite, et ton serveur vérifie le bon proposé avec ta clé
   secrète : nous ne validons pas ta commande à ta place, et aucun fonds ne passe par nous.</p>
   <p><a class="pec-tap-confort" href="04-boutique-demo.html">Voir le bouton en situation</a> · <a class="pec-tap-confort" href="02-espace.html">Mon espace</a></p>
+
+  <!-- (24/09, nuit — fondatrice : « intègre dans l'API cet outil à insérer sur chaque pied de page ou autre d'une marque ») -->
+  <h2 id="dc-7">7 · Ton bon d’achat dans ton pied de page</h2>
+  <p>Une ligne, à poser où tu veux : pied de page, page d’accueil, page d’aide. Elle affiche ton bon d’achat au montant
+  libre, ses mentions et où il s’achète, avec <b>« Choisir mon montant »</b> — notre page de ton lien de vente, dans un
+  nouvel onglet — et son flashcode, pour qui lit ta page sur un ordinateur et achète avec son téléphone. Sur un pied de
+  page foncé, ajoute <code>data-fond="sombre"</code>. Il lui faut ton lien de vente (Paiement) : sans lui, le bloc dit
+  ce qui manque, dans ta page.</p>
+  <pre id="dc-bloc">—</pre>
 </div>
   </div>
   </div>
@@ -265,6 +277,13 @@
   /* le même bout de code que Compte › Intégration : l'adresse du script est celle du site, jamais une adresse écrite */
   $('dc-widget').textContent = '<script src="' + (window.PEC_TECH ? PEC_TECH.origine() : 'https://solution.payencash.fr') + '/ui/tech/payencash-tech-widget.js"></' + 'script>\n'
     + '<div data-payencash="pk_…"\n     data-montant="49.90"\n     data-commande="CMD-2026-001"></div>';
+  $('dc-bloc').textContent = '<script src="' + (window.PEC_TECH ? PEC_TECH.origine() : 'https://solution.payencash.fr') + '/ui/tech/payencash-tech-widget.js"></' + 'script>\n'
+    + '<div data-payencash-bon="pk_…" data-fond="sombre"></div>';
+  /* LA VIGILANCE DE LA COMMANDE — ses seuils viennent du référentiel (kycPorteurRef), jamais d'un chiffre écrit ici */
+  var KP = D.kycPorteurRef ? D.kycPorteurRef() : null;
+  $('dc-vigilance').textContent = (KP && KP.especesEur > 0)
+    ? 'Au-delà de ' + D.eur(KP.especesEur) + ' de bons achetés en espèces, ou de ' + D.eur(KP.carteEur) + ' par carte, sur une même commande, le bon s’utilise depuis l’app Mes bons, avec le compte de son porteur et son identité vérifiée.'
+    : '';
   }
 
   peindre();

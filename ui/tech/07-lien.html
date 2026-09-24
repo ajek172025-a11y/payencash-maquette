@@ -15,7 +15,7 @@
 <script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : la signature du contrat-cadre lit la pièce d’identité du dirigeant (KYC) -->
 <script src="../assets/payencash-qr.js"></script>
 <script src="../assets/payencash-tech.js"></script>
-<script src="../assets/payencash-comment-payer.js"></script><!-- le choix « Comment veux-tu payer ? » : le trio, la carte des commerces, la rencontre -->
+<script src="../assets/payencash-comment-payer.js"></script><!-- « Pas de bon ? Où l'acheter » : le duo, la carte des points de vente, la mise en relation avec un distributeur nomade -->
 <link rel="stylesheet" href="../assets/payencash-comment-payer.css">
 <!-- LA PAGE DU CLIENT (20/09, fondatrice : « un lien pour un client avec le montant variable souhaité ; ça
      génère un ticket avec flashcode, pas d'encaissement, et où payer : partenaire, en ligne, agent »).
@@ -31,8 +31,15 @@
      boutique connectée ») LE CHOIX EST CELUI DU MODULE PARTAGÉ (payencash-comment-payer.js) — carte, recherche,
      distance, guidage, rencontre —, monté avec le réseau de CETTE marque. C'est aussi la page qui s'ouvre dans la
      fenêtre du widget (?integre=1) : la boutique connectée et le lien envoyé montrent le MÊME écran.
-     CE QUI RESTE ICI : le montant (le bon proposé) et les chemins pour l'obtenir ; le chemin ① mène à l'app Mes bons.
-     AUCUN ENCAISSEMENT : la page ne prend ni argent, ni code. -->
+     (24/09, nuit — fondatrice : « reprends cette page, beaucoup de doublons ; supprime en ligne ; vérifie les informations à
+     regrouper » ; « s'il a un code, il déclare avoir un bon ; sinon, où acheter un bon ; la modale de paiement de l'API du site
+     client doit permettre d'enregistrer son numéro de bon pour payer ») L'ORDRE DE LA PAGE, UNE CHOSE PAR PLACE :
+       ① le montant du bon proposé, son flashcode et son échéance ;
+       ② « J'ai un bon » — il déclare en avoir un et saisit son code : il couvre la commande, en tout ou en partie ;
+       ③ « Pas de bon ? Où l'acheter » — les deux cartes de partout : dans un point de vente, un distributeur nomade se déplace ;
+       ④ l'app Mes bons, pour garder ce bon proposé et ranger ses bons ;
+       ⑤ ce qu'il faut savoir, regroupé une fois (le réseau, où le bon se dépense, qui encaisse, à qui écrire).
+     AUCUN ENCAISSEMENT : la page ne prend jamais d'argent ; un code de bon s'y saisit pour couvrir la commande, rien d'autre. -->
 <style>
   /* LE MESSAGE DU BON — vert : il a cours ; rouge : il n'a plus cours. */
   .tl-msg{margin-top:10px;border-radius:12px;padding:10px 12px;font-size:12.5px;line-height:1.55}
@@ -52,6 +59,45 @@
   .tl-cadeau{margin:4px 0 0;font-size:11.5px;font-weight:700;font-style:italic;color:var(--color-primary-dark)}
   .tl-taille{display:inline-flex;align-items:baseline;gap:5px;border-radius:999px;background:var(--color-mint);color:var(--color-mint-ink);font-size:12px;font-weight:800;padding:5px 10px}
   .tl-taille small{font-size:10.5px;font-weight:700;color:var(--color-primary-dark)}
+  /* ══ (24/09, nuit) L'INVITATION À L'APP MES BONS — juste sous le montant : c'est là que le client décide ══ */
+  .tl-app{margin-top:12px;padding:16px;border:1.5px solid var(--color-mint);background:linear-gradient(180deg,var(--color-mint) 0,var(--color-surface) 70%)}
+  .tl-app .tete{display:flex;align-items:center;gap:12px}
+  .tl-app .ico{flex:none;display:grid;place-items:center;width:52px;height:52px;border-radius:14px;background:var(--color-surface);box-shadow:var(--shadow-card)}
+  .tl-app .ico img{width:34px;height:34px}
+  .tl-app .tete b{display:block;font-size:16px;font-weight:800;line-height:1.3;letter-spacing:-.01em;color:var(--color-ink)}
+  .tl-app .tete small{display:block;margin-top:2px;font-size:12px;font-weight:700;color:var(--color-primary-dark)}
+  .tl-app p{margin:10px 0 0;font-size:13px;line-height:1.55;color:var(--color-muted)}
+  .tl-stores{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+  .tl-store{flex:1 1 140px;display:flex;align-items:center;gap:9px;min-height:46px;padding:7px 12px;border-radius:12px;background:#111;color:#fff;text-decoration:none;box-sizing:border-box}
+  .tl-store svg{flex:none;width:20px;height:20px}
+  .tl-store span{display:flex;flex-direction:column;line-height:1.15}
+  .tl-store span small{font-size:9.5px;font-weight:600;opacity:.8}
+  .tl-store span b{font-size:14px;font-weight:800}
+  .tl-store.vide{background:var(--color-bg);color:var(--color-muted);box-shadow:inset 0 0 0 1.5px var(--color-sep)}
+  .tl-app .pec-cta{display:block;width:100%;text-align:center;margin-top:12px}
+  .tl-app .deja{display:block;margin-top:10px;text-align:center;font-size:13px;font-weight:800;color:var(--color-primary-dark);text-decoration:none;padding:6px 0}
+  /* ══ (24/09, nuit) « J'AI UN BON » — il le déclare, saisit son code, voit ce qu'il couvre, confirme ══ */
+  .tl-jai{margin-top:12px;padding:0;overflow:hidden}
+  .tl-jai-q{display:flex;align-items:center;gap:11px;width:100%;border:0;background:none;padding:13px 15px;font:inherit;text-align:left;cursor:pointer;color:inherit}
+  .tl-jai-q .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:11px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .tl-jai-q b{display:block;font-size:14px;color:var(--color-ink)}
+  .tl-jai-q small{display:block;margin-top:2px;font-size:11.5px;line-height:1.45;color:var(--color-muted)}
+  .tl-jai-q .chev{margin-left:auto;flex:none;font-size:18px;font-weight:800;color:var(--color-muted);transition:transform .15s ease}
+  .tl-jai-q[aria-expanded="true"] .chev{transform:rotate(90deg)}
+  @media (prefers-reduced-motion:reduce){ .tl-jai-q .chev{transition:none} }
+  .tl-jai-f{padding:0 15px 15px}
+  .tl-jai-f .pec-input{width:100%;font-family:var(--font-mono);font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+  .tl-jai-f .pec-input.ko{border-color:#C0463A;box-shadow:0 0 0 2px rgba(192,70,58,.13)}
+  .tl-jai-apercu{margin-top:10px;border-radius:12px;background:var(--color-mint);padding:10px 12px;font-size:12.5px;line-height:1.55;color:var(--color-mint-ink)}
+  .tl-jai-us{margin-top:10px;font-size:12px;line-height:1.6;color:var(--color-muted)}
+  .tl-jai-achetes{display:grid;gap:8px;margin-bottom:12px}
+  .tl-jai-ach{display:flex;align-items:center;gap:10px;border-radius:12px;background:var(--color-mint);padding:10px 12px}
+  .tl-jai-ach span{flex:1;min-width:0;font-size:12.5px;line-height:1.5;color:var(--color-mint-ink)}
+  .tl-jai-ach code{font-family:var(--font-mono);font-weight:800;color:var(--color-ink);white-space:nowrap}
+  .tl-jai-ach button{flex:none;border:0;border-radius:10px;background:var(--color-primary);color:#fff;font:inherit;font-size:12.5px;font-weight:800;padding:9px 13px;cursor:pointer}
+  .tl-jai-ach button:focus-visible{outline:2px solid var(--color-primary-dark);outline-offset:2px}
+  .tl-jai-us code{font-family:var(--font-mono);font-weight:800;color:var(--color-ink);white-space:nowrap}
+  .tl-sec{margin:18px 2px 0;font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted)}
 </style>
 </head>
 <body>
@@ -85,9 +131,13 @@
         <div style="font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)">Bon d’achat</div>
         <div style="font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink);margin-top:3px" id="tl-v-nom">—</div>
         <p style="margin:7px 0 0;font-size:12.5px;line-height:1.6;color:var(--color-muted)" id="tl-v-txt">—</p>
-        <label class="pec-input-label" for="tl-v-montant" style="margin-top:12px">Montant du bon d’achat</label>
-        <input class="pec-input" id="tl-v-montant" inputmode="decimal" placeholder="50">
-        <p style="margin:6px 0 0;font-size:11px;line-height:1.55;color:var(--color-muted)" id="tl-v-aide">—</p>
+        <!-- (24/09, nuit) UN LIEN À MONTANT PRÉCIS le montre, et l'on continue sans rien saisir ; sinon, on choisit sa somme -->
+        <div id="tl-v-fixe" hidden style="display:flex;align-items:baseline;gap:4px;margin-top:12px"><span id="tl-v-fixe-v" style="font-size:34px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--color-ink)">—</span><span style="font-size:16px;font-weight:800;color:var(--color-muted)">€</span></div>
+        <div id="tl-v-libre">
+          <label class="pec-input-label" for="tl-v-montant" style="margin-top:12px">Montant du bon d’achat</label>
+          <input class="pec-input" id="tl-v-montant" inputmode="decimal" placeholder="50">
+          <p style="margin:6px 0 0;font-size:11px;line-height:1.55;color:var(--color-muted)" id="tl-v-aide">—</p>
+        </div>
         <p class="tl-err" id="tl-v-err" hidden style="margin:9px 0 0;font-size:11.5px;font-weight:700;color:#8E2A1E"></p>
         <button type="button" class="pec-cta tap" id="tl-v-go" style="display:block;width:100%;text-align:center;margin-top:11px">Continuer</button>
         <p style="margin:11px 0 0;padding-top:9px;border-top:1px solid var(--color-sep);font-size:10.5px;line-height:1.6;color:var(--color-muted)" id="tl-v-cadre">—</p>
@@ -114,16 +164,17 @@
         </div>
         <div class="tl-msg ko" id="tl-a-epuise" hidden>—</div>
         <p class="tl-err" id="tl-a-err" hidden style="margin:9px 0 0;font-size:11.5px;font-weight:700;color:#8E2A1E"></p>
-        <button type="button" class="pec-cta tap" id="tl-a-go" style="display:block;width:100%;text-align:center;margin-top:11px">Continuer</button>
+        <!-- (24/09, nuit — fondatrice : « lorsque le bon est proposé par partage pour un article, le bouton où acheter ouvre la carte ») -->
+        <button type="button" class="pec-cta tap" id="tl-a-go" style="display:block;width:100%;text-align:center;margin-top:11px">Où acheter ce bon</button>
         <p style="margin:11px 0 0;padding-top:9px;border-top:1px solid var(--color-sep);font-size:10.5px;line-height:1.6;color:var(--color-muted)" id="tl-a-cadre">—</p>
       </div>
 
       <div id="tl-corps" hidden>
-        <!-- L'ENTRÉE : le titre, une ligne, puis le montant du bon — aux mots d'un bon proposé. -->
+        <!-- ① L'ENTRÉE : le titre, UNE phrase, puis le montant du bon — aux mots d'un bon proposé. -->
         <h1 style="font-size:23px;font-weight:800;letter-spacing:-0.02em;line-height:1.2;color:var(--color-ink);margin:8px 0 4px" id="tl-h1">Ton bon d’achat</h1>
         <p id="tl-lead" style="font-size:13.5px;font-weight:500;line-height:1.55;color:var(--color-muted);margin:0 0 12px">—</p>
 
-        <!-- LE MONTANT, dans un panneau clair : QUI propose, pour quoi, combien — et jusqu'à quand. -->
+        <!-- LE MONTANT, dans un panneau clair : QUI propose, pour quoi, combien — son flashcode, et jusqu'à quand. -->
         <div style="overflow:hidden;border-radius:16px;background:var(--color-surface);box-shadow:var(--shadow-elevated);border:1.5px solid var(--color-mint)">
           <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px">
             <div style="min-width:0">
@@ -134,8 +185,7 @@
             <!-- LE MONTANT : le nombre en grand, l'euro en petit, à la couleur de la marque. -->
             <div style="flex:none;display:flex;align-items:baseline;gap:3px"><span id="tl-du" style="font-size:28px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--color-ink)">—</span><span style="font-size:13px;font-weight:700;color:var(--color-primary)">€</span></div>
           </div>
-          <!-- (21/09, fondatrice : « le ticket avec flashcode … intégré dans la section du montant ; tu l'enlèves des bas
-               de page ») L'ORDRE DE VENTE DU BON PROPOSÉ, dans la carte du montant (.pec-ordre, le bloc commun des flashcodes). -->
+          <!-- (21/09, fondatrice : « le ticket avec flashcode … intégré dans la section du montant ») L'ORDRE DE VENTE DU BON PROPOSÉ. -->
           <div class="pec-ordre" id="tl-ordre" hidden></div>
           <div id="tl-validite-z" style="display:flex;align-items:center;gap:9px;background:var(--color-mint);padding:9px 15px">
             <svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;font-size:15px;color:var(--color-primary-dark)"><use href="#i-clock"/></svg>
@@ -147,41 +197,57 @@
         <div class="tl-msg" id="tl-etat" hidden>—</div>
 
         <div id="tl-payer">
-          <!-- LE TRIO, posé par le module partagé — mêmes cartes, mêmes libellés, même animation partout où il se monte. -->
-          <div data-pec-ou="trio"></div>
-
-          <div class="pane active" id="pane-bon">
-            <!-- CHEMIN ① — J'AI DÉJÀ UN BON DE CETTE MARQUE : il s'utilise depuis l'app Mes bons, avec le compte de son
-                 porteur (23/09 : « app obligatoire pour utiliser un bon de marque, ça permet de retracer »). Aucun code
-                 ne se tape sur cette page. -->
-            <div class="voie" id="voie-jai-z">
-              <div class="pec-card" style="margin-top:12px;padding:14px 16px">
-                <div id="tl-bon-lbl" style="font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)">—</div>
-                <div style="font-size:16px;font-weight:800;letter-spacing:-0.01em;color:var(--color-ink);margin-top:3px">Utilise-le depuis l’app Mes bons</div>
-                <p class="aide" id="tl-app-txt" style="margin:6px 0 0">—</p>
-                <a class="pec-cta tap" id="tl-app-go" href="#" target="_blank" rel="noopener" style="display:block;width:100%;text-align:center;margin-top:12px">Ouvrir dans Mes bons</a>
-                <a class="pec-btn-secondary tap" id="tl-app-get" href="#" target="_blank" rel="noopener" style="display:block;width:100%;text-align:center;margin-top:8px;font-weight:800">Je n’ai pas l’app</a>
-                <p class="aide" id="tl-reste" style="margin:10px 2px 0">—</p>
-              </div>
+          <!-- ② « J'AI UN BON » (24/09, nuit — fondatrice : « enlève en ligne ; s'il a un code, il déclare avoir un bon ») : il saisit
+               son code, voit ce qu'il couvre, confirme — la commande se couvre ici, dans la fenêtre du site de la marque. -->
+          <div class="pec-card tl-jai" id="tl-jai">
+            <button type="button" class="tl-jai-q tap" id="tl-jai-ouvrir" aria-expanded="false" aria-controls="tl-jai-f">
+              <span class="ic"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-tag"/></svg></span>
+              <span><b id="tl-jai-t">J’ai un bon</b><small id="tl-jai-s">—</small></span><span class="chev" aria-hidden="true">›</span>
+            </button>
+            <div class="tl-jai-f" id="tl-jai-f" hidden>
+              <!-- (24/09, nuit) LE BON ACHETÉ POUR CETTE COMMANDE — vendu sur son ordre, au comptoir ou par un distributeur nomade, et pas
+                   encore posé : la page le connaît, elle le propose d'un geste. Le code reste dans la page, voilé à l'écran. -->
+              <div class="tl-jai-achetes" id="tl-achetes" hidden></div>
+              <label class="pec-input-label" for="tl-code">Le code de ton bon</label>
+              <input class="pec-input" id="tl-code" type="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="—">
+              <p class="aide" style="margin:6px 2px 0">Il est imprimé sur ton ticket, et rangé dans l’app Mes bons.</p>
+              <p class="tl-err" id="tl-code-err" role="alert" hidden style="margin:8px 0 0;font-size:11.5px;font-weight:700;color:#8E2A1E"></p>
+              <div class="tl-jai-apercu" id="tl-code-apercu" hidden>—</div>
+              <button type="button" class="pec-cta tap" id="tl-code-go" style="display:block;width:100%;text-align:center;margin-top:11px">Vérifier ce bon</button>
+              <div class="tl-jai-us" id="tl-usages" hidden></div>
             </div>
-            <!-- CHEMINS ② ET ③ — chez un commerce du réseau, ou un distributeur nomade qui se déplace : posés par le module. -->
-            <div class="voie" id="voie-acheter-z" data-pec-ou="acheter"></div>
           </div>
+          <!-- ③ PAS DE BON ? OÙ L'ACHETER — les deux cartes de partout, posées par le module partagé (même dessin, mêmes mots). -->
+          <p class="tl-sec" id="tl-ou-t">Pas de bon ? Où l’acheter</p>
+          <div data-pec-ou="trio"></div>
+          <div data-pec-ou="acheter"></div>
+        </div>
 
+        <!-- ④ L'APP MES BONS (24/09, nuit — « la page invite à télécharger gratuitement l'application PayEnCash Mes bons ») : garder ce
+             bon proposé dans son compte, y ranger ses bons. Le nom, les boutiques d'applications et le tarif viennent du référentiel. -->
+        <div class="pec-card tl-app" id="tl-app" hidden>
+          <div class="tete"><span class="ico" id="tl-app-ico"></span><div><b id="tl-app-titre">—</b><small id="tl-app-sous">—</small></div></div>
+          <p id="tl-app-pourquoi">—</p>
+          <div class="tl-stores" id="tl-stores"></div>
+          <a class="pec-cta tap" id="tl-app-creer" href="#">Créer mon compte</a>
+          <a class="deja tap" id="tl-app-connexion" href="#">J’ai déjà un compte — ouvrir ce bon</a>
         </div>
 
         <!-- DANS LA FENÊTRE DU BOUTON, LA FIN MÈNE QUELQUE PART : on rend la main au site de la marque. -->
         <button type="button" class="pec-cta tap" id="tl-retour" hidden style="display:block;width:100%;text-align:center;margin-top:14px">—</button>
 
-        <!-- LES RÈGLES, EN UNE CARTE — aux mots d'un bon proposé : ce qui se passe une fois
-             la commande couverte, le cadre du bon, où va l'argent (pas chez nous), et à qui poser une question. -->
-        <div class="pec-card" style="margin:16px 0 18px;padding:6px 15px">
+        <!-- ⑤ CE QU'IL FAUT SAVOIR, REGROUPÉ UNE FOIS (24/09, nuit — « vérifie les informations à regrouper ») : le réseau et ce qu'il
+             accepte, où le bon se dépense et sa validité (PEC_TECH.reseauOu().rappel, lu au référentiel), ce qui se passe une fois la
+             commande couverte, qui encaisse (personne ici), et à qui écrire. -->
+        <div class="pec-card" id="tl-savoir" style="margin:16px 0 18px;padding:12px 15px">
+          <div class="pec-rappel" id="tl-rappel" style="margin-top:0">—</div>
           <div class="agt-lig" id="tl-r-fin-z"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-receipt"/></svg><span id="tl-r-fin">—</span></div>
-          <div class="agt-lig"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg><span id="tl-r-cadre">—</span></div>
           <div class="agt-lig"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-lock"/></svg><span id="tl-r-banque">—</span></div>
           <div class="agt-lig"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chat"/></svg><span id="tl-r-question">—</span></div>
         </div>
       </div>
+    </div>
+  </div>      </div>
     </div>
   </div>
 
@@ -216,12 +282,39 @@
     var art = src ? (D.refArticle ? D.refArticle(src) : String(src).split(' — ')[0]) : '';
     return 'Ce bon d’achat ne vaut que chez ' + esc(nomMarque) + ' (réseau limité' + (art ? ', <b title="' + esc(src) + '">' + esc(art) + '</b>' : '') + '). '
       + 'Il n’est <b>ni remboursable en espèces, ni échangé contre de la monnaie</b>. '
-      + esc(R.nom) + ' ne détient à aucun moment les fonds : le bon s’achète au comptoir d’un commerce du réseau, et s’utilise depuis l’app Mes bons.';
+      /* (24/09, nuit — fondatrice : « utilisé uniquement sur le site de la marque, jamais sur notre site ») l'app Mes bons le RANGE ;
+         il se DÉPENSE chez la marque, par le bouton de son site ou la boutique de son abonnement */
+      + esc(R.nom) + ' ne détient à aucun moment les fonds : le bon s’achète dans un ' + esc(D.terme('commerce', 'client')) + ' ou auprès d’un ' + esc(D.terme('nomade', 'client')) + ', se range dans l’app Mes bons, et se dépense chez ' + esc(nomMarque) + ', sur son site.';
   }
-  /* LES ADRESSES DE L'APP MES BONS — le bon proposé ouvert dans l'app (elle y montre les bons de cette marque, ou où en
-     acheter un), et la porte de l'app pour qui ne l'a pas encore. Un code remis par un distributeur nomade s'y range au passage. */
-  function urlApp(slugOffre, code) { return '../bons/05-offre.html?o=' + encodeURIComponent(slugOffre) + (code ? '&code=' + encodeURIComponent(code) : ''); }
-  function urlAppPorte(slugOffre) { return '../bons/01-mes-bons.html?o=' + encodeURIComponent(slugOffre); }
+  /* (24/09, nuit) L'INVITATION À L'APP MES BONS — tant que le bon proposé s'achète encore. Les boutiques d'applications sont
+     lues au référentiel (ref.apps.bons.stores) : une adresse vide se dit « bientôt », jamais un lien inventé. Créer son compte
+     ou se connecter garde le bon proposé (?o=) : la page 05 le range dans la section « Bons proposés » de CE compte. */
+  var SVG_STORE = {
+    apple: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.5 2.1-3.6-1.1-1.7-2.9-1.9-3.5-1.9-1.5-.2-2.9.9-3.7.9-.8 0-1.9-.9-3.2-.8-1.6 0-3.1 1-4 2.4-1.7 3-.4 7.4 1.2 9.8.8 1.2 1.8 2.5 3 2.4 1.2 0 1.7-.8 3.1-.8 1.5 0 1.9.8 3.2.8 1.3 0 2.1-1.2 2.9-2.4.9-1.4 1.3-2.7 1.3-2.8 0 0-2.4-.9-2.4-3.9zM14 5.4c.7-.8 1.1-1.9 1-3-1 0-2.2.7-2.9 1.5-.6.7-1.2 1.8-1 2.9 1.1.1 2.2-.6 2.9-1.4z"/></svg>',
+    google: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#34A853" d="M3.6 2.3 13.8 12 3.6 21.7c-.4-.2-.6-.6-.6-1.1V3.4c0-.5.2-.9.6-1.1z"/><path fill="#FBBC04" d="m17.1 8.8-3.3 3.2 3.3 3.2 3.8-2.1c.7-.4.7-1.3 0-1.7z"/><path fill="#EA4335" d="M13.8 12 3.6 21.7c.3.2.8.2 1.2 0l12.3-6.5z"/><path fill="#4285F4" d="M4.8 2.3c-.4-.2-.9-.2-1.2 0L13.8 12l3.3-3.2z"/></svg>'
+  };
+  function rendreInvitation(x, close) {
+    var Z = $('tl-app'), A = (D.ref && D.ref.apps && D.ref.apps.bons) || {}, S = A.stores || {};
+    Z.hidden = !!close || !A.nom;
+    if (Z.hidden) return;
+    var gratuite = (((D.ref || {}).verification || {}).tarifs || {}).client === 0;
+    $('tl-app-ico').innerHTML = '<img alt="" src="' + esc(D.logosBase() + 'payencash-' + (D.MARQUE_SYMBOLE.bons || 'p') + '-symbole.webp') + '">';
+    $('tl-app-titre').textContent = 'Télécharge ' + (gratuite ? 'gratuitement ' : '') + 'l’app ' + A.nom;
+    $('tl-app-sous').textContent = (gratuite ? 'Gratuite · ' : '') + 's’ouvre aussi dans ton navigateur';   // deux faits : le tarif du référentiel, et l'app web
+    /* (24/09, nuit) un bon déjà acheté sur l'ordre n'a plus de flashcode à présenter : l'app sert alors à le garder, avec son solde */
+    var ov = D.techOrdreVente(x.slug), achete = !!(ov && !ov.vendable && ov.bonsVendus);
+    $('tl-app-pourquoi').textContent = achete
+      ? 'Range ton bon ' + x.marchand + ' dans ton compte : il y reste à ton nom, avec son solde — il se dépense sur son site.'
+      : 'Garde ce bon proposé dans ton compte : tu y retrouves son flashcode à présenter au comptoir, puis ton bon ' + x.marchand + ', rangé à ton nom — il se dépense sur son site.';
+    var store = function (k, haut, bas) {
+      return S[k] ? '<a class="tl-store tap" href="' + esc(S[k]) + '" target="_blank" rel="noopener" data-store="' + k + '">' + SVG_STORE[k] + '<span><small>' + esc(haut) + '</small><b>' + esc(bas) + '</b></span></a>'
+        : '<span class="tl-store vide" data-store="' + k + '" data-store-vide aria-disabled="true">' + SVG_STORE[k] + '<span><small>Bientôt sur</small><b>' + esc(bas) + '</b></span></span>';
+    };
+    $('tl-stores').innerHTML = store('apple', 'Télécharger dans', 'l’App Store') + store('google', 'Disponible sur', 'Google Play');
+    $('tl-app-creer').textContent = 'Créer mon compte' + (gratuite ? ' gratuit' : '');
+    $('tl-app-creer').href = '../bons/00-inscription.html?o=' + encodeURIComponent(x.slug);
+    $('tl-app-connexion').href = '../bons/06-connexion.html?o=' + encodeURIComponent(x.slug);
+  }
 
   /* ══ LE LIEN DE VENTE — il n'a pas de montant, donc il en demande un ══════════════════════════════
      Le partage est commercial ; la vente, elle, passe par la même porte que tout le reste (techLienCreer),
@@ -235,10 +328,13 @@
       $('tl-vente').hidden = false;
       $('tl-v-nom').textContent = v0.marchand;
       /* (23/09, fondatrice : « enlève "payer sans carte, zéro donnée bancaire", de partout ») ON DIT CE QUI SE PASSE,
-         pas ce qu'on promet d'éviter : le bon s'obtient au comptoir d'un commerce du réseau, point. */
-      $('tl-v-txt').innerHTML = 'Offre ou achète un <b style="color:var(--color-ink)">bon d’achat ' + esc(v0.marchand) + '</b>, '
-        + 'utilisable uniquement sur ' + esc(String(v0.site || 'son site').replace(/^https?:\/\//, '')) + '. Tu choisis le montant, tu l’obtiens '
-        + '<b style="color:var(--color-ink)">au comptoir d’un commerce du réseau ' + esc(R0.nom) + '</b>.';
+         pas ce qu'on promet d'éviter : le bon s'achète dans un point de vente, ou auprès d'un distributeur nomade (24/09). */
+      var fixe = v0.montant > 0;   // (24/09, nuit) un lien à montant précis : la marque a choisi la somme
+      $('tl-v-txt').innerHTML = 'Offre ou achète un <b style="color:var(--color-ink)">bon d’achat ' + esc(v0.marchand) + (fixe ? ' de ' + esc(D.eur(v0.montant)) : '') + '</b>, '
+        + 'utilisable uniquement sur ' + esc(String(v0.site || 'son site').replace(/^https?:\/\//, '')) + '. ' + (fixe ? 'Tu l’achètes ' : 'Tu choisis le montant, tu l’achètes ')
+        + '<b style="color:var(--color-ink)">dans un ' + esc(D.terme('commerce', 'client')) + ' ' + esc(R0.nom) + '</b>, ou auprès d’un ' + esc(D.terme('nomade', 'client')) + ' qui se déplace.';
+      $('tl-v-fixe').hidden = !fixe; $('tl-v-libre').hidden = fixe;
+      if (fixe) $('tl-v-fixe-v').textContent = D.eurNombre(v0.montant);
       $('tl-v-aide').textContent = B0.plafondBon
         ? 'Jusqu’à ' + D.eur(B0.plafondBon) + ' par bon' + (B0.minimum ? ', à partir de ' + D.eur(B0.minimum) : '') + '.'
         : '';
@@ -246,7 +342,7 @@
       $('tl-v-cadre').innerHTML = cadreBonHTML(v0.marchand);
       $('tl-v-go').addEventListener('click', function () {
         var ze = $('tl-v-err'); ze.hidden = true;
-        var r = D.techLienCreer({ marchandId: v0.marchandId, montant: $('tl-v-montant').value,
+        var r = D.techLienCreer({ marchandId: v0.marchandId, montant: fixe ? v0.montant : $('tl-v-montant').value,
           reference: 'Lien de vente ' + v0.slug, origineLien: v0.slug });
         if (!r.ok) { ze.hidden = false; ze.textContent = r.motif; return; }
         location.href = '07-lien.html?l=' + encodeURIComponent(r.lien.slug);
@@ -324,7 +420,7 @@
       var net = Math.round((a.prix - (+a.remise || 0)) * 100) / 100;
       var r = D.techLienCreer({ marchandId: a.marchandId, montant: net, reference: 'Article ' + a.modele, origineLien: a.slug });
       if (!r.ok) { ze.hidden = false; ze.textContent = r.motif; return; }
-      location.href = '07-lien.html?l=' + encodeURIComponent(r.lien.slug);
+      location.href = '07-lien.html?l=' + encodeURIComponent(r.lien.slug) + '&ou=carte';   // on arrive SUR la carte des points de vente
     });
     peindreArticle();
     window.addEventListener('pec-bus', peindreArticle);
@@ -341,6 +437,7 @@
   $('tl-corps').hidden = false;
 
   function masque(code) { return String(code || '').replace(/-[A-Z0-9]{4}(?=-)/g, '-••••'); }
+  var achetes = [];   // les bons achetés sur l'ordre de cette commande, pas encore posés (② bis) — leurs codes ne quittent pas la page
   var origineParent = null;
   try { origineParent = document.referrer ? new URL(document.referrer).origin : null; } catch (e) {}
   function prevenir(type, x) {
@@ -367,39 +464,63 @@
     $('tl-nom').textContent = x.marchand;
     $('tl-du').textContent = D.eur(x.restant > 0 ? x.restant : x.montant).replace(/\s*€\s*$/, '');
     $('tl-lbl').textContent = x.etat === 'used' ? 'Couvert' : (x.pris > 0 && x.restant > 0 ? 'Il manque encore' : 'Montant du bon');
-    $('tl-sub').textContent = [x.reference, D.techLienEtatLbl(x.etat)].filter(Boolean).join(' · ');
+    var refC = D.techLienRefClient(x), siteC = String(x.site || '').replace(/^https?:\/\//, '') || 'son site';   // (24/09, nuit) la référence que le client lit
+    $('tl-sub').textContent = [refC, D.techLienEtatLbl(x.etat)].filter(Boolean).join(' · ');
     $('tl-validite-z').hidden = close;
-    $('tl-validite').innerHTML = (x.expireLe
-      ? '<b style="color:var(--color-primary-dark)">Proposition valable jusqu’au ' + esc(new Date(x.expireLe).toLocaleDateString('fr-FR')) + '.</b> '
-      : '') + 'Seuls les bons ' + esc(x.marchand) + ' s’y utilisent.';
+    $('tl-validite').innerHTML = x.expireLe
+      ? '<b style="color:var(--color-primary-dark)">Proposition valable jusqu’au ' + esc(new Date(x.expireLe).toLocaleDateString('fr-FR')) + '.</b>'
+      : 'Proposition sans échéance.';
     $('tl-h1').textContent = 'Ton bon d’achat ' + x.marchand;
-    $('tl-lead').innerHTML = close
-      ? '<b style="color:var(--color-ink)">' + esc(x.marchand) + '</b> t’avait proposé un bon d’achat de ' + esc(D.eur(x.montant)) + (x.reference ? ' pour « ' + esc(x.reference) + ' »' : '') + '.'
-      : '<b style="color:var(--color-ink)">' + esc(x.marchand) + '</b> te propose un bon d’achat de ' + esc(D.eur(x.montant))
-        + (x.reference ? ' pour « ' + esc(x.reference) + ' »' : '') + '. <b style="color:var(--color-ink)">Tu l’achètes au comptoir d’un commerce du réseau</b> — ou un ' + esc(D.terme('nomade')) + ' te l’apporte — puis tu l’utilises chez '
-        + esc(x.marchand) + ' depuis l’app Mes bons.';
-    $('tl-bon-lbl').textContent = 'Tu as déjà un bon ' + x.marchand + ' ?';
-    $('tl-app-txt').textContent = 'Un bon de marque s’utilise depuis l’app Mes bons, avec ton compte : c’est ce qui rattache chaque bon à son utilisateur. Ouvre l’app, choisis ton bon ' + x.marchand + ', et la commande est couverte.';
-    $('tl-app-go').href = urlApp(x.slug);
-    $('tl-app-get').href = urlAppPorte(x.slug);
+    /* UNE PHRASE : qui, combien, où il se dépense — la référence de la commande n'est écrite qu'une fois, dans la carte du montant */
+    $('tl-lead').innerHTML = '<b style="color:var(--color-ink)">' + esc(x.marchand) + '</b> ' + (close ? 't’avait proposé' : 'te propose') + ' un bon d’achat de '
+      + esc(D.eur(x.montant)) + ', à dépenser sur ' + esc(siteC) + '.';
+    /* ② « J'AI UN BON » — ce qu'il couvrira, et les bons déjà posés sur cette commande (codes voilés : un code vaut titre) */
+    $('tl-jai-t').textContent = 'J’ai un bon ' + x.marchand;
+    var zu = $('tl-usages'), us = x.usages || [];
+    /* ② bis — LES BONS ACHETÉS SUR L'ORDRE DE CETTE COMMANDE et pas encore posés ici (b.ordre) : remis, avec du solde, pas échus */
+    achetes = close ? [] : D.techBonsGet().filter(function (b) {
+      return b.ordre === x.slug && b.etat === 'sold' && b.solde > 0 && !(b.expireLe && new Date(b.expireLe).getTime() < Date.now())
+        && !us.some(function (p) { return p.code === b.code; });
+    });
+    var za = $('tl-achetes'), sigA = achetes.map(function (b) { return b.code + ':' + b.solde; }).join('|');
+    za.hidden = !achetes.length;
+    if (za.getAttribute('data-sig') !== sigA) {
+      za.setAttribute('data-sig', sigA);
+      za.innerHTML = achetes.map(function (b, i) {
+        var rv = D.techRevendeur(b.revendeurId) || {};
+        return '<div class="tl-jai-ach"><span>Acheté pour cette commande' + (rv.raisonSociale ? ' auprès de <b>' + esc(rv.raisonSociale) + '</b>' : '')
+          + ' : <code>' + esc(masque(b.code)) + '</code> · ' + esc(D.eur(b.solde)) + '</span>'
+          + '<button type="button" class="tap" data-achete="' + i + '">Utiliser</button></div>';
+      }).join('');
+    }
+    $('tl-jai-s').textContent = achetes.length
+      ? (achetes.length > 1 ? achetes.length + ' bons achetés pour cette commande t’attendent' : 'Ton bon acheté pour cette commande t’attend') + ' : pose-le d’un geste.'
+      : x.pris > 0
+        ? D.eur(x.pris) + ' déjà couverts — il manque ' + D.eur(x.restant) + ' : un autre bon peut compléter.'
+        : 'Saisis son code : il couvre ta commande, en tout ou en partie.';
+    zu.hidden = !us.length;
+    zu.innerHTML = us.length ? 'Déjà posés sur cette commande : ' + us.map(function (p) { return '<code>' + esc(masque(p.code)) + '</code> (' + esc(D.eur(p.pris)) + ')'; }).join(', ') + '.' : '';
+    rendreInvitation(x, close);
     /* LE FLASHCODE DE L'ORDRE DE VENTE (la marque et ce qui manque encore) — redessiné seulement s'il change. */
-    var zo = $('tl-ordre'), sigO = ((x.etat === 'open' || x.etat === 'partial') && x.restant > 0) ? x.slug + '|' + x.restant : '';
+    /* (24/09, nuit) tant qu'il reste quelque chose À VENDRE (techOrdreVente) : un bon déjà acheté au comptoir sur cet ordre éteint le
+       flashcode — il ne se revend pas — et la page dit où en est ce bon */
+    var ov = D.techOrdreVente(x.slug), zo = $('tl-ordre'), sigO = (ov && ov.vendable) ? x.slug + '|' + ov.montant : (ov && ov.bonsVendus && (x.etat === 'open' || x.etat === 'partial') ? 'achete|' + ov.vendu : '');
     zo.hidden = !sigO;
-    if (sigO !== ordrePeint) { ordrePeint = sigO; zo.innerHTML = sigO ? D.ordreVenteBlocHTML({ url: D.techOrdreVenteUrl(x.slug), ref: x.reference || x.slug, entite: 'un bon ' + x.marchand + ', valable uniquement chez elle' }) : ''; }
-    var m = D.techMarchand(x.marchandId) || {}, F = R.fondement || {};
-    var art = String(F.exemption || '').split(' — ')[0];
+    if (sigO !== ordrePeint) { ordrePeint = sigO; zo.innerHTML = !sigO ? '' : ov.vendable
+      ? D.ordreVenteBlocHTML({ url: D.techOrdreVenteUrl(x.slug), code: D.techLienCode(x), ref: null, entite: 'un bon ' + x.marchand + ', valable uniquement chez elle' })
+      : '<div class="pec-ordre-txt"><b>Ton bon ' + esc(x.marchand) + ' est acheté (' + esc(D.eur(ov.vendu)) + ')</b><span>Pose-le sur cette commande dans « J’ai un bon », juste en dessous — ou range son code dans l’app Mes bons, pour plus tard.</span></div>'; }
+    var m = D.techMarchand(x.marchandId) || {};
     /* ce qui se passe une fois couvert n'a plus à être annoncé quand c'est fait, retiré ou expiré : la ligne se tait */
     $('tl-r-fin-z').hidden = close;
     $('tl-r-fin').innerHTML = 'Dès que le montant est couvert par tes bons, <b>' + esc(x.marchand) + ' en est prévenue</b> : c’est elle qui valide ta commande — rien ne passe par nous.';
-    /* (23/09, soir — audit) « SANS EN ÊTRE PROPRIÉTAIRE » ÉTAIT FAUX : nous sommes grossiste, nous achetons les bons de la marque
-       et nous les vendons — c'est tout le modèle. La phrase dit ce que nous faisons, et ce que nous ne détenons pas. */
-    $('tl-r-cadre').innerHTML = '<b>Un bon ' + esc(x.marchand) + ' ne vaut que chez elle</b>' + (site ? ' (' + esc(site) + ')' : '')
-      + ' : c’est un réseau limité' + (art ? ' — <b title="' + esc(F.exemption) + '">' + esc(art) + '</b>' : '') + '. '
-      + esc(R.nom) + ' achète les bons de ' + esc(x.marchand) + ', et les commerces de son réseau les lui achètent pour te les remettre ; elle en tient l’état, sans jamais détenir les fonds de ta commande.';
-    /* (23/09, fondatrice : « enlève "payer sans carte, zéro donnée bancaire", de partout ») CETTE LIGNE DIT OÙ VA
-       L'ARGENT, pas ce qu'on ne demande pas : le commerce qui vend le bon en reçoit le prix, pour son propre compte. */
-    $('tl-r-banque').innerHTML = '<b>Cette page n’encaisse rien et ne prend aucun code</b> : le bon s’achète au comptoir d’un commerce du réseau, et s’utilise depuis l’app Mes bons. '
-      + '<b>Aucun fonds ne transite par la plateforme.</b>';
+    /* ⑤ CE QU'IL FAUT SAVOIR — le réseau, ce qu'il accepte au comptoir, où le bon se dépense, sa validité : une source (rappel) */
+    var RO = window.PEC_TECH && PEC_TECH.reseauOu ? PEC_TECH.reseauOu(x.marchandId) : null, hr = RO && RO.rappel ? RO.rappel() : '';
+    if ($('tl-rappel').getAttribute('data-sig') !== hr) { $('tl-rappel').setAttribute('data-sig', hr); $('tl-rappel').innerHTML = hr; }
+    $('tl-rappel').hidden = !hr;
+    /* (23/09 — « enlève "payer sans carte" de partout ») CETTE LIGNE DIT OÙ VA L'ARGENT : le commerce ou le distributeur nomade qui
+       vend le bon en reçoit le prix, pour son propre compte ; nous achetons les bons de la marque, sans détenir les fonds. */
+    $('tl-r-banque').innerHTML = '<b>' + esc(R.nom) + ' n’encaisse rien ici</b> : le ' + esc(D.terme('commerce', 'client')) + ' ou le ' + esc(D.terme('nomade', 'client'))
+      + ' qui te vend le bon en reçoit le prix pour son propre compte ; nous achetons les bons de ' + esc(x.marchand) + ', sans jamais détenir les fonds de ta commande.';
     $('tl-r-question').innerHTML = m.email
       ? 'Une question sur ta commande ? Écris à ' + esc(x.marchand) + ' : <a href="mailto:' + esc(m.email) + '" style="font-weight:800;color:var(--color-primary-dark)">' + esc(m.email) + '</a>.'
       : 'Une question sur ta commande ? Contacte ' + esc(x.marchand) + (site ? ' depuis ' + esc(site) : '') + '.';
@@ -426,20 +547,82 @@
       OU = PEC_OU.monter({
         reseau: PEC_TECH.reseauOu(x.marchandId, { slug: slug }),
         montantDu: function () { var y = D.techLien(slug); return { cents: Math.round(((y && y.restant) || 0) * 100) }; },
-        /* LE BON REMIS PAR UN DISTRIBUTEUR NOMADE S'UTILISE DANS L'APP : on l'y ouvre avec son code, il s'y range au passage. */
-        utiliserCode: function (code) { var y = D.techLien(slug); window.open(urlApp((y && y.slug) || slug, code), '_blank', 'noopener'); }
+        /* (24/09, nuit) LE BON REMIS PAR UN DISTRIBUTEUR NOMADE SE POSE ICI, sur cette commande : le même contrôle qu'un code saisi
+           (l'aperçu, puis la confirmation) — plus de détour par l'app pour payer ce qu'on a sous les yeux. */
+        utiliserCode: function (code) { choisirCode(code); var z = $('tl-jai'); if (z && z.scrollIntoView) z.scrollIntoView({ block: 'center' }); }
       });
       /* LE CHEMIN OUVERT PAR DÉFAUT EST « CHEZ UN PARTENAIRE » (fondatrice 19/09) : c'est le cas le plus
          fréquent — le client n'a pas encore son bon. Sans commerce ici, son volet le dit (état vide du réseau). */
       OU.choisir('partenaire');
+      /* arrivé par « Où acheter ce bon » (la page d'un article) : on descend jusqu'à la carte, une fois */
+      if (q.get('ou') === 'carte') setTimeout(allerCarte, 120);
+      if (q.get('ou') === 'nomade') setTimeout(function () { OU.choisir('agent'); var z = $('ach-carte-agent'); if (z && z.scrollIntoView) z.scrollIntoView({ block: 'start' }); }, 120);
     } else if (OU) { OU.peindre(); OU.rafraichirListe(); }
-
-    $('tl-reste').textContent = x.pris > 0
-      ? D.eur(x.pris) + ' déjà utilisés avec ' + x.usages.length + ' bon' + (x.usages.length > 1 ? 's' : '') + ' — il manque encore ' + D.eur(x.restant) + '. Plusieurs bons sont admis.'
-      : 'Il manque ' + D.eur(x.restant) + '. Plusieurs bons sont admis, l’un après l’autre.';
+    /* un bon déjà acheté sur cet ordre n'a plus d'« où l'acheter » : la section se tait, « J'ai un bon » reste */
+    var aVendre = !!(ov && ov.vendable);
+    $('tl-ou-t').hidden = !aVendre;
+    if (!aVendre) ['op-ou', 'ach-carte-commerce', 'ach-carte-agent'].forEach(function (id) { var e = $(id); if (e) e.hidden = true; });
+    else { var duo = $('op-ou'); if (duo) duo.hidden = false; }
   }
 
   $('tl-retour').addEventListener('click', function () { prevenir('fermer'); });
+  /* LA CARTE DES POINTS DE VENTE, SOUS LES YEUX : le volet « chez un partenaire » ouvert, et la page qui y descend */
+  function allerCarte() {
+    if (!OU) return;
+    OU.choisir('partenaire');
+    var z = $('ach-carte-commerce'); if (z) { try { z.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) { z.scrollIntoView(); } }
+  }
+
+  /* ══ ② J'AI UN BON — il le déclare, saisit son code, voit ce qu'il couvre, et confirme : deux gestes, jamais un bon entamé par
+     mégarde. Le data-layer tranche (techBonVerifier, puis techLienUtiliserBon `via: 'code'`) ; son refus s'affiche tel quel. ══ */
+  var R0 = D.techRef(), codeVu = null, codeSel = null;
+  $('tl-code').placeholder = (R0.prefixeBon || 'TB-') + 'XXXX-XXXX-XXXX';
+  $('tl-jai-ouvrir').addEventListener('click', function () {
+    var ouvert = this.getAttribute('aria-expanded') === 'true';
+    this.setAttribute('aria-expanded', String(!ouvert)); $('tl-jai-f').hidden = ouvert;
+    if (!ouvert) $('tl-code').focus();
+  });
+  /* UN BON ACHETÉ POUR CETTE COMMANDE, CHOISI D'UN GESTE : son code ne passe jamais par le champ — il reste voilé à l'écran */
+  function choisirCode(code) {
+    codeSel = String(code || '').toUpperCase() || null; codeVu = null;
+    $('tl-code').value = ''; $('tl-code').classList.remove('ko'); $('tl-code-err').hidden = true;
+    $('tl-jai-ouvrir').setAttribute('aria-expanded', 'true'); $('tl-jai-f').hidden = false;
+    $('tl-code-go').click();
+  }
+  $('tl-achetes').addEventListener('click', function (e) {
+    var bt = e.target.closest ? e.target.closest('[data-achete]') : null; if (!bt) return;
+    var b = achetes[+bt.getAttribute('data-achete')]; if (b) choisirCode(b.code);
+  });
+  $('tl-code').addEventListener('input', function () {
+    codeSel = null; codeVu = null; this.classList.remove('ko'); $('tl-code-err').hidden = true; $('tl-code-apercu').hidden = true; $('tl-code-go').textContent = 'Vérifier ce bon';
+  });
+  $('tl-code-go').addEventListener('click', function () {
+    var x = D.techLien(slug); if (!x) return;
+    var code = codeSel || $('tl-code').value.trim().toUpperCase(), er = $('tl-code-err'), ap = $('tl-code-apercu');
+    er.hidden = true;
+    if (!code) { er.hidden = false; er.textContent = 'Saisis le code imprimé sur ton ticket.'; $('tl-code').classList.add('ko'); $('tl-code').focus(); return; }
+    if (codeVu !== code) {
+      var v = D.techBonVerifier(code, { marchandId: x.marchandId, montant: x.restant });
+      /* la vigilance de la commande (techLienCodeRecevable) se dit AVANT l'aperçu : au-delà d'un palier, le bon passe par l'app */
+      if (v.ok) { var vg = D.techLienCodeRecevable(slug, code); if (!vg.ok) v = vg; }
+      if (!v.ok) { er.hidden = false; er.textContent = v.motif; if (!codeSel) $('tl-code').classList.add('ko'); codeSel = null; return; }
+      codeVu = code;
+      var reste = Math.round((x.restant - v.pris) * 100) / 100;
+      ap.hidden = false;
+      ap.innerHTML = (codeSel ? 'Bon <b>' + esc(masque(code)) + '</b> — ' : '') + 'Ce bon vaut encore <b>' + esc(D.eur(v.bon.solde)) + '</b> : il couvre <b>' + esc(D.eur(v.pris)) + '</b> de ta commande'
+        + (reste > 0 ? ' — il restera ' + esc(D.eur(reste)) + ' à couvrir.' : ', qui sera couverte.') + (v.soldeApres > 0 ? ' Il te restera ' + esc(D.eur(v.soldeApres)) + ' sur ce bon.' : '');
+      this.textContent = 'Confirmer : utiliser ' + D.eur(v.pris);
+      return;
+    }
+    /* le compte Mes bons ouvert sur cet appareil, s'il y en a un, signe l'usage : la commande ET son porteur */
+    var cl = D.clientCourant ? D.clientCourant() : null;
+    var u = D.techLienUtiliserBon(slug, code, { via: 'code', par: cl ? cl.id : '' });
+    if (!u.ok) { er.hidden = false; er.textContent = u.motif; codeVu = null; codeSel = null; this.textContent = 'Vérifier ce bon'; ap.hidden = true; return; }
+    codeVu = null; codeSel = null; $('tl-code').value = ''; ap.hidden = true; this.textContent = 'Vérifier ce bon';
+    peindre();
+    var y = D.techLien(slug);
+    if (y && y.etat === 'used' && !couvertDit) { couvertDit = true; prevenir('couvert', y); }
+  });
 
   peindre();
   /* UNE COMMANDE DÉJÀ COUVERTE, ROUVERTE DEPUIS LE SITE DE LA MARQUE : on le lui redit — son tunnel attend peut-être encore. */

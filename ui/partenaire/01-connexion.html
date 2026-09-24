@@ -16,6 +16,7 @@
 <script src="../assets/payencash-partenaire.js"></script>
 <script src="../assets/payencash-fil.js"></script>
 <script src="../assets/payencash-inscription.js"></script><!-- les portes Google / Apple, communes aux inscriptions et aux connexions -->
+<script src="../assets/payencash-equipe.js"></script><!-- (24/09, nuit) « Crée ton mot de passe » : l'accès d'un collaborateur, depuis le lien reçu -->
 <!-- App PayEnCash PARTENAIRE — connexion à l'espace du commerce partenaire (18/09 ; 23/09 — le grossiste).
      POURQUOI : le commerce vend au comptoir les bons d'achat des marques du réseau ; son espace n'ouvre la vente qu'une fois le
      contrat de distribution signé et le point activé par PayEnCash. Aucun matériel au comptoir, aucun encaissement pour notre compte.
@@ -89,6 +90,10 @@
       <!-- L'INVITATION DU GÉRANT : à la signature du contrat de distribution (contratPartenaireSigner → partenaireInviterGerant),
            un compte « invité » est créé pour le gérant du point ; il n'a pas de mot de passe. Ce bloc (?invit=<id du compte>)
            lui fait choisir son mot de passe et compléter le SIRET s'il manque — même parcours que la hotline. -->
+      <!-- (24/09, nuit) L'ACCÈS D'UN COLLABORATEUR (?acces=<jeton>) : le lien reçu par SMS ou WhatsApp ouvre « Crée ton mot de passe »
+           (PEC_EQUIPE.activer) ; l'accès actif, il entre directement — au comptoir du point qui l'a invité. -->
+      <div id="pc-acces" hidden></div>
+
       <div class="pec-card pec-card--elevated pc-carte" id="act-bloc" hidden>
         <div class="pc-t">Activer l'accès de ton point</div>
         <div class="pc-s" id="act-txt">—</div>
@@ -106,7 +111,7 @@
       <div class="pec-card pec-card--elevated pc-carte" id="login-bloc">
         <div class="pc-sso" id="pc-sso-boutons"></div>
         <div class="ou pc-ou">ou avec ton e-mail</div>
-        <label class="pec-input-label" for="login-id">E-mail (ou identifiant du point)</label>
+        <label class="pec-input-label" for="login-id">E-mail ou identifiant</label>
         <input class="pec-input pc-esp12" id="login-id" type="text" autocomplete="username" placeholder="contact@ton-commerce.fr">
         <label class="pec-input-label" for="login-pass">Mot de passe</label>
         <input class="pec-input" id="login-pass" type="password" placeholder="••••••••">
@@ -149,11 +154,13 @@
     var D0 = window.PEC_DATA;
     // (24/09) la règle du mot de passe de l'espace — la même à la création, à l'activation et à la réinitialisation (compteMdpMin)
     var MIN_MDP = D0.compteMdpMin('partenaire');
-    var NOTE_DEFAUT = 'Saisis ton e-mail et ton mot de passe (' + MIN_MDP + ' caractères minimum).';
+    var NOTE_DEFAUT = 'Saisis ton e-mail ou ton identifiant, et ton mot de passe (' + MIN_MDP + ' caractères minimum).';
     /* LES MOTS DU GLOSSAIRE : l'app sert le commerce du réseau ET le distributeur nomade — chacun sous son nom */
     if (D0 && D0.terme) document.getElementById('pc-sub').textContent = 'Ton espace de ' + D0.terme('commerce', 'court') + ' ou de ' + D0.terme('nomade') + ' du réseau : tes ventes, tes bons, tes relevés.';
     /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers l'inscription, comme chez les marques et dans Mes bons */
-    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'partenaire', marque: 'partenaire', docs: 'partenaire', bascule: { q: 'Pas encore de compte ?', lbl: 'Créer un compte', href: '00-inscription.html' }, retour: { lbl: 'Retour au site', href: '../../index.html' } });
+    /* (24/09, nuit — fondatrice, capture de Mes bons à l'appui) « Pas encore de compte ? Créer un compte » s'écrivait DEUX fois : en haut
+       du panneau et sous la carte. Il reste sous la carte, là où l'œil arrive après le formulaire — comme chez Stripe. */
+    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'partenaire', marque: 'partenaire', docs: 'partenaire', retour: { lbl: 'Retour au site', href: '../../index.html' } });
     note.textContent = NOTE_DEFAUT;
     /* (24/09, nuit) LE BOUTON RESTE ACTIF, COMME DANS LES AUTRES APPS : il vérifie au clic et dit ce qui manque (il était grisé
        tant que les champs n'étaient pas remplis — la seule connexion à se comporter ainsi) ; une frappe efface l'échec précédent */
@@ -170,7 +177,7 @@
       var r = D.compteConnecter('partenaire', typed, mp.value);
       if (!r.ok && reprendre(r)) { ev.preventDefault(); return; }
       if (!r.ok) { ev.preventDefault(); echec(r.motif); return; }   // le motif du data-layer, tel quel
-      try { localStorage.setItem('pec-partenaire-id', r.compte.refId || ''); } catch (e) {}
+      try { localStorage.setItem('pec-partenaire-id', D.comptePoint(r.compte) || ''); } catch (e) {}   // (24/09, nuit) le point du titulaire, ou celui du collaborateur
       // succès : le lien suit son href (02-accueil)
     });
     /* (24/09) UNE CANDIDATURE À REPRENDRE — pas terminée, code non confirmé, ou pièce refusée : on la rouvre à son étape */
@@ -186,7 +193,7 @@
       PEC_INSCRIPTION.sso({ pre: 'pc', racine: document.getElementById('pc-cadre'), portee: document.getElementById('pc-sso-boutons'), emailDefaut: function () { return id.value.trim(); },
         onValider: function (fournisseur, email) {
           var D = window.PEC_DATA, r = D.compteSso('partenaire', fournisseur, email);
-          if (r.ok) { try { localStorage.setItem('pec-partenaire-id', (r.compte || {}).refId || ''); } catch (e) {} location.href = '02-accueil.html'; return { ok: true }; }
+          if (r.ok) { try { localStorage.setItem('pec-partenaire-id', D.comptePoint(r.compte) || ''); } catch (e) {} location.href = '02-accueil.html'; return { ok: true }; }
           if (reprendre(r)) return { ok: true };
           return { ok: false, motif: r.motif };
         } });
@@ -233,6 +240,28 @@
     majSession();
     window.addEventListener('pec-bus', majSession);
     window.addEventListener('storage', majSession);
+  })();
+
+  /* ── (24/09, nuit) L'ACCÈS D'UN COLLABORATEUR : ?acces=<jeton>. Le lien valable remplace le formulaire de connexion ; son mot de
+        passe créé, le collaborateur entre par la MÊME porte (compteConnecter) et arrive au comptoir de son point. Un lien mort le dit, et
+        laisse la connexion sous le message — l'identifiant déjà posé si l'accès est actif. ── */
+  (function () {
+    var D = window.PEC_DATA, jeton = new URLSearchParams(location.search).get('acces');
+    if (!jeton || !D || !window.PEC_EQUIPE) return;
+    var h = document.getElementById('pc-acces'), lb = document.getElementById('login-bloc');
+    h.hidden = false;
+    var r = PEC_EQUIPE.activer(h, { jeton: jeton, onEntrer: function (c, mdp) {
+      var co = D.compteConnecter('partenaire', c.identifiant, mdp);
+      if (!co.ok) {
+        h.insertAdjacentHTML('beforeend', '<p class="pc-err" role="alert">Accès activé, mais l’entrée a échoué : ' + D.esc(co.motif || 'connexion impossible') + '. Connecte-toi ci-dessous.</p>');
+        lb.hidden = false; return;
+      }
+      try { localStorage.setItem('pec-partenaire-id', D.comptePoint(co.compte) || ''); } catch (e) {}
+      location.href = '02-accueil.html';
+    } });
+    if (r && r.ok) { lb.hidden = true; return; }
+    var li = document.getElementById('login-id');
+    if (r && r.compte && li) { li.value = r.compte.identifiant; li.dispatchEvent(new Event('input', { bubbles: true })); }
   })();
 
   /* ── ACTIVATION D'UNE INVITATION : ?invit=<id du compte invité>, créé à la signature du contrat de distribution

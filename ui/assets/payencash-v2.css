@@ -1508,6 +1508,22 @@ svg {
   letter-spacing: 0.06em;
   color: var(--color-primary-dark);
 }
+/* (24/09, nuit) LA RÉFÉRENCE DU BON À ACHETER, sous le flashcode : ce que le commerce saisit si le scan ne passe pas — lisible de loin */
+.pec-ordre-txt .code {
+  margin-top: 2px;
+  color: var(--color-ink);
+}
+.pec-ordre-txt .code b {
+  display: inline-block;
+  margin-top: 2px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--color-mint);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: var(--color-primary-dark);
+}
 /* (21/09) LE BANDEAU D'UNE CARTE QUI N'A PAS PU S'AFFICHER — posé par PEC_GEO.carte, le seul montage de carte :
    il était recopié en ligne dans trois écrans. Il dit pourquoi, et rassure sur ce qui reste juste. */
 .carte-hs {

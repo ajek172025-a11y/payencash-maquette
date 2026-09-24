@@ -38,6 +38,11 @@
   h1.bi-h1{margin:14px 0 0;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink)}
   .bi-sub{margin:4px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
   .bi-note{margin:10px 0 0;border-radius:12px;background:var(--color-bg);padding:9px 11px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  /* (24/09, nuit) l'inscription par Google / Apple : ce qui est déjà vérifié, et le retour à l'e-mail */
+  .bi-sso-note{margin:0 0 12px;border-radius:12px;background:var(--color-mint);padding:10px 12px;font-size:12px;line-height:1.55;color:var(--color-mint-ink)}
+  .bi-sso-note b{color:var(--color-ink)}
+  .bi-sso-autre{display:block;margin-top:6px;border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--color-primary-dark);cursor:pointer;text-decoration:underline}
+  #bi-email[readonly]{background:var(--color-bg);color:var(--color-muted)}
   .bi-note a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
   .bi-offre{padding:12px 14px;border:1.5px solid var(--color-mint)}
   .bi-offre b{display:block;font-size:14px;color:var(--color-ink)}
@@ -141,7 +146,7 @@
 </head>
 <body>
 <div class="pec-scene">
-<div class="pec-device pec-etroit" style="position:relative">
+<div class="pec-device pec-etroit pec-ins" id="bi-cadre" style="position:relative"><!-- (24/09, nuit) pec-ins : les portes Google / Apple et leur feuille, comme dans les autres apps -->
 
   <div class="pec-statusbar">
     <span class="pec-sb-time">9:41</span>
@@ -153,7 +158,7 @@
     <!-- LA MARQUE (socle : marqueAppliquer) — le P générique, le nom de l'app, le slogan lu dans le référentiel -->
     <!-- (24/09, soir) pec-entete-app : sur bureau, la colonne de navigation porte déjà la marque — cet en-tête s'efface -->
     <header class="bi-hdr pec-entete-app">
-      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+      <span data-pec-marque="bons" data-slogan></span>
     </header>
 
     <h1 class="bi-h1">Créer mon compte</h1>
@@ -174,6 +179,12 @@
     <!-- ═══ ÉTAPE 1 — le formulaire ═══ -->
     <!-- les trois étapes se montrent par l'attribut `hidden` : c'est lui que la garde et le banc lisent pour savoir ce qui est à l'écran -->
     <form id="bi-form" class="pec-card bi-card" novalidate autocomplete="on">
+      <!-- (24/09, nuit — fondatrice : « es-tu sûr d'avoir intégré la logique connexion par Gmail etc. ») GOOGLE / APPLE : l'adresse
+           vérifiée par le fournisseur remplit l'e-mail (confirmé d'office) et remplace le mot de passe ; le mobile reste l'identifiant,
+           confirmé par un code SMS. Une adresse qui a déjà un compte l'ouvre, sans rien créer. -->
+      <div id="bi-sso-boutons"></div>
+      <div class="ou" id="bi-sso-ou">ou avec ton e-mail</div>
+      <p class="bi-sso-note" id="bi-sso-note" hidden></p>
       <label class="pec-input-label" for="bi-prenom"><span class="obl">Prénom</span></label>
       <input class="pec-input" id="bi-prenom" type="text" autocomplete="given-name" aria-describedby="bi-e-prenom"><div class="bi-e" id="bi-e-prenom" role="alert"></div>
 
@@ -186,9 +197,11 @@
       <label class="pec-input-label" for="bi-mobile"><span class="obl">Mobile</span> <span class="p">— ton identifiant de connexion</span></label>
       <input class="pec-input" id="bi-mobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="14" placeholder="06 12 34 56 78" aria-describedby="bi-e-mobile"><div class="bi-e" id="bi-e-mobile" role="alert"></div>
 
+      <div id="bi-mdp-z">
       <label class="pec-input-label" for="bi-mdp"><span class="obl">Mot de passe</span></label>
       <span class="bi-mdp" style="display:block"><input class="pec-input" id="bi-mdp" type="password" autocomplete="new-password" placeholder="••••••••••" aria-describedby="bi-mdp-aide"><button type="button" class="voir" id="bi-mdp-voir" aria-label="Afficher le mot de passe">Afficher</button></span>
       <p class="bi-aide" id="bi-mdp-aide">—</p>
+      </div>
 
       <!-- LES CGU SE LISENT AVANT DE S'ACCEPTER (fondatrice 23/09 : « il défile et signe ») : le document en vigueur vient
            du référentiel (clé, version, adresse), il s'ouvre dans le lecteur, et c'est la FIN du texte qui ouvre la case. -->
@@ -201,14 +214,13 @@
 
       <div class="bi-msg ko" id="bi-err" role="alert" hidden></div>
       <button type="submit" id="bi-go" class="pec-cta tap" style="margin-top:14px">Créer mon compte</button>
-      <p class="bi-lien">Déjà un compte ? <a id="bi-connexion" href="06-connexion.html">Je me connecte</a></p>
     </form>
 
     <!-- ═══ ÉTAPE 2 — les deux codes ═══ -->
     <div id="bi-etape2" hidden>
       <div class="pec-card bi-card">
-        <div class="bi-t">Confirme ton mobile et ton e-mail</div>
-        <p class="bi-s">Un code part par SMS au <b id="bi-cible-sms" style="color:var(--color-ink)">—</b> et un autre par e-mail à <b id="bi-cible-mail" style="color:var(--color-ink)">—</b>. Saisis les deux.</p>
+        <div class="bi-t" id="bi-etape2-t">Confirme ton mobile et ton e-mail</div>
+        <p class="bi-s" id="bi-etape2-s">Un code part par SMS au <b id="bi-cible-sms" style="color:var(--color-ink)">—</b> et un autre par e-mail à <b id="bi-cible-mail" style="color:var(--color-ink)">—</b>. Saisis les deux.</p>
         <div class="bi-demo" id="bi-demo">Maquette — rien n’est envoyé. Codes attendus : SMS <b id="bi-demo-sms">—</b> · e-mail <b id="bi-demo-mail">—</b></div>
 
         <div class="bi-canal"><label class="pec-input-label" for="bi-code-sms">Code SMS</label><span class="pec-pill pec-pill--wait" id="bi-sms-etat">À confirmer</span></div>
@@ -262,12 +274,12 @@
     // où l'on va une fois le compte créé : le bon proposé par la marque (?o=), sinon la liste des bons
     var CIBLE = SLUG ? '05-offre.html?o=' + encodeURIComponent(SLUG) : '01-mes-bons.html';
     $('bi-ok-go').href = CIBLE; $('bi-deja-go').href = CIBLE;
-    $('bi-connexion').href = '06-connexion.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
+    var CONNEXION = '06-connexion.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
     /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers la connexion, comme chez les marques et les commerces ;
        la phrase d'ouverture suit le même patron (nombre d'étapes, durée lue au référentiel) */
     var FIL = ['Tes informations', 'Tes codes', 'Compte prêt'];   // les trois écrans de la page, dans l'ordre
     if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'bons', marque: 'bons', fil: 'bi-fil', docs: 'bons',
-      bascule: { q: 'Déjà un compte ?', lbl: 'Se connecter', href: $('bi-connexion').getAttribute('href') }, retour: { lbl: 'Retour à la carte', href: '03-rechercher.html' } });
+      bascule: { q: 'Déjà un compte ?', lbl: 'Se connecter', href: CONNEXION }, retour: { lbl: 'Retour à la carte', href: '03-rechercher.html' } });
     $('bi-sous').innerHTML = FIL.length + ' étapes, ' + esc((((D.ref || {}).portes || {}).bons || {}).duree || '') + '. Ton compte, c’est ton <b style="color:var(--color-ink)">mobile</b> et un <b style="color:var(--color-ink)">mot de passe</b> : il range tes bons de marque.';
 
     /* LES RÈGLES VIENNENT DU RÉFÉRENTIEL : longueur du mot de passe (celle que compteCreer exige d'un client), longueur
@@ -297,7 +309,7 @@
     (function () {
       var x = (SLUG && D.techLien) ? D.techLien(SLUG) : null; if (!x) return;
       $('bi-offre-titre').textContent = x.marchand + ' te propose un bon d’achat de ' + D.eur(x.montant);
-      $('bi-offre-txt').textContent = 'Il s’utilise uniquement chez ' + x.marchand + ', depuis cette app, avec ton compte. Crée-le : tu retrouves ensuite ce bon proposé, tes bons ' + x.marchand + ', et où en acheter un.';
+      $('bi-offre-txt').textContent = 'Il s’achète dans un ' + D.terme('commerce', 'client') + ' ou auprès d’un ' + D.terme('nomade', 'client') + ', et s’utilise uniquement sur le site de ' + x.marchand + '. Crée ton compte : il garde ce bon proposé, tes codes ' + x.marchand + ', et te dit où en acheter un.';
       $('bi-offre').hidden = false;
     })();
 
@@ -367,7 +379,7 @@
       'bi-nom':    { e: 'bi-e-nom', lbl: 'ton nom', test: function (v) { return !v.trim() || NOM_OK.test(v.trim()); }, msg: 'Deux lettres minimum — tel qu’il figure sur ta pièce d’identité, ou laisse vide.' },
       'bi-email':  { e: 'bi-e-email', lbl: 'ton e-mail', test: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); }, msg: 'Format attendu : prenom.nom@exemple.fr — le code de confirmation y est envoyé.' },
       'bi-mobile': { e: 'bi-e-mobile', lbl: 'ton mobile', test: function (v) { return /^0\d{9}$/.test(v.replace(/\D/g, '')); }, msg: '10 chiffres commençant par 0 — c’est ton identifiant de connexion.' },
-      'bi-mdp':    { e: null, lbl: 'ton mot de passe', test: function (v) { return !!v && v.length >= MIN_MDP; }, msg: MIN_MDP ? MIN_MDP + ' caractères minimum.' : 'Choisis un mot de passe.' }
+      'bi-mdp':    { e: null, lbl: 'ton mot de passe', test: function (v) { return !!SSO || (!!v && v.length >= MIN_MDP); }, msg: MIN_MDP ? MIN_MDP + ' caractères minimum.' : 'Choisis un mot de passe.' }
     };
     function peindre(id, forcer) {
       var r = REGLES[id], el = $(id), ok = r.test(el.value), vide = !el.value;
@@ -390,6 +402,42 @@
     $('bi-cgu-ok').addEventListener('change', function () { $('bi-cgu-bloc').classList.remove('ko'); message($('bi-err'), ''); });
 
     var compte = null, codes = {}, MDP = '';
+    /* ══ (24/09, nuit) GOOGLE / APPLE ══════════════════════════════════════════════════════════════════════════════════════
+       SSO = { fournisseur, email } : l'adresse que le fournisseur a vérifiée. Elle vient de la connexion (sessionStorage, posée par
+       « Continuer avec Google » quand aucun compte ne la porte) ou des boutons de cette page. Le champ e-mail la montre, verrouillé ;
+       le mot de passe s'efface (c'est le fournisseur qui authentifie) ; il reste le prénom et le MOBILE, confirmé par SMS. */
+    var SSO = null;
+    function modeSso(fournisseur, email) {
+      SSO = { fournisseur: fournisseur, email: email };
+      var nom = (D.SSO_FOURNISSEURS || {})[fournisseur] || fournisseur;
+      $('bi-email').value = email; $('bi-email').readOnly = true; peindre('bi-email', true);
+      $('bi-mdp-z').hidden = true; $('bi-sso-boutons').hidden = true; $('bi-sso-ou').hidden = true;
+      var n = $('bi-sso-note'); n.hidden = false;
+      n.innerHTML = '<b>' + esc(email) + '</b> — adresse vérifiée par ' + esc(nom) + ' : pas de mot de passe à créer, tu entreras avec ' + esc(nom) + '. Il reste ton prénom et ton <b>mobile</b> : c’est lui, confirmé par un code SMS, qui est ton identifiant. <button type="button" class="bi-sso-autre tap" id="bi-sso-annuler">Utiliser une autre méthode</button>';
+      $('bi-sous').innerHTML = 'Avec ' + esc(nom) + ' : ton prénom, ton mobile, et c’est fini. Ton compte range tes bons de marque.';
+      $('bi-prenom').focus();
+    }
+    function sansSso() {
+      SSO = null;
+      $('bi-email').readOnly = false; $('bi-email').value = '';
+      $('bi-mdp-z').hidden = false; $('bi-sso-boutons').hidden = false; $('bi-sso-ou').hidden = false; $('bi-sso-note').hidden = true;
+      try { sessionStorage.removeItem('pec-sso-bons'); } catch (e) {}
+    }
+    document.addEventListener('click', function (e) { if (e.target && e.target.id === 'bi-sso-annuler') sansSso(); });
+    if (window.PEC_INSCRIPTION) {
+      PEC_INSCRIPTION.boutonsSso($('bi-sso-boutons'), 'bi');
+      PEC_INSCRIPTION.sso({ pre: 'bi', racine: $('bi-cadre'), portee: $('bi-sso-boutons'), emailDefaut: function () { return $('bi-email').value.trim(); },
+        onValider: function (fournisseur, email) {
+          var r = D.compteSso('client', fournisseur, email);
+          if (r.ok) { location.href = CIBLE; return { ok: true }; }   // l'adresse avait déjà un compte : il s'ouvre, rien n'est créé
+          if (!r.inscrire) return { ok: false, motif: r.motif };
+          modeSso(fournisseur, r.email); return { ok: true };
+        } });
+    }
+    (function () {   // arrivé de la connexion par « Continuer avec Google / Apple », sans compte : on reprend l'adresse vérifiée
+      var x = null; try { x = JSON.parse(sessionStorage.getItem('pec-sso-bons') || 'null'); } catch (e) {}
+      if (x && x.email && (D.SSO_FOURNISSEURS || {})[x.fournisseur] && !D._compteClientParEmail(x.email)) modeSso(x.fournisseur, x.email);
+    })();
     /* (24/09, nuit) le fil commun : la même allure que les inscriptions de la marque et du commerce */
     function peindreFil(n) {
       $('bi-fil').innerHTML = FIL.map(function (l, i) {
@@ -423,8 +471,8 @@
       }
       var prenom = $('bi-prenom').value.trim(), nom = $('bi-nom').value.trim();
       var tel = $('bi-mobile').value.replace(/\D/g, ''), mail = $('bi-email').value.trim();
-      MDP = $('bi-mdp').value;
-      var r = D.compteCreer('client', { prenom: prenom, nom: nom, tel: tel, email: mail, motdepasse: MDP });
+      MDP = SSO ? '' : $('bi-mdp').value;
+      var r = D.compteCreer('client', SSO ? { prenom: prenom, nom: nom, tel: tel, email: SSO.email, sso: SSO.fournisseur } : { prenom: prenom, nom: nom, tel: tel, email: mail, motdepasse: MDP });
       if (!r.ok) { MDP = ''; message($('bi-err'), r.motif || 'Création impossible.'); return; }
       compte = r.compte; codes = r.codes || {};
       // la lecture faite dans le lecteur, puis l'acceptation — sous la clé du porteur (sa fiche client), version en vigueur
@@ -435,7 +483,15 @@
       // ② les codes attendus par le data-layer — affichés, jamais devinés
       $('bi-cible-sms').textContent = masquerTel(tel); $('bi-cible-mail').textContent = masquerMail(mail);
       $('bi-demo-sms').textContent = codes.sms || '—'; $('bi-demo-mail').textContent = codes.email || '—';
+      if (SSO) {   // l'adresse est déjà vérifiée par le fournisseur : seul le mobile reste à confirmer
+        var nomF = (D.SSO_FOURNISSEURS || {})[SSO.fournisseur] || SSO.fournisseur;
+        $('bi-etape2-t').textContent = 'Confirme ton mobile';
+        $('bi-etape2-s').innerHTML = 'Un code part par SMS au <b style="color:var(--color-ink)">' + esc(masquerTel(tel)) + '</b>. Ton e-mail est déjà vérifié par ' + esc(nomF) + '.';
+        $('bi-demo').innerHTML = 'Maquette — rien n’est envoyé. Code SMS attendu : <b>' + esc(codes.sms || '—') + '</b>';
+        try { sessionStorage.removeItem('pec-sso-bons'); } catch (e2) {}
+      }
       majCompte(); etape(2);
+      CANAUX.forEach(function (c) { if (compte.verifs && compte.verifs[c.canal]) marquer(c); });   // un canal déjà vérifié (l'e-mail, par Google / Apple) se montre confirmé
       $('bi-code-sms').focus();
     });
 
@@ -465,7 +521,7 @@
 
     /* ③ ENTRER — compteConnecter : session + client actif, par la MÊME porte que la page de connexion. Puis là où on allait. */
     function connecter() {
-      var co = D.compteConnecter('client', compte.identifiant, MDP);
+      var co = SSO ? D.compteConnecter('client', compte.identifiant, null, { sso: SSO.fournisseur, email: SSO.email }) : D.compteConnecter('client', compte.identifiant, MDP);
       MDP = '';
       if (!co.ok) {
         message($('bi-verif-err'), 'Compte créé et confirmé, mais la connexion a échoué : ' + (co.motif || 'connexion impossible') + '. Connecte-toi depuis la page de connexion.');

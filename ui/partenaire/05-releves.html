@@ -161,19 +161,14 @@
     </div>
   </div><!-- /pec-body -->
 
-  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
-    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
-    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
-    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
-    <a class="pec-tab" aria-current="page" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
-    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
-  </nav>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="05-releves.html"></nav><!-- (24/09, nuit) la barre se pose depuis PEC_PART.menu : écrite une fois, celle du titulaire ou du collaborateur -->
 
 </div>
 </div>
 <script>
   (function () {
     var D = window.PEC_DATA, P = window.PEC_PART; if (!D || !P || !D.techVentes) return;
+    if (P.reserveTitulaire()) return;   // (24/09, nuit) les relevés du point regardent son titulaire, pas ses collaborateurs
     function $(id) { return document.getElementById(id); }
     function esc(v) { return D.esc(v); }
     function pct(x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; }

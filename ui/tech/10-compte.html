@@ -12,6 +12,7 @@
 <script src="../assets/payencash-data.js"></script>
 <script src="../assets/payencash-bus.js"></script>
 <script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : dossier de vérification (KYB), pièces, contrat généré et signé -->
+<script src="../assets/payencash-equipe.js"></script><!-- (24/09, nuit) Mon équipe : les accès collaborateurs, écrits une fois pour les deux apps -->
 <script src="../assets/payencash-tech.js"></script><!-- (23/09, audit) LE SOCLE : session, menu, entête. Sans lui, `var T = window.PEC_TECH` est undefined et le script SORT en silence — l'écran reste aux tirets. -->
 <!-- PAYENCASH SOLUTION — COMPTE (23/09, fondatrice : « page du compte avec les CGU, CGV etc., gros cadre
      juridique, KYB etc. » ; le soir : « créer un menu avec des pages pour chaque section », « où je déclare le
@@ -211,7 +212,9 @@
     ['abonnement',  'Abonnement',                    'logiciel d’édition, quota du mois, factures, site web',        'Abonnement'],
     ['integration', 'Intégration et réseaux',        'clés d’API, bouton de ton site, réseaux sociaux',              'Intégration'],
     ['regles',      'Seuils et règles',              'seuil ACPR, plafonds au comptoir, prévention de la fraude',    'Règles'],
-    ['juridique',   'Mentions légales',              'ce que nous sommes pour toi, l’éditeur, les textes',           'Mentions']
+    ['juridique',   'Mentions légales',              'ce que nous sommes pour toi, l’éditeur, les textes',           'Mentions'],
+    /* (24/09, nuit — fondatrice : « une marque peut également ajouter une session collaborateur / partenaire ») */
+    ['equipe',      'Mon équipe',                    'accès collaborateurs : ajouter, envoyer l’accès, suivre ce que chacun produit', 'Équipe']
   ];
   var parts = {}, secCourante = null;
   var sectionDemandee = (function () { try { return new URLSearchParams(location.search).get('s') || ''; } catch (e) { return ''; } })();
@@ -285,6 +288,9 @@
     var pk = cle ? cle.clePublique : 'pk_ta_cle_publique';
     var snip = '<' + 'script src="' + T.origine() + '/ui/tech/payencash-tech-widget.js"></' + 'script>\n'
       + '<div data-payencash="' + pk + '" data-montant="49.90" data-commande="CMD-2026-001"></div>';
+    /* (24/09, nuit — fondatrice : « un outil à insérer sur chaque pied de page ») LE BLOC « BON D'ACHAT » : même script, une ligne de plus */
+    var snipBloc = '<div data-payencash-bon="' + pk + '" data-fond="sombre"></div>';
+    var bb = D.techBlocBon(a.id);
     secCourante = 'integration'; h += carte('API', (cle
         ? '<div class="cle"><div class="k">Clé publique</div><div class="v">' + esc(cle.clePublique) + '</div>'
           + '<div class="k" style="margin-top:9px">Clé secrète — aperçu</div><div class="v mut">' + esc(cle.apercu)
@@ -302,8 +308,13 @@
       + '<div style="margin-top:14px;padding-top:11px;border-top:1px solid var(--color-sep)">'
       + '<div style="font-size:12.5px;font-weight:800;color:var(--color-ink)">Mon bouton « bon d’achat »</div>'
       + '<p style="margin:5px 0 0;font-size:12px;line-height:1.6;color:var(--color-muted)">Colle ces deux lignes dans la page de commande de ton site. Le bouton <b style="color:var(--color-ink)">Bon d’achat '
-      + esc(a.raisonSociale) + '</b> apparaît à côté de tes moyens de paiement ; au clic, il propose ton bon du montant de la commande : <b style="color:var(--color-ink)">où l’acheter</b>, et l’app Mes bons pour l’utiliser chez toi.</p>'
+      + esc(a.raisonSociale) + '</b> apparaît à côté de tes moyens de paiement ; au clic, il propose ton bon du montant de la commande : <b style="color:var(--color-ink)">« J’ai un bon »</b> — ton client saisit son code —, sinon <b style="color:var(--color-ink)">où l’acheter</b>.</p>'
       + '<div class="snip">' + esc(snip) + '</div></div>'
+      + '<div style="margin-top:14px;padding-top:11px;border-top:1px solid var(--color-sep)">'
+      + '<div style="font-size:12.5px;font-weight:800;color:var(--color-ink)">Mon bon d’achat dans mon pied de page</div>'
+      + '<p style="margin:5px 0 0;font-size:12px;line-height:1.6;color:var(--color-muted)">Avec le même script, cette ligne affiche ton bon au montant libre, ses mentions, <b style="color:var(--color-ink)">« Choisir mon montant »</b> et son flashcode — à poser dans ton pied de page, ou ailleurs. Sur un fond clair, retire <code>data-fond</code>.</p>'
+      + '<div class="snip">' + esc(snipBloc) + '</div>'
+      + (bb.ok ? '' : '<p class="err" style="margin-top:7px">' + esc(bb.motif) + '</p>') + '</div>'
       + '<a class="lien tap" href="04-boutique-demo.html?pk=' + encodeURIComponent(pk) + '"><svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-primary-dark)"><use href="#i-smartphone"/></svg>'
       + '<span style="min-width:0;flex:1"><span class="nm">Mon bouton, en situation</span><span class="sb">Ce que voit ton client quand il choisit ton bon d’achat sur ton site.</span></span>'
       + '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-muted)"><use href="#i-chevron-right"/></svg></a>'
@@ -460,7 +471,16 @@
             + '<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--color-ink);margin-top:8px"><input type="checkbox" id="tc-tva-unique" style="margin-top:2px;flex:none"' + (a.tva && a.tva.tauxUnique ? ' checked' : '') + '><span>Tous les produits que mes bons peuvent payer sont au même taux de TVA.</span></label>'
             + '<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--color-ink);margin-top:6px"><input type="checkbox" id="tc-tva-france" style="margin-top:2px;flex:none"' + (a.tva && a.tva.franceSeule ? ' checked' : '') + '><span>Mes bons ne s’utilisent qu’en France (pas de vente à l’étranger).</span></label>'
             + '<p class="err" id="tc-tva-err" hidden></p>'
-            + '<button type="button" class="pec-btn pec-btn--sm tap" id="tc-tva-go" style="margin-top:9px">Enregistrer mes réponses</button></div>'; })()
+            + '<button type="button" class="pec-btn-secondary tap" id="tc-tva-go" style="margin-top:9px">Enregistrer mes réponses</button></div>'; })()
+      /* (24/09, nuit — « vérifie dans Solution si la catégorie d'activité est présente ») LA CATÉGORIE D'ACTIVITÉ : celle qui range la
+         boutique dans le filtre de Mes bons ; la liste vient du référentiel (techCategoriesActivite) */
+      + (function () { var ca = D.techCategorieActivite(a.categorie);
+          return '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--color-sep)">'
+            + '<label class="sb" for="tc-cat" style="display:block"><b style="color:var(--color-ink)">Catégorie d’activité : </b>' + (ca ? esc(ca.lbl) : '<b style="color:var(--color-amber-text)">à choisir</b>') + '</label>'
+            + '<select class="pec-input" id="tc-cat" style="margin-top:6px"><option value="">Choisis…</option>' + D.techCategoriesActivite().map(function (c) { return '<option value="' + esc(c.id) + '"' + (ca && ca.id === c.id ? ' selected' : '') + '>' + esc(c.lbl) + '</option>'; }).join('') + '</select>'
+            + '<p class="tc-note" style="margin-top:4px">Elle range ta boutique dans l’app Mes bons, là où tes clients cherchent une marque.</p>'
+            + '<p class="err" id="tc-cat-err" hidden></p>'
+            + '<button type="button" class="pec-btn-secondary tap" id="tc-cat-go" style="margin-top:6px">Enregistrer la catégorie</button></div>'; })()
       + '<p class="tc-note">Tout changement affectant ton identité légale, ton représentant, tes bénéficiaires effectifs ou ton compte bancaire doit nous être signalé sous quinze jours (CGU art. 4.5).</p>', 'identite');
 
     /* ═ LE DIRIGEANT (23/09, fondatrice : « ajoute le nom et le prénom du dirigeant ; KYC pour la signature du contrat-cadre
@@ -692,9 +712,14 @@
       + '</div>'
       + (F.reserve ? '<p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:var(--color-amber-text);background:var(--color-amber-well);border-radius:10px;padding:10px 12px">' + esc(F.reserve) + '</p>' : ''));
 
+    /* ══ (24/09, nuit) MON ÉQUIPE — la liste, l'ajout, l'envoi de l'accès et ce que chacun a produit (PEC_EQUIPE, commun à l'app des
+       commerces). Pas de carte autour : chaque collaborateur est la sienne. L'hôte renaît à chaque peinture ; le module s'y repose. */
+    parts.equipe = (parts.equipe || '') + '<p class="pec-section-label" style="margin:18px 0 6px" id="tc-carte-equipe">Mon équipe</p><div id="tc-equipe" data-carte="equipe"></div>';
+
     /* ══ LE RÉSUMÉ DE CHAQUE SECTION, DÉRIVÉ — c'est lui qui rend le menu utile : on sait où aller avant d'ouvrir. */
     function resume(sec) {
       try {
+        if (sec === 'equipe') { var eq = D.collaborateurs('marque', a.id), act = eq.filter(function (x) { return x.statut === 'actif'; }).length; return eq.length ? pl(eq.length, 'collaborateur') + ' · ' + act + ' accès actif' + (act > 1 ? 's' : '') : 'personne pour l’instant — un prénom et un mobile suffisent'; }
         if (sec === 'identite') {
           var e2 = (window.PEC_DOCS && PEC_DOCS.etat) ? PEC_DOCS.etat('marchand', a.id) : null, dg = D.techMarchandDirigeant(a), ky = dg ? D.techKycDirigeant(a.id) : null;
           return D.techStatutLbl(a.statut) + ' · dirigeant : ' + (dg ? dg.nomComplet + (ky && ky.ok ? ' (identité vérifiée)' : ' (pièce à contrôler)') : 'à déclarer')
@@ -726,6 +751,8 @@
     if (secDemandee) {
       $('tc-corps').innerHTML = '<div class="pec-cols pec-cols--panneau tc-mise"><div class="tc-rail-z">' + rail + '</div><div class="tc-contenu">' + h + (parts[secDemandee[0]] || '<p class="vide">Rien à afficher ici pour l’instant.</p>') + '</div></div>';
       viserCarte();
+      var he = $('tc-equipe');
+      if (he && window.PEC_EQUIPE) PEC_EQUIPE.gerer(he, { type: 'marque', parentId: a.id, par: function () { var ss = D.session(); return (ss && ss.identifiant) || a.email || a.id; } });
       return;
     }
     /* CE QUI BLOQUE, EN TÊTE, ET CHAQUE MANQUE MÈNE À SA CARTE (23/09, soir). Un compte en attente de vérification est
@@ -907,6 +934,12 @@
       var rtv = D.techMarchandEntrepriseSet(s.id, { raisonSociale: a0.raisonSociale, siret: a0.siret, siteUrl: a0.siteUrl, sansSite: a0.sansSite, tel: a0.tel, formeJuridique: a0.formeJuridique, adresse: a0.adresse, naf: a0.naf,
         tauxUnique: $('tc-tva-unique') ? $('tc-tva-unique').checked : null, franceSeule: $('tc-tva-france') ? $('tc-tva-france').checked : null }, s.id);
       if (!rtv.ok) { var etv = $('tc-tva-err'); if (etv) { etv.hidden = false; etv.textContent = rtv.motif; } return; }
+      peindre(); return;
+    }
+    var ctg = t.closest && t.closest('#tc-cat-go');
+    if (ctg) {
+      var rct = D.techMarchandCategorieSet(s.id, ($('tc-cat') || {}).value, s.id);
+      if (!rct.ok) { var ect = $('tc-cat-err'); if (ect) { ect.hidden = false; ect.textContent = rct.motif; } return; }
       peindre(); return;
     }
     /* LE RIB CONTRÔLÉ DU DOSSIER, repris d'un geste : ce sont les mentions relevées par le contrôleur qui s'enregistrent. */

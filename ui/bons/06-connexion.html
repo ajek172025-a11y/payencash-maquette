@@ -76,7 +76,7 @@
 </head>
 <body data-formulaire>
 <div class="pec-scene">
-<div class="pec-device pec-etroit">
+<div class="pec-device pec-etroit pec-ins" id="bc-cadre" style="position:relative"><!-- (24/09, nuit) pec-ins : les portes Google / Apple et leur feuille, comme dans les autres apps -->
 
   <div class="pec-statusbar">
     <span class="pec-sb-time">9:41</span>
@@ -87,7 +87,7 @@
 
     <!-- (24/09, soir) pec-entete-app : sur bureau, la colonne de navigation porte déjà la marque — cet en-tête s'efface -->
     <header class="bc-hdr pec-entete-app">
-      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+      <span data-pec-marque="bons" data-slogan></span>
     </header>
 
     <!-- (24/09, nuit) LA PAGE D'ENTRÉE COMMUNE (PEC_INSCRIPTION.porte) : même tête que chez les marques et les commerces -->
@@ -106,6 +106,10 @@
     </div>
 
     <form class="pec-card bc-card" id="bc-form" novalidate>
+      <!-- (24/09, nuit — fondatrice : « es-tu sûr d'avoir intégré la logique connexion par Gmail etc. ») GOOGLE / APPLE, comme chez les
+           marques et les commerces : l'adresse vérifiée par le fournisseur retrouve le compte ; sans compte, on va le créer -->
+      <div id="bc-sso-boutons"></div>
+      <div class="ou">ou avec ton e-mail ou ton mobile</div>
       <label class="pec-input-label" for="bc-id">E-mail ou mobile</label>
       <input class="pec-input" id="bc-id" type="text" autocomplete="username" inputmode="email" placeholder="prenom.nom@exemple.fr ou 06 12 34 56 78">
       <div class="bc-demo" id="bc-demo" hidden>Compte de démonstration <b id="bc-demo-nom"></b> — il n’a jamais choisi de mot de passe : celui de démo est <b id="bc-demo-mdp"></b>.</div>
@@ -162,8 +166,25 @@
     $('bc-deja-go').href = CIBLE;
     $('bc-inscription').href = '00-inscription.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
     /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers l'inscription (qui garde le bon proposé) */
-    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'bons', marque: 'bons', docs: 'bons',
-      bascule: { q: 'Pas encore de compte ?', lbl: 'Créer un compte', href: $('bc-inscription').getAttribute('href') }, retour: { lbl: 'Retour à la carte', href: '03-rechercher.html' } });
+    /* (24/09, nuit — sa capture à l'appui) « Pas encore de compte ? Créer un compte » s'écrivait deux fois : il reste sous la carte */
+    if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'bons', marque: 'bons', docs: 'bons', retour: { lbl: 'Retour à la carte', href: '03-rechercher.html' } });
+    /* GOOGLE / APPLE — l'adresse vérifiée retrouve le compte (compteSso : jamais un compte dont l'adresse n'a pas été confirmée) ; sans
+       compte, on va le créer : l'adresse est gardée pour la page d'inscription (dans l'onglet, jamais dans l'adresse de la page), où
+       il ne reste que le prénom et le mobile — c'est lui, confirmé par SMS, qui reste l'identifiant. */
+    if (window.PEC_INSCRIPTION) {
+      PEC_INSCRIPTION.boutonsSso($('bc-sso-boutons'), 'bc');
+      PEC_INSCRIPTION.sso({ pre: 'bc', racine: $('bc-cadre'), portee: $('bc-sso-boutons'),
+        emailDefaut: function () { var v = $('bc-id').value.trim(); return v.indexOf('@') > -1 ? v : ''; },
+        onValider: function (fournisseur, email) {
+          var r = D.compteSso('client', fournisseur, email);
+          if (r.ok) { location.href = CIBLE; return { ok: true }; }
+          if (r.inscrire) {
+            try { sessionStorage.setItem('pec-sso-bons', JSON.stringify({ fournisseur: fournisseur, email: r.email, at: Date.now() })); } catch (e) {}
+            location.href = $('bc-inscription').getAttribute('href'); return { ok: true };
+          }
+          return { ok: false, motif: r.motif };
+        } });
+    }
     // la règle du nouveau mot de passe est celle que compteMotDePasseReinitialiser applique (ref.connexion.motDePasseMin)
     var MIN_MDP = +((((D.ref || {}).connexion || {}).motDePasseMin) || 0);
     var LONG_CODE = +((((D.ref || {}).otp || {}).longueur) || 0);
@@ -182,7 +203,7 @@
     (function () {
       var x = (SLUG && D.techLien) ? D.techLien(SLUG) : null; if (!x) return;
       $('bc-offre-titre').textContent = x.marchand + ' te propose un bon d’achat de ' + D.eur(x.montant);
-      $('bc-offre-txt').textContent = 'Il s’utilise uniquement chez ' + x.marchand + ', depuis cette app, avec ton compte. Connecte-toi : tu retrouves tes bons ' + x.marchand + ' pour l’utiliser, ou tu vois où en acheter un.';
+      $('bc-offre-txt').textContent = 'Il s’achète dans un ' + D.terme('commerce', 'client') + ' ou auprès d’un ' + D.terme('nomade', 'client') + ', et s’utilise uniquement sur le site de ' + x.marchand + '. Connecte-toi : tu retrouves ton code ' + x.marchand + ', ou tu vois où en acheter un.';
       $('bc-offre').hidden = false;
     })();
 
@@ -204,7 +225,7 @@
     $('bc-id').addEventListener('input', function () {
       message($('bc-err'), 'ko', '');
       var id = identifiant(this.value), c = (id && D.compteParIdentifiant) ? D.compteParIdentifiant('client', id) : null;
-      var demo = !!(c && !c.motdepasse && D.compteMdpAttendu && D.compteMdpAttendu(c));
+      var demo = !!(c && !c.motdepasse && !c.sso && D.compteMdpAttendu && D.compteMdpAttendu(c));   // un compte Google / Apple n'a pas de mot de passe de démo
       $('bc-demo').hidden = !demo;
       if (demo) { $('bc-demo-nom').textContent = (c.profil && c.profil.nom) || c.identifiant; $('bc-demo-mdp').textContent = D.compteMdpAttendu(c); }
     });

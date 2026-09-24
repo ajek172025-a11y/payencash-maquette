@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Promouvoir</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-qr.js"></script><!-- le flashcode du bon proposé : l'ordre de vente que le commerce lit -->
+<script src="../assets/payencash-tech.js"></script>
+<!-- PROMOUVOIR — l'écran du COLLABORATEUR d'une marque (24/09, nuit — fondatrice : « une marque peut également ajouter une session
+     collaborateur / partenaire : il peut promouvoir la marque et consulter uniquement ses actions, voir le bon acheté qu'il a
+     généré »).
+     CE QU'IL FAIT ICI, ET SEULEMENT ÇA : partager SES liens de vente (au montant libre, ou à un montant précis) et proposer un bon
+     d'un montant précis à un client. Chaque lien, chaque bon proposé porte son compte (techVenteLienCreer / techLienCreer,
+     `collaborateur`) : ce qu'ils font acheter lui revient, et la marque le voit dans Compte › Mon équipe.
+     CE QU'IL NE FAIT PAS : rien de ce qui engage la marque — paiement, contrat, clés d'API, abonnement, RIB. Sa session est à part
+     (PEC_TECH.session('collaborateur')) et les écrans de la marque ne l'ouvrent pas.
+     Les refus (marque pas encore vérifiée, montant sous le minimum d'un bon, accès suspendu) sont ceux du data-layer, tels quels. -->
+<style>
+  .cp-lien{margin-top:14px;padding-top:12px;border-top:1px solid var(--color-sep)}
+  .cp-lien:first-child{margin-top:0;padding-top:0;border-top:0}
+  .cp-lien-t{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .cp-lien-t b{font-size:14px;font-weight:800;color:var(--color-ink)}
+  .cp-lien-t span{font-size:11.5px;color:var(--color-muted)}
+  .cp-montant{margin-top:14px;padding-top:12px;border-top:1px solid var(--color-sep)}
+  .cp-montant-l{display:flex;align-items:center;gap:8px}
+  .cp-montant-l .pec-input{flex:1;min-width:0;max-width:150px;text-align:right}
+  .cp-montant-l .pec-cta{flex:none;width:auto;padding:0 18px}
+  .cp-montant-l span{font-weight:800;color:var(--color-muted)}
+  .cp-form .pec-input-label{margin-top:10px}
+  .cp-form .pec-input-label:first-child{margin-top:0}
+  .cp-form .fac{font-weight:600;color:var(--color-muted)}
+  .cp-form .pec-cta{margin-top:12px;width:100%}
+  .cp-neuf{margin-top:12px}
+  .cp-neuf .pec-ordre{margin-top:10px}
+  @media (min-width:1024px){
+    .pec-cols > .pec-colonne > .tk-sec:first-child{margin-top:0}
+    .cp-lien-t b{font-size:15.5px} .cp-lien-t span{font-size:13px}
+    .cp-form .pec-cta{width:auto;padding:0 26px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+    <div class="pec-info-body">
+      <div class="pec-card" id="cp-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace est celui d’un collaborateur</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)" id="cp-garde-txt">Connecte-toi avec l’identifiant que ta marque t’a envoyé.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px" id="cp-garde-go">Aller à la connexion</a>
+      </div>
+      <div id="cp-corps" hidden></div>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  var k0 = T ? T.collab() : null;
+  if (T && D) { T.entete('tk-entete'); T.menu('tk-menu', '12-promouvoir.html');   // l'en-tête lit le glossaire : sans données, rien
+    T.hero('tk-hero', { teinte: 'bons', titre: k0 ? 'Promouvoir ' + k0.marque.raisonSociale : 'Promouvoir une marque',
+      promesse: 'Tes liens et tes bons proposés : ce qu’ils font acheter est à ton nom.',
+      etapes: ['Tu partages ton lien, ou tu proposes un bon d’un montant précis', 'Ton client achète le bon dans un ' + D.terme('commerce', 'client') + ', ou auprès d’un ' + D.terme('nomade', 'client'), 'Le bon acheté s’ajoute à « Mes ventes » : il porte ton nom'] }); }
+  if (!D || !T) return;
+  var esc = function (v) { return D.esc(v); };
+  /* LA GARDE : le collaborateur d'une marque, accès actif. La marque connectée a son propre espace ; un accès suspendu ou retiré
+     pendant le travail ferme l'écran au prochain repeint (T.collab relit le compte). */
+  function garde() {
+    var k = T.collab();
+    if (k) return k;
+    $('cp-corps').hidden = true; $('cp-garde').hidden = false;
+    if (T.session('marchand')) { $('cp-garde-txt').textContent = 'Tu es connectée en tant que marque : ton espace est « Bon d’achat ». Cet écran est celui de tes collaborateurs.'; $('cp-garde-go').href = '02-espace.html'; $('cp-garde-go').textContent = 'Aller à mon espace'; }
+    return null;
+  }
+  if (!garde()) return;
+  $('cp-corps').hidden = false;
+
+  var neuf = null;   // le dernier bon proposé ici : son lien et son flashcode restent affichés jusqu'au suivant
+  function carte(titre, corps, id) { return '<p class="pec-section-label tk-sec">' + titre + '</p><div class="pec-card"' + (id ? ' id="' + id + '"' : '') + '>' + corps + '</div>'; }
+  function partage(m, u, montant) {
+    var txt = 'Offre un bon d’achat ' + m.raisonSociale + (montant > 0 ? ' de ' + D.eur(montant) : '') + ' — utilisable sur ' + (m.siteUrl || 'son site') + ' : ' + u;
+    return '<div class="tk-part"><a class="pp tap" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(txt) + '">WhatsApp</a>'
+      + '<a class="pp tap" href="sms:?&body=' + encodeURIComponent(txt) + '">SMS</a>'
+      + '<button type="button" class="pp tap" data-copier="' + esc(u) + '">Copier le lien</button></div>';
+  }
+  function compteurs(s1) {
+    return '<p class="tk-note"><b>' + s1.ouvertures + '</b> ouverture' + (s1.ouvertures > 1 ? 's' : '') + ' · <b>' + s1.demandes + '</b> bon' + (s1.demandes > 1 ? 's' : '') + ' proposé' + (s1.demandes > 1 ? 's' : '')
+      + ' · <b>' + s1.bons + '</b> bon' + (s1.bons > 1 ? 's' : '') + ' acheté' + (s1.bons > 1 ? 's' : '') + (s1.bons ? ' (' + esc(D.eur(s1.valeur)) + ')' : '') + '</p>';
+  }
+
+  function peindre() {
+    var k = garde(); if (!k) return;
+    var m = k.marque, id = k.compte.id, S = D.techRef().seuils || {}, B = D.bonsRef ? D.bonsRef() : {};
+    /* ── MES LIENS À PARTAGER : le sien au montant libre, puis ceux à montant précis — les siens seulement ── */
+    var liens = D.techVenteLiens(m.id, { collaborateur: id }), libre = liens.filter(function (v) { return !(v.montant > 0); })[0] || null;
+    var precis = liens.filter(function (v) { return v.montant > 0; });
+    var hl = libre
+      ? '<div class="cp-lien" data-lien-vente="' + esc(libre.slug) + '"><div class="cp-lien-t"><b>Montant au choix</b><span>celui qui l’ouvre choisit sa somme</span></div>'
+        + '<div class="tk-snip" data-url>' + esc(D.techVenteLienUrl(libre.slug)) + '</div>' + partage(m, D.techVenteLienUrl(libre.slug), 0) + compteurs(D.techVenteLienStats(m.id, libre.slug)) + '</div>'
+      : '<p class="tk-note" style="margin-top:0">Ton lien permanent, à poster sur tes réseaux : celui qui l’ouvre choisit le montant de son bon d’achat ' + esc(m.raisonSociale) + ' et l’achète dans un commerce du réseau.</p>'
+        + '<button type="button" class="pec-cta tap" id="cp-lien-go" style="display:block;width:100%;text-align:center;margin-top:11px">Créer mon lien</button>';
+    hl += precis.map(function (v) {
+      var u = D.techVenteLienUrl(v.slug);
+      return '<div class="cp-lien" data-lien-vente="' + esc(v.slug) + '"><div class="cp-lien-t"><b>Bon de ' + esc(D.eur(v.montant)) + '</b><span>celui qui l’ouvre voit ce montant</span></div>'
+        + '<div class="tk-snip" data-url>' + esc(u) + '</div>' + partage(m, u, v.montant) + compteurs(D.techVenteLienStats(m.id, v.slug)) + '</div>';
+    }).join('');
+    hl += '<div class="cp-montant"><label class="pec-input-label" for="cp-montant">Un lien à montant précis</label>'
+      + '<div class="cp-montant-l"><input class="pec-input" id="cp-montant" inputmode="decimal" autocomplete="off" placeholder="' + (B.minimum ? 'dès ' + esc(D.eur(B.minimum)) : 'Montant') + '"><span>€</span>'
+      + '<button type="button" class="pec-cta pec-cta--tight tap" id="cp-montant-go">Créer ce lien</button></div><p class="tk-err" id="cp-lien-err" hidden></p></div>';
+    /* ── PROPOSER UN BON : un montant, une référence et un nom (facultatifs) ; le lien et son flashcode, à envoyer ── */
+    var hp = '<div class="cp-form"><label class="pec-input-label" for="cp-m">Montant du bon</label><input class="pec-input" id="cp-m" inputmode="decimal" autocomplete="off" placeholder="' + (B.minimum ? 'dès ' + esc(D.eur(B.minimum)) : 'Montant') + '">'
+      + '<label class="pec-input-label" for="cp-ref">Référence <span class="fac">— facultatif</span></label><input class="pec-input" id="cp-ref" autocomplete="off" placeholder="ex. devis 1042">'
+      + '<label class="pec-input-label" for="cp-cli">Pour qui <span class="fac">— facultatif</span></label><input class="pec-input" id="cp-cli" autocomplete="off" placeholder="ex. Mme Martin">'
+      + '<p class="tk-err" id="cp-prop-err" hidden></p><button type="button" class="pec-cta tap" id="cp-prop-go">Proposer ce bon</button></div>'
+      + (neuf ? '<div class="cp-neuf" id="cp-neuf"><p class="tk-note" style="margin-top:0"><b>Bon de ' + esc(D.eur(neuf.montant)) + ' proposé</b>' + (neuf.client ? ' à ' + esc(neuf.client) : '') + ' — envoie-lui le lien, ou montre-lui le flashcode : c’est lui que le commerce lit au comptoir.</p>'
+        + '<div class="tk-snip" data-url>' + esc(D.techLienUrl(neuf.slug)) + '</div>' + partage(m, D.techLienUrl(neuf.slug), neuf.montant)
+        + D.techLienTicketHTML(D.techLien(neuf.slug), D.techLienUrl(neuf.slug)) + '</div>' : '');
+    var garder = {}; ['cp-montant', 'cp-m', 'cp-ref', 'cp-cli'].forEach(function (i) { var el = $(i); if (el) garder[i] = el.value; });
+    $('cp-corps').innerHTML = '<div class="pec-cols pec-cols--2"><div class="pec-colonne">' + carte('Mes liens à partager', hl, 'cp-liens') + '</div>'
+      + '<div class="pec-colonne">' + carte('Proposer un bon à un client', hp, 'cp-prop')
+      + '<p class="tk-note">Un bon d’achat ' + esc(m.raisonSociale) + ' ne vaut que chez elle' + (m.siteUrl ? ', sur ' + esc(m.siteUrl) : '') + ' — un réseau limité' + (S.reseauLimiteSource ? ' (' + esc(D.refArticle ? D.refArticle(S.reseauLimiteSource) : S.reseauLimiteSource) + ')' : '')
+      + '. Il s’achète au comptoir d’un commerce du réseau ou auprès d’un distributeur nomade, et se dépense sur le site de la marque ; rien n’est encaissé ici.</p></div></div>';
+    Object.keys(garder).forEach(function (i) { var el = $(i); if (el && garder[i]) el.value = garder[i]; });
+  }
+
+  function refus(idErr, r) { var x = $(idErr); if (!x) return; x.hidden = false; x.textContent = r.motif || 'Refusé.'; }
+  document.addEventListener('click', function (e) {
+    var k = T.collab(); if (!k) return;
+    var el = e.target.closest ? e.target.closest('#cp-lien-go,#cp-montant-go,#cp-prop-go,[data-copier]') : null; if (!el) return;
+    if (el.id === 'cp-lien-go') { var r1 = D.techVenteLienCreer(k.marque.id, k.compte.identifiant, { collaborateur: k.compte.id }); if (!r1.ok) { refus('cp-lien-err', r1); return; } peindre(); return; }
+    if (el.id === 'cp-montant-go') { var r2 = D.techVenteLienCreer(k.marque.id, k.compte.identifiant, { collaborateur: k.compte.id, montant: ($('cp-montant') || {}).value }); if (!r2.ok) { refus('cp-lien-err', r2); return; } $('cp-montant').value = ''; peindre(); return; }
+    if (el.id === 'cp-prop-go') {
+      var r3 = D.techLienCreer({ marchandId: k.marque.id, montant: $('cp-m').value, reference: $('cp-ref').value, client: $('cp-cli').value, collaborateur: k.compte.id, par: k.compte.identifiant });
+      if (!r3.ok) { refus('cp-prop-err', r3); if (r3.champ === 'montant') $('cp-m').focus(); return; }
+      neuf = r3.lien; ['cp-m', 'cp-ref', 'cp-cli'].forEach(function (i) { $(i).value = ''; });
+      peindre(); var z = $('cp-neuf'); if (z) z.scrollIntoView({ block: 'center', behavior: 'smooth' }); return;
+    }
+    if (el.hasAttribute('data-copier')) {
+      var txt = el.getAttribute('data-copier'), avant = el.textContent;
+      var fini = function (ok) { el.textContent = ok ? 'Lien copié' : 'Sélectionne et copie'; setTimeout(function () { el.textContent = avant; }, 2000); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { fini(true); }, function () { fini(false); }); else fini(false);
+    }
+  });
+
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

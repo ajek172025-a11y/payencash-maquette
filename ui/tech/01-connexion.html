@@ -15,6 +15,7 @@
 <script src="../assets/payencash-docs.js"></script>
 <script src="../assets/payencash-tech.js"></script>
 <script src="../assets/payencash-inscription.js"></script><!-- les portes Google / Apple, communes aux inscriptions et aux connexions -->
+<script src="../assets/payencash-equipe.js"></script><!-- (24/09, nuit) « Crée ton mot de passe » : l'accès d'un collaborateur de marque, depuis le lien reçu -->
 <!-- PAYENCASH SOLUTION — CONNEXION DES MARQUES (refondue le 24/09).
      UNE MARQUE ENTRE AVEC SON COMPTE : e-mail et mot de passe, ou Google / Apple (le protocole des comptes, espace « marque »).
      Avant, on entrait avec le seul identifiant MCH-… — sans mot de passe pour un compte né d'une inscription — et la liste des
@@ -45,10 +46,13 @@
     </div>
     <div class="pec-info-body" style="display:flex;flex-direction:column;gap:14px;padding-bottom:28px">
 
+      <!-- (24/09, nuit) L'ACCÈS D'UN COLLABORATEUR (?acces=<jeton>) : le lien reçu par SMS ou WhatsApp ouvre « Crée ton mot de passe » ;
+           son accès actif, il entre dans l'espace du collaborateur (Promouvoir, Mes ventes, Mon accès) — jamais dans celui de la marque. -->
+      <div id="tc-acces" hidden></div>
       <section class="carte" id="tc-carte">
         <div id="tc-sso-boutons"></div>
         <div class="ou">ou avec ton adresse e-mail</div>
-        <div class="champ"><label for="tc-email">E-mail</label><input class="pec-input" id="tc-email" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="champ"><label for="tc-email">E-mail ou identifiant</label><input class="pec-input" id="tc-email" type="text" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false"></div>
         <div class="champ"><label for="tc-mdp">Mot de passe</label><input class="pec-input" id="tc-mdp" type="password" autocomplete="current-password"></div>
         <div class="porte-oubli"><button type="button" class="tap" id="tc-oubli-ouvrir">Mot de passe oublié ?</button></div>
         <p class="err" id="tc-err" role="alert" hidden></p>
@@ -95,7 +99,8 @@
   var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
   if (T) { T.entete('tk-entete'); T.menu('tk-menu', '01-connexion.html'); }
   /* (24/09, nuit) LA PORTE COMMUNE — le panneau de l'app et la bascule vers l'inscription, comme chez les commerces et dans Mes bons */
-  if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'tech', marque: 'solution', docs: 'marchand', bascule: { q: 'Pas encore de compte ?', lbl: 'Créer un compte', href: '00-inscription.html' }, retour: { lbl: 'Retour au site', href: '../../index.html' } });
+  /* (24/09, nuit) « Pas encore de compte ? Créer un compte » s'écrivait deux fois (haut du panneau et sous la carte) : il reste sous la carte */
+  if (window.PEC_INSCRIPTION) PEC_INSCRIPTION.porte({ app: 'tech', marque: 'solution', docs: 'marchand', retour: { lbl: 'Retour au site', href: '../../index.html' } });
   if (!D || !D.techRef || !D.ESPACES_COMPTE.marque) return;
   var esc = D.esc.bind(D);
   function montrer(id, html) { var z = $(id); if (!z) return; z.hidden = !html; z.innerHTML = html || ''; }
@@ -103,6 +108,11 @@
 
   /* ENTRER : le compte ouvre SA fiche de marque ; une inscription non terminée reprend à sa prochaine étape */
   function entrer(compte) {
+    /* (24/09, nuit) UN COLLABORATEUR entre dans SON espace, au nom de la marque qui l'a invité — jamais dans celui de la marque */
+    if (compte && D.estCollaborateur(compte)) {
+      if (T && !T.entrer(compte.collab.parentId, 'collaborateur', { compte: compte.id })) { montrer('tc-err', 'La session du collaborateur n’a pas pu s’ouvrir.'); return; }
+      location.href = '12-promouvoir.html'; return;
+    }
     var m = compte ? D.techMarchandParCompte(compte.id) : null;
     if (!m) { montrer('tc-err', 'Ce compte n’a pas de fiche de marque : recommence l’inscription.'); return; }
     if (T) T.entrer(m.id, 'marchand');
@@ -192,6 +202,21 @@
     if (!c.ok) { montrer('tc-oubli-err', esc(c.motif)); return; }
     entrer(D.compte(compteOubli.id));
   });
+
+  /* ══ (24/09, nuit) L'ACCÈS D'UN COLLABORATEUR : ?acces=<jeton> — le lien valable remplace le formulaire ; son mot de passe créé, il
+     entre par la MÊME porte (compteConnecter) puis dans son espace. Un lien mort le dit et laisse la connexion sous le message. ══ */
+  (function () {
+    var jeton = new URLSearchParams(location.search).get('acces');
+    if (!jeton || !window.PEC_EQUIPE) return;
+    var h = $('tc-acces'); h.hidden = false;
+    var r = PEC_EQUIPE.activer(h, { jeton: jeton, onEntrer: function (c, mdp) {
+      var co = D.compteConnecter('marque', c.identifiant, mdp);
+      if (!co.ok) { $('tc-carte').hidden = false; montrer('tc-err', 'Accès activé, mais l’entrée a échoué : ' + esc(co.motif || 'connexion impossible') + '. Connecte-toi ci-dessous.'); return; }
+      entrer(co.compte);
+    } });
+    if (r && r.ok) { $('tc-carte').hidden = true; return; }
+    if (r && r.compte) $('tc-email').value = r.compte.identifiant;
+  })();
 
   /* ══ LE JEU DE DÉMONSTRATION ═══════════════════════════════════════════════════════════════════════════════ */
   var TR = (D.comptesDemo || []).filter(function (c) { return /Solution/i.test(c.espace || ''); })[0] || null;

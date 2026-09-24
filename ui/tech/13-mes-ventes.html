@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Mes ventes</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-tech.js"></script>
+<!-- MES VENTES — ce que le COLLABORATEUR d'une marque a produit, et rien d'autre (24/09, nuit — fondatrice : « il peut promouvoir la
+     marque et consulter uniquement ses actions, voir le bon acheté qu'il a généré »).
+     TOUT EST DÉRIVÉ (PEC_DATA.collaborateurResultats) : SES liens de vente et leurs ouvertures, SES bons proposés et leur état, et les
+     bons ACHETÉS grâce à lui — vendus au comptoir sur l'ordre d'un de ses bons proposés, ou remis au rendez-vous d'un nomade, ou
+     utilisés pour couvrir l'un d'eux (techLienBons). Aucun chiffre de la marque (paiements, remises, autres collaborateurs) n'y figure.
+     Le code d'un bon s'affiche voilé : il appartient au client qui l'a acheté. -->
+<style>
+  .mv-onglets{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 8px}
+  .mv-onglets button{border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-card);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer}
+  .mv-onglets button[aria-selected="true"]{background:var(--color-ink);border-color:var(--color-ink);color:#fff}
+  @media (min-width:1024px){
+    .tk-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .pec-cols > .pec-colonne > .tk-sec:first-child{margin-top:0}
+    .mv-onglets button{font-size:13px;padding:8px 14px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script>
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+    <div class="pec-info-body">
+      <div class="pec-card" id="mv-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace est celui d’un collaborateur</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)" id="mv-garde-txt">Connecte-toi avec l’identifiant que ta marque t’a envoyé.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px" id="mv-garde-go">Aller à la connexion</a>
+      </div>
+      <div id="mv-corps" hidden>
+        <div class="tk-kpis">
+          <div class="tk-kpi"><div class="k">Bons achetés</div><div class="v" id="mv-k-bons">0</div><div class="s" id="mv-k-bons-s">—</div></div>
+          <div class="tk-kpi"><div class="k">Bons proposés</div><div class="v" id="mv-k-prop">0</div><div class="s" id="mv-k-prop-s">—</div></div>
+          <div class="tk-kpi"><div class="k">Mes liens</div><div class="v" id="mv-k-liens">0</div><div class="s" id="mv-k-liens-s">—</div></div>
+          <div class="tk-kpi"><div class="k">Valeur achetée</div><div class="v" id="mv-k-val">0 €</div><div class="s">valeur faciale des bons achetés grâce à toi</div></div>
+        </div>
+        <div class="pec-cols pec-cols--2">
+          <div class="pec-colonne">
+            <p class="pec-section-label tk-sec">Les bons achetés grâce à toi</p>
+            <div class="pec-card" id="mv-bons"></div>
+          </div>
+          <div class="pec-colonne">
+            <p class="pec-section-label tk-sec">Mes bons proposés</p>
+            <div class="mv-onglets" id="mv-onglets" role="tablist" aria-label="État des bons proposés"></div>
+            <div class="pec-card" id="mv-props"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  var k0 = T ? T.collab() : null;
+  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '13-mes-ventes.html');
+    T.hero('tk-hero', { teinte: 'paiement', titre: 'Mes ventes', promesse: k0 ? 'Ce que tes liens et tes bons proposés ont fait acheter pour ' + k0.marque.raisonSociale + '.' : 'Ce que tes liens et tes bons proposés ont fait acheter.' }); }
+  if (!D || !T) return;
+  var esc = function (v) { return D.esc(v); };
+  var dateFr = function (ts) { return ts ? new Date(ts).toLocaleDateString('fr-FR') : ''; };
+  var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+  var ONGLETS = [
+    { cle: 'vifs', lbl: 'En attente', etats: ['open', 'partial'], vide: 'Aucun bon proposé en attente — propose-en un depuis « Promouvoir ».' },
+    { cle: 'used', lbl: 'Couverts', etats: ['used'], vide: 'Aucun bon proposé couvert pour l’instant.' },
+    { cle: 'ferme', lbl: 'Fermés', etats: ['cancelled', 'expired'], vide: 'Aucun bon proposé retiré ni expiré.' }
+  ];
+  var onglet = 'vifs';
+  function garde() {
+    var k = T.collab(); if (k) return k;
+    $('mv-corps').hidden = true; $('mv-garde').hidden = false;
+    if (T.session('marchand')) { $('mv-garde-txt').textContent = 'Tu es connectée en tant que marque : tes ventes se lisent dans « Bon d’achat » et « Paiement ».'; $('mv-garde-go').href = '02-espace.html'; $('mv-garde-go').textContent = 'Aller à mon espace'; }
+    return null;
+  }
+  if (!garde()) return;
+  $('mv-corps').hidden = false;
+
+  function peindre() {
+    var k = garde(); if (!k) return;
+    var r = D.collaborateurResultats(k.compte.id) || { bons: 0, valeur: 0, propositions: 0, liens: 0, ouvertures: 0, listeBons: [], listePropositions: [] };
+    $('mv-k-bons').textContent = String(r.bons);
+    $('mv-k-bons-s').textContent = r.bons ? 'achetés au comptoir du réseau' : 'aucun pour l’instant';
+    $('mv-k-prop').textContent = String(r.propositions);
+    var aAcheter = r.listePropositions.filter(function (x) { var o = D.techOrdreVente(x.slug); return o && o.vendable; }).length;   // pas encore achetés au comptoir
+    $('mv-k-prop-s').textContent = r.propositions ? aAcheter + ' encore à acheter' : 'aucun pour l’instant';
+    $('mv-k-liens').textContent = String(r.liens);
+    $('mv-k-liens-s').textContent = r.liens ? pl(r.ouvertures, 'ouverture') : 'crée-les depuis « Promouvoir »';
+    $('mv-k-val').textContent = D.eur(r.valeur);
+    /* LES BONS ACHETÉS — le code voilé (il appartient au client), la somme, quand, où, et ce qu'il en est */
+    $('mv-bons').innerHTML = r.listeBons.length ? r.listeBons.map(function (b) {
+      var v = b.venteRef ? D.techVente(b.venteRef) : null, rv = b.revendeurId ? D.techRevendeur(b.revendeurId) : null;
+      var x = b.ordre ? D.techLien(b.ordre) : null;
+      return '<div class="tk-row"><div class="tx"><div class="nm">' + esc(D.bonMasque ? D.bonMasque(b.code) : b.code) + ' · ' + esc(D.eur(b.montant)) + '</div>'
+        + '<span class="sb">Acheté le ' + esc(D.dateHeure(b.venduLe || b.emisLe)) + (rv ? ' chez ' + esc(rv.raisonSociale) + (rv.ville ? ' · ' + esc(rv.ville) : '') : (v && v.revendeur ? ' chez ' + esc(v.revendeur) : '')) + '</span>'
+        + (x ? '<span class="sb">Sur ton bon proposé de ' + esc(D.eur(x.montant)) + (x.reference ? ' · ' + esc(x.reference) : '') + (x.client ? ' · ' + esc(x.client) : '') + '</span>' : '')
+        + '</div><span class="pec-pill ' + (b.etat === 'cancelled' ? 'pec-pill--off' : b.etat === 'redeemed' ? 'pec-pill--done' : b.etat === 'sold' ? 'pec-pill--live' : 'pec-pill--wait') + '" style="flex:none;font-size:9.5px;padding:3px 8px">' + esc(D.techBonEtatLbl(b.etat)) + '</span></div>';
+    }).join('') : '<div class="tk-vide"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg><div><b>Aucun bon acheté grâce à toi pour l’instant.</b> Dès qu’un client achète au comptoir le bon que tu lui as proposé, il apparaît ici.</div></div>';
+    /* MES BONS PROPOSÉS — par état ; l'onglet courant survit au repeint */
+    var comptes = {}; ONGLETS.forEach(function (o) { comptes[o.cle] = r.listePropositions.filter(function (x) { return o.etats.indexOf(x.etat) > -1; }).length; });
+    $('mv-onglets').innerHTML = ONGLETS.map(function (o) { return '<button type="button" role="tab" class="tap" data-onglet="' + o.cle + '" aria-selected="' + (o.cle === onglet) + '">' + esc(o.lbl) + ' · ' + comptes[o.cle] + '</button>'; }).join('');
+    var O = ONGLETS.filter(function (o) { return o.cle === onglet; })[0] || ONGLETS[0];
+    var vis = r.listePropositions.filter(function (x) { return O.etats.indexOf(x.etat) > -1; });
+    $('mv-props').innerHTML = vis.length ? vis.map(function (x) {
+      var nb = D.techLienBons(x.slug).filter(function (b) { return b.etat !== 'cancelled'; }).length, vif = x.etat === 'open' || x.etat === 'partial';
+      return '<div class="tk-row"><div class="tx"><div class="nm">' + esc(D.eur(x.montant)) + (x.reference ? ' · ' + esc(x.reference) : '') + '</div>'
+        + '<span class="sb">' + (x.client ? esc(x.client) + ' · ' : '') + (x.origineLien ? 'né de ton lien · ' : '') + 'créé le ' + esc(dateFr(x.creeLe)) + ' · ' + esc(D.techLienEtatLbl(x.etat))
+        + (vif && x.expireLe ? ' · valable jusqu’au ' + esc(dateFr(x.expireLe)) : '') + (nb ? ' · ' + esc(pl(nb, 'bon')) + ' acheté' + (nb > 1 ? 's' : '') : '') + '</span>'
+        + '<span class="sb"><a class="tk-go" href="07-lien.html?l=' + encodeURIComponent(x.slug) + '" target="_blank" rel="noopener">Voir la page partagée ›</a>'
+        + (vif ? ' · <button type="button" class="tk-go tap" data-ann="' + esc(x.slug) + '" style="border:0;background:none;padding:0;font:inherit;cursor:pointer">Retirer</button>' : '') + '</span></div></div>';
+    }).join('') : '<p class="tk-note" style="margin:0">' + esc(O.vide) + '</p>';
+  }
+  document.addEventListener('click', function (e) {
+    var o = e.target.closest ? e.target.closest('[data-onglet]') : null;
+    if (o) { onglet = o.getAttribute('data-onglet'); peindre(); return; }
+    var a = e.target.closest ? e.target.closest('[data-ann]') : null; if (!a) return;
+    var k = T.collab(); if (!k) return;
+    var x = D.techLien(a.getAttribute('data-ann'));
+    if (!x || D.techLienCollaborateur(x) !== k.compte.id) return;   // il ne retire que les siens
+    D.techLienAnnuler(x.slug, k.compte.identifiant); peindre();
+  });
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

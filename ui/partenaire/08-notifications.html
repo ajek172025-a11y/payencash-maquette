@@ -79,17 +79,12 @@
     </div>
   </div>
 
-  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
-    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
-    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
-    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
-    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
-    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
-  </nav>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="08-notifications.html"></nav><!-- (24/09, nuit) la barre se pose depuis PEC_PART.menu : écrite une fois, celle du titulaire ou du collaborateur -->
 </div>
 </div>
 <script>
   (function () {
+    if (window.PEC_PART && PEC_PART.reserveTitulaire && PEC_PART.reserveTitulaire()) return;   // (24/09, nuit) le fil du point est celui de son titulaire
     if (window.PEC_PART && PEC_PART.brancher) PEC_PART.brancher();
     var D = window.PEC_DATA; if (!D || !window.PEC_FIL) return;
     var id = (window.PEC_PART && PEC_PART.pointId) ? PEC_PART.pointId() : null;

@@ -31,6 +31,16 @@
 <style>
   /* (24/09, soir) sur bureau, chaque colonne commence à hauteur du titre de l'autre */
   @media (min-width:1024px){ .pec-cols > .pec-colonne > .tk-sec:first-child{margin-top:0} }
+  /* (24/09, nuit) LES LIENS À MONTANT PRÉCIS — un bloc par montant sous le lien au montant libre, puis le champ pour en créer un */
+  .tp-precis{margin-top:14px;padding-top:12px;border-top:1px solid var(--color-sep)}
+  .tp-precis-t{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+  .tp-precis-t b{font-size:14px;font-weight:800;color:var(--color-ink)}
+  .tp-precis-t span{font-size:11.5px;color:var(--color-muted)}
+  .tp-precis-form{margin-top:14px;padding-top:12px;border-top:1px solid var(--color-sep)}
+  .tp-precis-l{display:flex;align-items:center;gap:8px}
+  .tp-precis-l .pec-input{flex:1;min-width:0;max-width:150px;text-align:right}
+  .tp-precis-l .pec-cta{flex:none;width:auto;padding:0 18px}
+  .tp-precis-l span{font-weight:800;color:var(--color-muted)}
 </style>
 <script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
 </head>
@@ -194,23 +204,47 @@
        sont DÉRIVÉS (ouvertures du lien, bons vendus par lui) — aucun chiffre n'est stocké à part. Les boutons
        de partage n'envoient rien depuis ici : ils ouvrent l'application choisie avec le lien déjà écrit, et
        c'est la marque qui poste ; Instagram n'a pas d'adresse de partage, on le dit. */
+    /* (24/09, nuit — fondatrice : « même logique : proposer un montant précis pour mon lien de vente à partager ») À CÔTÉ DU LIEN
+       AU MONTANT LIBRE, DES LIENS À MONTANT PRÉCIS : un par montant (techVenteLiens), chacun avec son adresse, ses boutons de
+       partage et ses compteurs à lui (techVenteLienStats par slug). Celui qui l'ouvre voit le montant et continue sans rien
+       saisir ; la suite est la même que pour un bon proposé (invitation à l'app Mes bons, flashcode au comptoir). */
     var st = D.techVenteLienStats(m.id);
     var url = st.lien ? D.techVenteLienUrl(st.lien.slug) : null;
-    var txt = st.lien ? ('Offre un bon d’achat ' + m.raisonSociale + ' — utilisable sur ' + (m.siteUrl || 'notre site') + ' : ' + url) : '';
-    hd += carte('Mon lien de vente à partager', st.lien
-      ? '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Celui qui l’ouvre choisit le montant de son bon d’achat et l’achète dans un commerce du réseau. Le lien ne périme pas.</p>'
-        + '<div class="tk-snip" id="tp-url">' + esc(url) + '</div>'
-        + '<div class="tk-part part">'
+    var Bm = D.bonsRef ? D.bonsRef() : {};
+    var boutonsPartage = function (u, montant, cls) {
+      var txt = 'Offre un bon d’achat ' + m.raisonSociale + (montant > 0 ? ' de ' + D.eur(montant) : '') + ' — utilisable sur ' + (m.siteUrl || 'notre site') + ' : ' + u;
+      return '<div class="tk-part ' + cls + '">'
         + '<a class="pp tap" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(txt) + '">WhatsApp</a>'
-        + '<a class="pp tap" target="_blank" rel="noopener" href="https://snapchat.com/scan?attachmentUrl=' + encodeURIComponent(url) + '">Snapchat</a>'
-        + '<a class="pp tap" target="_blank" rel="noopener" href="https://www.tiktok.com/upload?url=' + encodeURIComponent(url) + '">TikTok</a>'
-        + '<a class="pp tap" target="_blank" rel="noopener" href="https://www.instagram.com/" title="Instagram n’a pas d’adresse de partage : colle le lien copié">Instagram</a>'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://snapchat.com/scan?attachmentUrl=' + encodeURIComponent(u) + '">Snapchat</a>'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://www.tiktok.com/upload?url=' + encodeURIComponent(u) + '">TikTok</a>'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://www.instagram.com/" title="Instagram n’a pas d’adresse de partage : colle le lien copié">Instagram</a>';
+    };
+    var compteurs = function (s1, quoi) {
+      return '<p class="tk-note"><b>' + s1.ouvertures + '</b> ouverture' + (s1.ouvertures > 1 ? 's' : '') + ' · <b>' + s1.bons + '</b> bon' + (s1.bons > 1 ? 's' : '') + ' vendu' + (s1.bons > 1 ? 's' : '') + ' par ' + quoi
+        + (s1.bons ? ' (' + esc(D.eur(s1.valeur)) + ' de valeur faciale)' : '') + '.</p>';
+    };
+    var precis = D.techVenteLiens(m.id).filter(function (v) { return v.montant > 0; });
+    var blocPrecis = precis.map(function (v) {
+      var u = D.techVenteLienUrl(v.slug), s1 = D.techVenteLienStats(m.id, v.slug);
+      return '<div class="tp-precis" data-lien-vente="' + esc(v.slug) + '"><div class="tp-precis-t"><b>Bon de ' + esc(D.eur(v.montant)) + '</b><span>celui qui l’ouvre voit ce montant</span></div>'
+        + '<div class="tk-snip" data-url>' + esc(u) + '</div>'
+        + boutonsPartage(u, v.montant, 'part-montant') + '<button type="button" class="pp tap" data-copier>Copier le lien</button></div>'
+        + compteurs(s1, 'ce lien') + '</div>';
+    }).join('');
+    var formPrecis = '<div class="tp-precis-form"><label class="pec-input-label" for="tp-montant">Proposer un montant précis</label>'
+      + '<div class="tp-precis-l"><input class="pec-input" id="tp-montant" inputmode="decimal" autocomplete="off" placeholder="' + (Bm.minimum ? 'dès ' + esc(D.eur(Bm.minimum)) : 'Montant') + '"><span>€</span>'
+      + '<button type="button" class="pec-cta pec-cta--tight tap" id="tp-montant-go">Créer ce lien</button></div>'
+      + '<p class="tk-err" id="tp-montant-err" hidden></p></div>';
+    hd += carte('Mes liens de vente à partager', st.lien
+      ? '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)"><b style="color:var(--color-ink)">Montant au choix</b> — celui qui l’ouvre choisit le montant de son bon d’achat et l’achète dans un commerce du réseau. Le lien ne périme pas.</p>'
+        + '<div class="tk-snip" id="tp-url">' + esc(url) + '</div>'
+        + boutonsPartage(url, 0, 'part')
         + '<button type="button" class="pp tap" id="tp-copier">Copier le lien</button>'
         + '</div>'
-        + '<p class="tk-note"><b>' + st.ouvertures + '</b> ouverture' + (st.ouvertures > 1 ? 's' : '') + ' · <b>' + st.bons + '</b> bon' + (st.bons > 1 ? 's' : '') + ' vendu' + (st.bons > 1 ? 's' : '') + ' par ce lien'
-        + (st.bons ? ' (' + esc(D.eur(st.valeur)) + ' de valeur faciale)' : '') + '.</p>'
+        + compteurs(st, 'ce lien')
+        + blocPrecis + formPrecis
         + '<p class="tk-note" style="font-size:10.5px">Un bon d’achat valable uniquement chez toi — réseau limité' + (S.reseauLimiteSource ? ' (' + art(S.reseauLimiteSource) + ')' : '') + ' : ni remboursable en espèces, ni échangé contre de la monnaie.</p>'
-      : '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Un lien permanent, à poster sur tes réseaux : celui qui l’ouvre choisit le montant de son bon d’achat et l’achète dans un commerce du réseau.</p>'
+      : '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Un lien permanent, à poster sur tes réseaux : celui qui l’ouvre choisit le montant de son bon d’achat et l’achète dans un commerce du réseau. Ensuite, tu pourras aussi créer des liens à montant précis.</p>'
         + '<p class="tk-err" id="tp-lien-err" hidden></p>'
         + '<button type="button" class="pec-cta tap" id="tp-lien-go" style="display:block;width:100%;text-align:center;margin-top:11px">Générer mon lien de vente</button>', 'tp-lien');
 
@@ -242,7 +276,7 @@
   /* ══ LES GESTES — délégués, parce que le corps est repeint à chaque changement. Deux seulement : faire naître
      le lien de vente, et le copier. Tout ce qui touche à l'offre, au RIB ou au mandat se fait dans Compte. ══ */
   document.addEventListener('click', function (e) {
-    var el = e.target.closest ? e.target.closest('#tp-lien-go,#tp-copier') : null;
+    var el = e.target.closest ? e.target.closest('#tp-lien-go,#tp-copier,#tp-montant-go,[data-copier]') : null;
     if (!el) return;
     if (el.id === 'tp-lien-go') {
       /* UN REFUS QUI PORTE OÙ AGIR devient un lien (23/09, soir) : le texte du data-layer, puis « régler › » vers
@@ -251,8 +285,15 @@
       if (!rl.ok) { if (x) { x.hidden = false; x.innerHTML = esc(rl.motif) + (rl.href ? ' <a class="tk-go" href="' + esc(rl.href) + '">régler ›</a>' : ''); } return; }
       peindre(); return;
     }
-    if (el.id === 'tp-copier') {
-      var z = $('tp-url'); if (!z) return;
+    /* (24/09, nuit) UN LIEN À MONTANT PRÉCIS naît par la même porte (techVenteLienCreer), avec son montant ; le même montant
+       rend le lien qui existe déjà — pas une seconde adresse */
+    if (el.id === 'tp-montant-go') {
+      var rm = D.techVenteLienCreer(s.id, s.id, { montant: ($('tp-montant') || {}).value }), xm = $('tp-montant-err');
+      if (!rm.ok) { if (xm) { xm.hidden = false; xm.innerHTML = esc(rm.motif) + (rm.href ? ' <a class="tk-go" href="' + esc(rm.href) + '">régler ›</a>' : ''); } return; }
+      peindre(); return;
+    }
+    if (el.id === 'tp-copier' || el.hasAttribute('data-copier')) {
+      var z = el.id === 'tp-copier' ? $('tp-url') : ((el.closest('[data-lien-vente]') || document).querySelector('[data-url]')); if (!z) return;
       var t0 = z.textContent, b0 = el;
       /* COPIER SANS PRESSE-PAPIERS DISPONIBLE : on sélectionne le texte, et l'écran le DIT — on ne prétend
          jamais avoir copié ce qu'on n'a pas copié. */

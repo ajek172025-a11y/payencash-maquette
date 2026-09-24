@@ -2,30 +2,27 @@
    Décision fondatrice du 21/09 : « la modale qui s'ouvre doit être celle COMMENT PAYER, en sachant que c'est pour la
    boutique connectée » ; « ça doit être toujours la même animation ». Le choix vit ICI, une fois, et la page d'un bon
    proposé par une marque le monte — son lien partagé comme la fenêtre de son widget (ui/tech/07-lien.html) :
-     · le TRIO (en ligne · chez un partenaire · un distributeur nomade se déplace) et la navigation qui y amène ;
+     · (24/09, nuit — fondatrice : « aligne les cartes : dans un point de vente / un distributeur se déplace, partout ; supprime en
+       ligne ») le DUO — « Dans un point de vente » · « Un distributeur nomade se déplace » —, les mêmes cartes que la carte de Mes bons ;
      · CHEZ UN PARTENAIRE — la carte, la recherche, le rayon, la liste, le guidage « M'y rendre » ;
-     · UN DISTRIBUTEUR NOMADE SE DÉPLACE — l'adresse de rencontre (position, recherche, saisie), le récap, la modale de mise en
-       relation, puis le suivi de la demande ;
+     · UN DISTRIBUTEUR NOMADE SE DÉPLACE — l'adresse de rencontre (position, recherche, saisie), puis (24/09, nuit — « prends celui
+       qui est le plus complet ») la liste des distributeurs nomades DISPONIBLES qui viennent jusque-là, chacun avec SON tarif, triable ;
+       le client en choisit un, la fenêtre de mise en relation, puis le suivi de la demande ;
      · la modale d'accord de position, et un seul montage de carte pour les deux chemins.
-   CE QUI RESTE À LA PAGE : ce qu'on achète (le bon proposé, son montant) et le chemin ① — un bon de marque s'utilise
-   depuis l'app Mes bons. Le module ne sait pas CE qu'on achète : il demande combien (`montantDu`), et le RÉSEAU de la
+   CE QUI RESTE À LA PAGE : ce qu'on achète (le bon proposé, son montant), l'app Mes bons, et ce qu'il faut savoir — la page le
+   regroupe une fois. Le module ne sait pas CE qu'on achète : il demande combien (`montantDu`), et le RÉSEAU de la
    marque (`o.reseau`, PEC_TECH.reseauOu) lui dit où sont ses points, qui se déplace et comment demander une rencontre.
    Le balisage est posé par le module dans trois points d'accroche de la page (data-pec-ou="trio" · "acheter" ·
    "modales"), avec des identifiants stables : c'est sur eux que s'appuient la logique ci-dessous, le banc et l'audit.
    Rien ici n'est écrit en dur — tout vient de PEC_DATA, du réseau de la marque et de PEC_GEO. ══ */
 (function () {
   /* ══ LE BALISAGE DU CHOIX ══ */
-  var GAB_TRIO = [
-    "      <!-- (19/09, soir — décision fondatrice « donc comment : en ligne, ou chez un partenaire, ou un agent se déplace »)",
-    "           LES TROIS CHEMINS, AU PREMIER NIVEAU : la question à poser d'abord n'est pas « quel moyen » mais « OÙ ».",
-    "           « En ligne » mène à l'app Mes bons (un bon déjà en main) ; les deux autres mènent à l'achat d'un bon,",
-    "           au comptoir d'un commerce du réseau ou en main propre. -->",
-    "      <div class=\"choix2 duo3\" role=\"tablist\" id=\"op-ou\" aria-label=\"Comment veux-tu payer ?\">",
-    "        <button type=\"button\" class=\"tap\" id=\"op-ou-enligne\" role=\"tab\" aria-selected=\"true\">",
-    "          <span class=\"ic2\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\" style=\"font-size:17px\"><use href=\"#i-smartphone\"/></svg></span>",
-    "          <span class=\"txt2\"><b>En ligne</b><small id=\"op-ou-enligne-s\">—</small></span>",
-    "        </button>",
-    "        <button type=\"button\" class=\"tap\" id=\"op-ou-partenaire\" role=\"tab\" aria-selected=\"false\">",
+  var GAB_DUO = [
+    "      <!-- (24/09, nuit — fondatrice : « aligne les cartes : dans un point de vente / un distributeur se déplace, partout ; supprime en",
+    "           ligne ») DEUX CHEMINS, AU PREMIER NIVEAU — la question est « OÙ acheter mon bon » : au comptoir d'un commerce du réseau, ou",
+    "           en main propre, par un distributeur nomade qui se déplace. Les mêmes cartes que la carte de Mes bons. -->",
+    "      <div class=\"choix2 duo2\" role=\"tablist\" id=\"op-ou\" aria-label=\"Où acheter ton bon\">",
+    "        <button type=\"button\" class=\"tap\" id=\"op-ou-partenaire\" role=\"tab\" aria-selected=\"true\">",
     "          <span class=\"ic2\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\" style=\"font-size:17px\"><use href=\"#i-store\"/></svg></span>",
     "          <span class=\"txt2\"><b id=\"op-ou-partenaire-t\">—</b><small id=\"op-ou-partenaire-s\">—</small></span>",
     "        </button>",
@@ -43,10 +40,6 @@
     "          <div class=\"pec-card\" id=\"ach-carte-commerce\" style=\"margin-top:12px;padding:14px 16px\">",
     "            <div style=\"font-size:10px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)\">Acheter un bon d’achat</div>",
     "            <div style=\"font-size:16px;font-weight:800;letter-spacing:-0.01em;color:var(--color-ink);margin-top:3px\">Les commerces les plus proches</div>",
-    "            <!-- (23/09, fondatrice : « notre réseau accepte espèces, pièces et CB ; ses bons d'achat sont utilisés sur le site",
-    "                 de l'émetteur ; une fois utilisé, non remboursable ; réseau limité ») CE QU'IL FAUT SAVOIR, rendu par le",
-    "                 RÉSEAU (R.rappel) — retiré du balisage au montage si le réseau n'en a pas. -->",
-    "            <div class=\"pec-rappel\" id=\"ach-rappel\" hidden></div>",
     "            <p class=\"plaisir\">Fais-toi plaisir — ou fais plaisir à quelqu’un : un bon d’achat s’offre aussi.</p>",
     "",
     "            <div class=\"mapwrap pec-map-canvas\" id=\"ach-mapwrap\" hidden><div id=\"ach-map\" style=\"position:absolute;inset:0\"></div></div>",
@@ -72,16 +65,12 @@
     "",
     "            <!-- LA RECHERCHE ET LES VILLES : chercher autour de soi est le défaut, mais on peut chercher PAR VILLE ou par nom.",
     "                 Dès qu'une ville ou une recherche est active, le rayon ne bride plus : on regarde CETTE ville. Le rayon",
-    "                 (− 500 m · 1 km · 2 km) ne s'affiche que si l'on sait d'où mesurer. -->",
+    "                 (les rayons du référentiel, D.carteRayons — les mêmes que la carte de Mes bons) ne s'affiche que si l'on sait d'où mesurer. -->",
     "            <input class=\"pec-input\" id=\"ach-q\" type=\"search\" placeholder=\"Chercher un commerce ou une ville…\" style=\"width:100%;height:34px;padding:0 12px;font-size:12px;margin-top:10px\">",
     "            <div id=\"ach-villes\" style=\"display:flex;gap:6px;flex-wrap:wrap;margin-top:8px\"></div>",
-    "            <div class=\"seclbl\" id=\"ach-rayon-l\" hidden style=\"display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px\">",
+    "            <div class=\"seclbl\" id=\"ach-rayon-l\" hidden style=\"display:flex;flex-direction:column;align-items:stretch;gap:8px;margin-top:12px\">",
     "              <b id=\"ach-rayon-txt\" style=\"font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)\">—</b>",
-    "              <span id=\"ach-rayon\" style=\"display:flex;gap:6px\">",
-    "                <button type=\"button\" class=\"pec-pill tap\" data-km=\"500\" aria-pressed=\"false\">− 500 m</button>",
-    "                <button type=\"button\" class=\"pec-pill tap\" data-km=\"1000\" aria-pressed=\"false\">1 km</button>",
-    "                <button type=\"button\" class=\"pec-pill pec-pill--done tap\" data-km=\"2000\" aria-pressed=\"true\">2 km</button>",
-    "              </span>",
+    "              <span id=\"ach-rayon\" class=\"ach-rayons\" style=\"display:flex;gap:6px;overflow-x:auto;scrollbar-width:none\"></span>",
     "            </div>",
     "            <div id=\"ach-liste\" style=\"margin-top:8px\"></div>",
     "            <div class=\"vide\" id=\"ach-vide\" hidden>—</div>",
@@ -140,16 +129,17 @@
     "              <div class=\"frow\" style=\"margin-top:8px\"><label class=\"pec-input-label\" for=\"agt-note\">Un mot pour cette rencontre <span class=\"opt\">· facultatif</span></label>",
     "                <input class=\"pec-input\" id=\"agt-note\" type=\"text\" autocomplete=\"off\" maxlength=\"200\" aria-describedby=\"agt-note-aide\" placeholder=\"je suis en terrasse, veste rouge…\">",
     "                <p class=\"aide\" id=\"agt-note-aide\">Ce qui change aujourd'hui seulement — l'étage et la porte sont déjà dans l'adresse.</p></div>",
-    "              <!-- CE QU'IL Y A À SAVOIR AVANT DE DEMANDER TIENT DANS UNE CARTE : le montant, qui se déplace, et ce qu'il vend. -->",
+    "              <!-- CE QU'IL Y A À SAVOIR AVANT DE CHOISIR TIENT DANS UNE CARTE : ce qu'il te vend, qui vient jusqu'ici, qui encaisse. -->",
     "              <div class=\"pec-card\" id=\"agt-recap\" style=\"margin-top:12px;padding:4px 14px\">",
     "                <div class=\"agt-lig\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\"><use href=\"#i-receipt\"/></svg><span id=\"agt-montant\">—</span></div>",
     "                <div class=\"agt-lig\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\"><use href=\"#i-map-pin\"/></svg><span id=\"agt-dispo\">—</span></div>",
     "                <div class=\"agt-lig\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\"><use href=\"#i-shield\"/></svg><span id=\"agt-garantie\">—</span></div>",
     "              </div>",
-    "              <p id=\"agt-erreur\" hidden style=\"margin:8px 0 0;font-size:12px;font-weight:700;line-height:1.5;color:#8E2A1E\"></p>",
-    "              <button type=\"button\" class=\"pec-cta tap\" id=\"agt-demander\" style=\"display:block;width:100%;text-align:center;margin-top:11px\">—</button>",
+    "              <p id=\"agt-erreur\" role=\"alert\" hidden style=\"margin:8px 0 0;font-size:12px;font-weight:700;line-height:1.5;color:#8E2A1E\"></p>",
+    "              <!-- (24/09, nuit) LES DISTRIBUTEURS NOMADES DISPONIBLES QUI VIENNENT JUSQU'À CETTE ADRESSE — chacun son tarif ; le client trie -->",
+    "              <div class=\"nm-tris\" id=\"agt-tris\" role=\"radiogroup\" aria-label=\"Ordre de la liste\" hidden style=\"margin-top:12px\"></div>",
+    "              <div class=\"nm-liste\" id=\"agt-liste\" hidden style=\"margin-top:8px\"></div>",
     "            </div>",
-    "            <div id=\"agt-liste\" style=\"margin-top:10px\"></div>",
     "          </div>"
   ].join('\n');
   var GAB_MODALES = [
@@ -165,8 +155,8 @@
     "    </div>",
     "  </div>",
     "",
-    "  <!-- LA MISE EN RELATION : avant d'envoyer la demande, on dit ce qui va se passer, on demande le numéro où être appelé",
-    "       (le client n'a pas de compte chez nous), on laisse choisir le canal, et on ne part qu'avec son accord. -->",
+    "  <!-- LA MISE EN RELATION : avant d'envoyer la demande au distributeur nomade choisi, on dit ce qui va se passer et à quel tarif,",
+    "       on demande le numéro où t'appeler, et on ne part qu'avec l'accord — la phrase cochée est celle qu'on enregistre. -->",
     "  <div class=\"scrim\" id=\"rdvpop\" hidden>",
     "    <div class=\"popup lg\" role=\"dialog\" aria-modal=\"true\" aria-labelledby=\"rdvpop-t\">",
     "      <span class=\"pic\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\" style=\"font-size:22px\"><use href=\"#i-headset\"/></svg></span>",
@@ -174,21 +164,15 @@
     "      <p id=\"rdvpop-p\">—</p>",
     "      <div class=\"recap\" id=\"rdvpop-recap\">—</div>",
     "      <div class=\"tel\" id=\"rdvpop-tel-saisie\">",
-    "        <label class=\"k\" for=\"rdvpop-tel-in\">Le numéro où il t'appelle</label>",
+    "        <label class=\"k\" for=\"rdvpop-tel-in\">Le numéro où t'appeler</label>",
     "        <input class=\"pec-input\" id=\"rdvpop-tel-in\" type=\"tel\" inputmode=\"tel\" autocomplete=\"tel\" placeholder=\"06 12 34 56 78\" style=\"width:100%;margin-top:6px;background:var(--color-card)\">",
-    "      </div>",
-    "      <p class=\"pec-section-label\" style=\"margin:12px 0 0\">Comment préfères-tu être contacté·e ?</p>",
-    "      <div class=\"canaux\" id=\"rdvpop-canaux\">",
-    "        <button type=\"button\" class=\"tap\" data-canal=\"appel\" aria-pressed=\"true\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\"><use href=\"#i-phone\"/></svg><span>Appel</span></button>",
-    "        <button type=\"button\" class=\"tap\" data-canal=\"whatsapp\" aria-pressed=\"false\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\"><use href=\"#i-chat\"/></svg><span>WhatsApp</span></button>",
-    "        <button type=\"button\" class=\"tap\" data-canal=\"facetime\" aria-pressed=\"false\"><svg class=\"pec-ico\" viewBox=\"0 0 24 24\"><use href=\"#i-headset\"/></svg><span>Visio</span></button>",
     "      </div>",
     "      <label class=\"rgpdrow\" for=\"rdvpop-rgpd\">",
     "        <input type=\"checkbox\" id=\"rdvpop-rgpd\">",
     "        <span id=\"rdvpop-rgpd-txt\">—</span>",
     "      </label>",
     "      <p class=\"err\" id=\"rdvpop-err\" hidden></p>",
-    "      <button type=\"button\" class=\"allow tap\" id=\"rdvpop-ok\" style=\"margin-top:12px;opacity:.45\" aria-disabled=\"true\">J’ai compris — qu’il m’appelle</button>",
+    "      <button type=\"button\" class=\"allow tap\" id=\"rdvpop-ok\" style=\"margin-top:12px;opacity:.45\" aria-disabled=\"true\">Envoyer ma demande</button>",
     "      <button type=\"button\" class=\"deny tap\" id=\"rdvpop-non\">Revenir en arrière</button>",
     "    </div>",
     "  </div>"
@@ -197,7 +181,7 @@
   /* POSER LE BALISAGE AVANT D'Y BRANCHER QUOI QUE CE SOIT. Un point d'accroche absent n'est pas une erreur : une page
      peut ne vouloir que certains volets. */
   function poser() {
-    var t = document.querySelector('[data-pec-ou="trio"]'); if (t) t.outerHTML = GAB_TRIO;
+    var t = document.querySelector('[data-pec-ou="trio"]'); if (t) t.outerHTML = GAB_DUO;   // l'accroche garde son nom : les pages la posent
     var a = document.querySelector('[data-pec-ou="acheter"]'); if (a) a.innerHTML = GAB_ACHETER;
     var p = document.querySelector('[data-pec-ou="modales"]'); if (p) p.outerHTML = GAB_MODALES;
   }
@@ -205,20 +189,16 @@
     /* o.reseau           → le réseau de la marque (PEC_TECH.reseauOu) — obligatoire :
                               points(opts)   même contrat que pointsBons ({ pos, rayon, q, ville })
                               videTxt(f)     ce qu'on dit (HTML échappé) quand personne ne vend ici
-                              trio()         { enligne, partenaire: { t, s }, agent: { t, s } }
-                              rappel()       ce qu'il faut savoir avant d'aller au comptoir (facultatif)
+                              duo()          { partenaire: { t, s }, agent: { t, s } }
                               rencontre      la demande de rencontre de CE bon proposé (voir PEC_TECH.reseauOu)
        o.montantDu()      → { cents } : ce qui manque encore sur le bon proposé (la page sait ce qu'elle vend)
-       o.utiliserCode(c)  → ouvre l'app Mes bons avec le code remis par le distributeur nomade : c'est là qu'un bon de marque s'utilise */
+       o.utiliserCode(c)  → pose sur la commande le code remis par le distributeur nomade (la page le contrôle, puis le client confirme) */
     monter: function (o) {
       o = o || {};
       var D = window.PEC_DATA, R = o.reseau;
       if (!D || !R) return null;   // sans réseau, on ne monte pas un choix vers nulle part
       var esc = function (v) { return D.esc ? D.esc(v) : String(v == null ? '' : v); };
       poser();
-      /* LE RAPPEL DU RÉSEAU N'EXISTE QUE SI LE RÉSEAU EN A UN : le bloc est RETIRÉ, pas caché — un balisage vide finit
-         toujours par s'afficher un jour. */
-      if (!R.rappel) { var zr0 = document.getElementById('ach-rappel'); if (zr0) zr0.remove(); }
       var $ = function (id) { return document.getElementById(id); };
       var montantDu = o.montantDu || function () { return { cents: 0 }; };
 
@@ -228,7 +208,15 @@
        raisonnable). Un commerce sans géoposition saisie est placé au centre de sa ville et le dit (`geoApprox`). */
       function achPied(p) { return p.pied ? (' · ' + p.pied) : ''; }
     var ACH_MAX = 3;                               // combien de commerces tiennent dans le volet (donnée de la page)
-    var achRayon = 2000;   // (19/09, soir) − 500 m · 1 km · 2 km — le défaut de l'écran d'avant
+    /* (24/09, nuit) LES RAYONS ET LEUR DÉFAUT VIENNENT DU RÉFÉRENTIEL (D.carteRayons, D.carteRayonDefaut) — les mêmes que la carte de
+       Mes bons : trois pastilles écrites ici, c'était un réglage que personne ne pouvait changer sans toucher au code. */
+    var RAYONS = D.carteRayons ? D.carteRayons() : [];
+    var achRayon = D.carteRayonDefaut ? D.carteRayonDefaut() : null;
+    var rayonLbl = function (m) { var x = RAYONS.filter(function (r) { return r.m === m; })[0]; return x ? x.lbl : (m >= 1000 ? String(m / 1000).replace('.', ',') + ' km' : m + ' m'); };
+    if ($('ach-rayon')) $('ach-rayon').innerHTML = RAYONS.map(function (x) {
+      var on = x.m === achRayon;
+      return '<button type="button" class="pec-pill tap' + (on ? ' pec-pill--done' : '') + '" data-km="' + x.m + '" aria-pressed="' + on + '">' + esc(x.lbl) + '</button>';
+    }).join('');
     var achQ = '', achVille = '';   // chercher par nom, ou par ville
     var achPos = null, achMap = null, achMkUser = null, achMkPts = {}, achVu = null, achPeint = false;
     var achSuivi = null, achCible = null;          // (19/09, soir) le guidage : la montre de position, et le commerce visé
@@ -353,15 +341,6 @@
       var b = $('ach-nav'); if (b) { b.hidden = true; b.classList.remove('arrive'); }
       achListe();
     }
-    /* CE QU'IL FAUT SAVOIR — sous le titre de « Acheter un bon d'achat », avant la carte : les mots viennent du RÉSEAU
-       (R.rappel), qui les lit au référentiel. Repeint seulement s'il change. */
-    var achRappelPeint = '';
-    function achRappel() {
-      var z = $('ach-rappel'); if (!z || !R.rappel) return;
-      var h = R.rappel() || '';
-      if (h === achRappelPeint) return;
-      achRappelPeint = h; z.innerHTML = h; z.hidden = !h;
-    }
     function achListe() {
       var tous = achPoints(), pts = tous.slice(0, ACH_MAX);
       /* LE COMMERCE SUIVI NE DISPARAÎT JAMAIS DE LA LISTE : voir sa cible s'effacer pendant qu'on avance vers elle serait absurde. */
@@ -393,7 +372,7 @@
       if (zr) {
         zr.hidden = !achPos;
         if (achPos) $('ach-rayon-txt').textContent = 'Points de vente — ' + pts.length
-          + (brider ? ' à moins de ' + (achRayon >= 1000 ? (achRayon / 1000) + ' km' : achRayon + ' m')
+          + (brider ? ' à moins de ' + rayonLbl(achRayon)
                     : (achVille ? ' à ' + achVille : ' pour « ' + achQ + ' »'));
         [].forEach.call($('ach-rayon').querySelectorAll('[data-km]'), function (b) { b.disabled = !brider; b.style.opacity = brider ? '' : '.45'; });
       }
@@ -535,7 +514,7 @@
       var z = $('ach-rayon'); if (!z) return;
       z.addEventListener('click', function (e) {
         var b = e.target.closest ? e.target.closest('[data-km]') : null; if (!b) return;
-        achRayon = parseInt(b.getAttribute('data-km'), 10) || 2000;
+        achRayon = parseInt(b.getAttribute('data-km'), 10) || achRayon;
         [].forEach.call(z.querySelectorAll('[data-km]'), function (x) {
           var on = x === b;
           x.setAttribute('aria-pressed', String(on));
@@ -556,35 +535,28 @@
     if ($('ach-nav-stop')) $('ach-nav-stop').addEventListener('click', achArreter);
     /* ON NE LAISSE JAMAIS UNE MONTRE DE POSITION TOURNER DERRIÈRE SOI : quitter l'écran coupe le suivi. */
     window.addEventListener('pagehide', achArreter);
-    /* ══ LE TRIO COMMANDE TOUT L'ÉCRAN (19/09, soir) ═════════════════════════════════════════════
-       'enligne'    → le chemin ① de la page : un bon déjà en main s'utilise depuis l'app Mes bons ;
+    /* ══ LE DUO COMMANDE TOUT L'ÉCRAN (19/09, soir ; 24/09, nuit — « supprime en ligne ») ═══════════════════════════════
        'partenaire' → la carte des commerces, le rayon, la liste : on va chercher son bon au comptoir ;
-       'agent'      → la demande de rencontre : un distributeur nomade vient le vendre.
-       Les libellés viennent du réseau (R.trio) — l'écran n'écrit aucun nom de mode.
-       (19/09, nuit — « par défaut sur chez un partenaire ») c'est le chemin de la plupart : pas encore de bon en main. */
+       'agent'      → un distributeur nomade vient le vendre : on le choisit, il appelle.
+       Les libellés viennent du réseau (R.duo) — l'écran n'écrit aucun nom de mode.
+       (19/09, nuit — « par défaut sur chez un partenaire ») c'est le chemin de la plupart. */
     var ouChemin = 'partenaire';
     function agtMontant() { var du = montantDu(); return Math.round(du.cents) / 100; }
     function peindreOu() {
-      var bl = $('op-ou-enligne'), bp = $('op-ou-partenaire'), bg = $('op-ou-agent');
-      if (!bl || !bp || !bg) return;
-      var T3 = R.trio();
-      $('op-ou-enligne-s').textContent = T3.enligne;
-      $('op-ou-partenaire-t').textContent = T3.partenaire.t;
-      $('op-ou-partenaire-s').textContent = T3.partenaire.s;
-      $('op-ou-agent-t').textContent = T3.agent.t;
-      $('op-ou-agent-s').textContent = T3.agent.s;
-      var al = $('agt-lbl'); if (al) al.textContent = T3.agent.t;
-      [[bl, 'enligne'], [bp, 'partenaire'], [bg, 'agent']].forEach(function (x) {
+      var bp = $('op-ou-partenaire'), bg = $('op-ou-agent');
+      if (!bp || !bg) return;
+      var T2 = R.duo();
+      $('op-ou-partenaire-t').textContent = T2.partenaire.t;
+      $('op-ou-partenaire-s').textContent = T2.partenaire.s;
+      $('op-ou-agent-t').textContent = T2.agent.t;
+      $('op-ou-agent-s').textContent = T2.agent.s;
+      var al = $('agt-lbl'); if (al) al.textContent = T2.agent.t;
+      [[bp, 'partenaire'], [bg, 'agent']].forEach(function (x) {
         x[0].setAttribute('aria-selected', String(ouChemin === x[1]));
         x[0].classList.toggle('on', ouChemin === x[1]);
       });
-      /* `pane-bon` est le CONTENEUR des trois chemins : il reste ouvert ; ce sont les deux voies à l'intérieur qui basculent. */
-      var pb = $('pane-bon'); if (pb) pb.classList.add('active');
-      var vj = $('voie-jai-z'); if (vj) vj.classList.toggle('on', ouChemin === 'enligne');
-      var va = $('voie-acheter-z'); if (va) va.classList.toggle('on', ouChemin !== 'enligne');
       $('ach-carte-commerce').hidden = ouChemin !== 'partenaire';
       $('ach-carte-agent').hidden = ouChemin !== 'agent';
-      achRappel();
       if (ouChemin === 'partenaire') achOuvrir();
       if (ouChemin === 'agent') agtOuvrir();
       /* LA MODALE D'ACCORD NE CONCERNE QUE LA CARTE DES COMMERCES : pour une rencontre, la position ne sert qu'à REMPLIR
@@ -658,14 +630,22 @@
        marque, ça permet de retracer ») : on l'y ouvre, c'est là que le bon se range et s'utilise. */
     function poserCode(code) { if (code && o.utiliserCode) o.utiliserCode(code); }
     /* ══ LA RENCONTRE DU RÉSEAU DE LA MARQUE — ses états, lus chez CE réseau ═══════════════════════════════════════
-       Demandée : on attend qu'un distributeur nomade la prenne. Acceptée : il vient, et il appelle. Servie : il a remis le bon — on
-       ouvre l'app Mes bons avec son code. Pas d'écran de suivi à part : la carte n'a que le point de rendez-vous. */
+       (24/09, nuit — « prends celui qui est le plus complet ») Demandée : la personne CHOISIE a reçu la demande, elle va appeler.
+       Validée : l'appel a eu lieu, elle vient. Servie : elle a remis le bon — on ouvre l'app Mes bons avec son code. */
+    var agtTri = 'prix', agtChoix = null;   // l'ordre de la liste ; le distributeur nomade de la fenêtre ouverte
+    var AGT_TRIS = [['prix', 'Le moins cher'], ['distance', 'Le plus proche'], ['note', 'Le mieux noté']];
+    var AGT_ORDRE = {
+      prix: function (a, b) { return (a.tarif - b.tarif) || (a.distM - b.distM); },
+      distance: function (a, b) { return (a.distM - b.distM) || (a.tarif - b.tarif); },
+      note: function (a, b) { return ((b.note || 0) - (a.note || 0)) || ((b.avis || 0) - (a.avis || 0)) || (a.tarif - b.tarif); }
+    };
+    function agtNomades(prdv) { return (prdv && R.rencontre) ? R.rencontre.nomades(prdv.geo).sort(AGT_ORDRE[agtTri] || AGT_ORDRE.prix) : []; }
     function peindreAgent() {
       var RR = R.rencontre, m = agtMontant(), zb = $('agt-encours');
       if (!RR) {
         /* sans bon proposé, il n'y a pas de rencontre à demander : on le dit, on n'affiche pas un formulaire mort */
         zb.hidden = false; zb.textContent = 'Une rencontre se demande depuis la page d’un bon proposé par la marque.';
-        $('agt-form').style.display = 'none'; $('agt-liste').innerHTML = ''; agtCarte(null);
+        $('agt-form').style.display = 'none'; agtCarte(null);
         return;
       }
       var enc = RR.enCours(), serv = enc ? null : RR.servie();
@@ -673,24 +653,26 @@
       $('agt-form').style.display = (enc || serv) ? 'none' : '';
       $('agt-titre').textContent = RR.titre(enc ? enc.montant : m);
       if (enc) {
-        zb.innerHTML = '<b>' + esc(D.rencontreStatutLbl(enc.statut)) + '</b> — ' + esc(enc.ref) + ' · ' + esc(D.eur(enc.montant)) + ' · ' + esc(enc.lieu)
-          + (enc.revendeur
-              ? '<br>' + esc(enc.revendeur) + ' vient te rejoindre : il t’appelle au ' + esc(D.telFrLbl(enc.tel)) + ' pour convenir du moment.'
-              : '<br>En attente qu’un ' + esc(D.terme('nomade', 'client')) + ' la prenne <span class="dots"><i></i><i></i><i></i></span>')
-          + '<button type="button" id="agt-annuler" class="pec-btn-secondary tap" style="display:block;width:100%;margin-top:10px;font-weight:800">Annuler ma demande</button>';
-        $('agt-liste').innerHTML = '';
+        var qui = esc(enc.revendeur || ('ton ' + D.terme('nomade', 'client')));
+        zb.innerHTML = enc.statut === 'demandee'
+          ? '<b>Demande envoyée à ' + qui + '</b> — ' + esc(enc.ref) + ' · ' + esc(D.eur(enc.montant)) + ' · ' + esc(enc.lieu || '')
+            + '<br>' + qui + ' t’appelle au ' + esc(D.telFrLbl(enc.tel)) + ' pour valider le rendez-vous — sans appel d’ici '
+            + esc(new Date(enc.expireTs).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })) + ', elle se ferme <span class="dots"><i></i><i></i><i></i></span>'
+          : '<b>Rendez-vous validé avec ' + qui + '</b>' + (enc.rdvHeure ? ' — ' + esc(enc.rdvHeure) : '') + ' · ' + esc(D.eur(enc.montant)) + ' · ' + esc(enc.lieu || '')
+            + '<br>Appel passé : ' + qui + ' vient te rejoindre. Déplacement : ' + esc(enc.tarif === 0 ? 'sans frais' : D.eur(enc.tarif)) + ', facturé en son nom.';
+        zb.innerHTML += '<button type="button" id="agt-annuler" class="pec-btn-secondary tap" style="display:block;width:100%;margin-top:10px;font-weight:800">Annuler ma demande</button>';
         var zp0 = $('agt-pt'); if (zp0) zp0.hidden = !enc.geoApprox;
         if (zp0 && enc.geoApprox) zp0.innerHTML = 'Point <b>approché</b> — centre de ' + esc(enc.ville) + '.';
         agtCarte(enc);
         return;
       }
       if (serv) {
-        zb.innerHTML = '<b>' + esc(serv.revendeur || ('Ton ' + D.terme('nomade', 'client'))) + ' t’a remis ton bon.</b>'
-          + '<div style="margin-top:7px;font-family:var(--font-mono,monospace);font-size:14px;font-weight:800;letter-spacing:.08em;color:var(--color-ink)">'
-          + serv.codes.map(function (x) { return esc(x); }).join('<br>') + '</div>'
-          + '<p style="margin:6px 0 0;font-size:11.5px;line-height:1.5;color:var(--color-muted)">Il ne reste qu’à l’utiliser : range-le dans l’app Mes bons, puis choisis-le pour cette commande.</p>'
-          + '<button type="button" id="agt-payer" class="pec-cta tap" style="display:block;width:100%;text-align:center;margin-top:10px">Ouvrir Mes bons avec ce bon</button>';
-        $('agt-liste').innerHTML = '';
+        /* (24/09, nuit) LE CODE RESTE VOILÉ : cette page s'ouvre par un lien, et un code vaut titre. Un geste le pose sur la commande. */
+        zb.innerHTML = '<b>' + esc(serv.revendeur || ('Ton ' + D.terme('nomade', 'client'))) + ' t’a remis ton bon</b> · '
+          + serv.codes.map(function (x) { return '<code style="font-family:var(--font-mono,monospace);font-weight:800;color:var(--color-ink)">' + esc(String(x).replace(/-[A-Z0-9]{4}(?=-)/g, '-••••')) + '</code>'; }).join(', ')
+          + (serv.montant ? ' · ' + esc(D.eur(serv.montant)) : '')
+          + '<p style="margin:6px 0 0;font-size:11.5px;line-height:1.5;color:var(--color-muted)">Pose-le sur cette commande — ou range son code dans l’app Mes bons, pour plus tard.</p>'
+          + '<button type="button" id="agt-payer" class="pec-cta tap" style="display:block;width:100%;text-align:center;margin-top:10px">Utiliser ce bon ici</button>';
         var zp1 = $('agt-pt'); if (zp1) zp1.hidden = true;
         agtCarte(null);
         return;
@@ -707,19 +689,22 @@
       }
       $('agt-montant').innerHTML = RR.montantHTML(m);
       $('agt-garantie').innerHTML = RR.garantieHTML;
-      var ville = agtVille(), ags = ville ? RR.joignables(ville) : [];
-      var fen = ' Ta demande reste ouverte ' + D.rencontreFenetreMin() + ' min.';
-      /* (24/09) LES MOTS DU GLOSSAIRE, VUS DU CLIENT : « distributeur nomade », jamais « mandataire » ni « revendeur » */
-      $('agt-dispo').textContent = !ville
-        ? 'Saisis l’adresse où il vient te rejoindre — c’est sa commune qui dit à quels ' + D.terme('nomade', 'clientPluriel') + ' proposer la rencontre.'
-        : (ags.length ? ags.length + ' ' + D.terme('nomade', ags.length > 1 ? 'clientPluriel' : 'client') + ' se déplace' + (ags.length > 1 ? 'nt' : '') + ' à ' + ville + '.' + fen
-                      : RR.personneTxt(ville));
-      $('agt-liste').innerHTML = ags.map(function (a) {
-        return '<div class="agtc"><span style="flex:1;min-width:0"><span class="nm">' + esc(a.enseigne) + '</span>'
-          + '<span class="zn" style="display:block">' + esc(a.zoneLbl) + (a.tarifLbl ? ' · ' + esc(a.tarifLbl) : '') + '</span></span></div>';
+      /* (24/09, nuit) QUI VIENT JUSQU'ICI — les disponibles, chacun avec SON tarif pour la distance de CETTE adresse ; le client trie, et
+         choisit. Sans adresse, on ne devine rien : on le demande. */
+      var ags = agtNomades(prdv), zl = $('agt-liste'), zt = $('agt-tris'), R0 = D.nomadeRef();
+      $('agt-dispo').textContent = !prdv
+        ? 'Saisis l’adresse où tu veux qu’on te rejoigne : tu verras les ' + D.terme('nomade', 'clientPluriel') + ' disponibles qui viennent jusque-là, chacun avec son tarif.'
+        : (ags.length ? ags.length + ' ' + (ags.length > 1 ? D.terme('nomade', 'clientPluriel') + ' disponibles viennent' : D.terme('nomade', 'client') + ' disponible vient') + ' jusqu’à cette adresse — secteur de ' + R0.rayonMaxKm + ' km. Choisis-en un : ta demande ne part qu’à la personne choisie.'
+                      : RR.personneTxt);
+      zt.hidden = zl.hidden = !ags.length;
+      zt.innerHTML = AGT_TRIS.map(function (x) { return '<button type="button" class="tap" role="radio" data-agt-tri="' + x[0] + '" aria-checked="' + (agtTri === x[0]) + '">' + esc(x[1]) + '</button>'; }).join('');
+      zl.innerHTML = ags.map(function (a) {
+        return '<div class="nm-row" data-agt-nomade="' + esc(a.id) + '"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-route"/></svg></span>'
+          + '<span class="t"><b>' + esc(a.enseigne) + '</b><small>' + (a.note != null ? '★ ' + esc((Math.round(a.note * 10) / 10).toFixed(1).replace('.', ',')) + ' · ' + a.avis + ' avis' : 'Pas encore d’avis')
+          + ' · à ' + esc(a.distTxt) + '</small>' + (a.mention ? '<small class="m">« ' + esc(a.mention) + ' »</small>' : '') + '</span>'
+          + '<span class="px"><b data-tarif>' + esc(a.tarifTxt) + '</b><small>' + esc(a.palier.lbl) + '</small></span>'
+          + '<button type="button" class="go tap" data-agt-mer="' + esc(a.id) + '"' + (m > 0 ? '' : ' aria-disabled="true"') + '>Être mis en relation</button></div>';
       }).join('');
-      $('agt-demander').textContent = RR.cta;
-      $('agt-demander').disabled = !(m > 0) || (!!ville && !ags.length);
     }
     /* (20/09, fondatrice : « la navigation n'est pas fluide ») CHOISIR UN CHEMIN Y AMÈNE : le volet ouvert vient se placer
        sous le trio, qui reste visible. CE QUI DÉFILE N'EST PAS LA PAGE : `.pec-device` a une hauteur fixe, c'est une zone
@@ -732,7 +717,7 @@
       return null;
     }
     function amenerAuVolet(chemin) {
-      var z = $(chemin === 'partenaire' ? 'ach-carte-commerce' : chemin === 'agent' ? 'ach-carte-agent' : 'pane-bon');
+      var z = $(chemin === 'agent' ? 'ach-carte-agent' : 'ach-carte-commerce');
       if (!z || z.hidden) return;
       var d = defileur(z);
       var hauteur = d ? d.clientHeight : window.innerHeight;
@@ -743,7 +728,7 @@
       if (d) d.scrollTo({ top: Math.max(0, d.scrollTop + haut - 90), behavior: 'smooth' });
       else if (z.scrollIntoView) z.scrollIntoView({ block: 'start', behavior: 'smooth' });
     }
-    [['op-ou-enligne', 'enligne'], ['op-ou-partenaire', 'partenaire'], ['op-ou-agent', 'agent']].forEach(function (x) {
+    [['op-ou-partenaire', 'partenaire'], ['op-ou-agent', 'agent']].forEach(function (x) {
       var b = $(x[0]); if (!b) return;
       b.addEventListener('click', function () {
         ouChemin = x[1]; if (ouChemin !== 'partenaire') achArreter();
@@ -855,75 +840,69 @@
     /* LE CHAMP QUE LE DATA-LAYER NOMME → CELUI QU'ON MARQUE À L'ÉCRAN. La correspondance vit ici, en un seul endroit. */
     var AGT_CHAMPS = { ville: 'df-ville', adresse: 'df-numero', cp: 'df-cp' };
     var rdvBrouillon = null;
-    /* L'ADRESSE PART AVEC LA DEMANDE, et le contrôle à blanc du réseau (techRencontreVerifier) dit ce qui manque — avec le
-       champ à marquer. Le contrôle d'abord, la modale ensuite : on ne fait pas lire trois écrans pour refuser après. */
-    if ($('agt-demander')) $('agt-demander').addEventListener('click', function () {
+    /* CHOISIR UNE PERSONNE : l'adresse part avec la demande, et le contrôle à blanc (techMiseEnRelationVerifier) dit ce qui manque —
+       avec le champ à marquer. Le contrôle d'abord, la fenêtre ensuite : on ne fait pas lire une modale pour refuser après. */
+    if ($('agt-tris')) $('agt-tris').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-agt-tri]') : null; if (!b) return;
+      agtTri = b.getAttribute('data-agt-tri'); peindreAgent();
+    });
+    if ($('agt-liste')) $('agt-liste').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-agt-mer]') : null; if (!b) return;
       var e0 = $('agt-erreur'); e0.hidden = true;
-      if (!R.rencontre) return;
+      if (!R.rencontre || b.getAttribute('aria-disabled') === 'true') return;
       [].forEach.call(document.querySelectorAll('#agt-form .pec-input.ko'), function (x) { x.classList.remove('ko'); });
-      var n0 = adrSaisie();
-      rdvBrouillon = { adresse: { numero: n0.numero, voie: n0.voie, cp: n0.cp, ville: n0.ville, etage: n0.etage,
+      var n0 = adrSaisie(), prdv = agtPointRdv(), a = agtNomades(prdv).filter(function (x) { return x.id === b.getAttribute('data-agt-mer'); })[0];
+      rdvBrouillon = { partenaireId: b.getAttribute('data-agt-mer'), adresse: { numero: n0.numero, voie: n0.voie, cp: n0.cp, ville: n0.ville, etage: n0.etage,
         porte: n0.porte, instructions: n0.instructions, geo: dfGeo || null }, note: $('agt-note') ? $('agt-note').value : '' };
       var v0 = R.rencontre.verifier(rdvBrouillon);
-      if (!v0.ok) {
-        e0.hidden = false; e0.textContent = v0.motif;
+      if (!v0.ok || !a) {
+        e0.hidden = false; e0.textContent = v0.ok ? 'Ce ' + D.terme('nomade', 'client') + ' ne vient plus jusqu’ici : choisis-en un autre.' : v0.motif;
         var c0 = v0.champ && AGT_CHAMPS[v0.champ] ? $(AGT_CHAMPS[v0.champ]) : null;
         if (c0) { c0.classList.add('ko'); if (c0.focus) c0.focus(); if (c0.scrollIntoView) c0.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
         return;
       }
+      agtChoix = a;
       rdvPopOuvrir(v0);
     });
-    /* ══ LA MODALE DE MISE EN RELATION — ce qui va se passer, le numéro où être appelé, le canal, l'accord. ═══ */
+    /* ══ LA FENÊTRE DE MISE EN RELATION — qui, à quel tarif, le numéro où il appelle, l'accord mot pour mot. ═══ */
     function rdvPopFermer() { var z = $('rdvpop'); if (z) z.hidden = true; }
+    function rdvTel() { var ti = $('rdvpop-tel-in'); return ti ? D._telFr(ti.value) : null; }
+    // LA PHRASE DE CONSENTEMENT EST CELLE QU'ON ENREGISTRE — pas un résumé poli d'une autre phrase
+    function rdvConsentementTxt() { return R.rencontre && agtChoix ? R.rencontre.accordTxt(agtChoix.enseigne, rdvTel()) : ''; }
     function rdvPopOuvrir(v) {
-      var z = $('rdvpop'); if (!z || !R.rencontre) return;
-      $('rdvpop-p').innerHTML = R.rencontre.popupHTML;
-      $('rdvpop-recap').innerHTML = '<b>' + esc(v.lieu) + '</b><br>' + R.rencontre.recapHTML(v.montant);
+      var z = $('rdvpop'); if (!z || !R.rencontre || !agtChoix) return;
+      var cl = D.clientCourant ? D.clientCourant() : null, ti = $('rdvpop-tel-in');
+      $('rdvpop-t').textContent = 'On te met en relation avec ' + agtChoix.enseigne;
+      $('rdvpop-p').innerHTML = R.rencontre.popupHTML(agtChoix.enseigne);
+      $('rdvpop-recap').innerHTML = '<b>' + esc(v.lieu || '') + '</b><br>' + R.rencontre.recapHTML(agtChoix, v.montant);
+      if (ti && !ti.value && cl) ti.value = D.telFrLbl(cl.telComplet || cl.tel || '');
       $('rdvpop-rgpd-txt').textContent = rdvConsentementTxt();
       $('rdvpop-rgpd').checked = false;
       $('rdvpop-err').hidden = true;
       rdvPopCta();
       z.hidden = false;
-      var ti = $('rdvpop-tel-in'); if (ti && ti.focus) ti.focus();
-    }
-    function rdvCanal() {
-      var b = document.querySelector('#rdvpop-canaux [aria-pressed="true"]');
-      return (b && b.getAttribute('data-canal')) || 'appel';
-    }
-    /* LE LIBELLÉ D'UN CANAL SE LIT SUR SON BOUTON — il n'est écrit qu'une fois, dans le balisage. */
-    function rdvCanalLbl(k) {
-      var b = document.querySelector('#rdvpop-canaux [data-canal="' + k + '"] span');
-      return b ? b.textContent : k;
-    }
-    // LA PHRASE DE CONSENTEMENT EST CELLE QU'ON ENREGISTRE — pas un résumé poli d'une autre phrase
-    function rdvConsentementTxt() {
-      return 'J’accepte d’être contacté·e par ' + rdvCanalLbl(rdvCanal()) + ' pour confirmer ce rendez-vous. '
-        + ((R.rencontre && R.rencontre.accordSuffixe) || '');
+      if (ti && ti.focus) ti.focus();
     }
     function rdvPopCta() {
       var ok = $('rdvpop-rgpd').checked, b = $('rdvpop-ok');
       b.setAttribute('aria-disabled', String(!ok));
       b.style.opacity = ok ? '' : '.45';
     }
-    if ($('rdvpop-canaux')) $('rdvpop-canaux').addEventListener('click', function (e) {
-      var b = e.target.closest ? e.target.closest('[data-canal]') : null; if (!b) return;
-      [].forEach.call(this.querySelectorAll('[data-canal]'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
-      $('rdvpop-rgpd-txt').textContent = rdvConsentementTxt();   // la phrase suit le canal : c'est elle qu'on enregistre
-    });
+    if ($('rdvpop-tel-in')) $('rdvpop-tel-in').addEventListener('input', function () { this.classList.remove('ko'); $('rdvpop-rgpd-txt').textContent = rdvConsentementTxt(); });
     if ($('rdvpop-rgpd')) $('rdvpop-rgpd').addEventListener('change', rdvPopCta);
     if ($('rdvpop-non')) $('rdvpop-non').addEventListener('click', function () { rdvPopFermer(); });
     if ($('rdvpop-ok')) $('rdvpop-ok').addEventListener('click', function () {
       var e1 = $('rdvpop-err'); e1.hidden = true;
-      if (!$('rdvpop-rgpd').checked) { e1.hidden = false; e1.textContent = 'Coche l\'accord : on ne t\'appelle pas sans ton autorisation.'; return; }
+      if (!$('rdvpop-rgpd').checked) { e1.hidden = false; e1.textContent = 'Coche l\'accord : personne ne t\'appelle sans ton autorisation.'; return; }
       if (!rdvBrouillon || !R.rencontre) { rdvPopFermer(); return; }
       var ti = $('rdvpop-tel-in'); if (ti) ti.classList.remove('ko');
-      var rr = R.rencontre.demander(Object.assign({}, rdvBrouillon, { tel: ti ? ti.value : '', canal: rdvCanal(), consentement: rdvConsentementTxt() }));
+      var rr = R.rencontre.demander(Object.assign({}, rdvBrouillon, { tel: ti ? ti.value : '', consentement: rdvConsentementTxt() }));
       if (!rr.ok) {
         e1.hidden = false; e1.textContent = rr.motif;
         if (rr.champ === 'tel' && ti) { ti.classList.add('ko'); ti.focus(); }
         return;
       }
-      rdvBrouillon = null;
+      rdvBrouillon = null; agtChoix = null;
       rdvPopFermer();
       peindreAgent();
       amenerAuVolet('agent');

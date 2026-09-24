@@ -16,6 +16,7 @@
 <script src="../assets/payencash-partenaire.js"></script>
 <script src="../assets/payencash-fil.js"></script>
 <script src="../assets/payencash-inscription.js"></script><!-- (24/09, nuit) son lecteur : un document se lit jusqu'au bout avant d'être reconnu -->
+<script src="../assets/payencash-equipe.js"></script><!-- (24/09, nuit) Mon équipe : les accès collaborateurs, écrits une fois pour les deux apps -->
 <!-- MON POINT (23/09 — le grossiste). POURQUOI une seule page : tout ce qui conditionne la vente des bons de marque vit ici.
        · la FICHE du commerce (référentiel partenaires : enseigne, adresse, SIRET, responsable, statut dérivé) — téléphone,
          e-mail et responsable se modifient (partenaireEnregistrer, journalisé) ; le reste vient du Kbis contrôlé — et sa
@@ -26,9 +27,10 @@
          CONSTATONS à l'arrivée des fonds (avanceSolde, avanceMouvements) — jamais un montant écrit sur une intention ;
        · CE QU'IL GARDE PAR OFFRE (#part) : la part du point sur chaque offre de paiement des marques (techModes) — c'est sa marge
          (sédentaire) ou sa commission (nomade), lue, jamais négociée ici ;
-       · la ZONE du distributeur nomade (partenaireZoneSet) — les villes du référentiel, choisies par lui seul ;
-       · (24/09, soir — arbitrage fondatrice : « tarif libre convenu ») le TARIF DE DÉPLACEMENT du distributeur nomade
-         (partenaireTarifSet / partenaireTarifLbl) : il le fixe seul, sans plancher, plafond ni tarif conseillé de la maison ;
+       · (24/09, nuit — fondatrice : « il paramètre de 0 à 1 km un prix, etc., jusqu'à 20 ; libre concurrence ») le TARIF DE
+         DÉPLACEMENT du distributeur nomade (partenaireDeplacementSet) : son point de départ et SES prix par palier de distance,
+         fixés par lui seul, sans plancher, plafond ni tarif conseillé de la maison — ils remplacent la zone de plusieurs villes et
+         le tarif unique d'avant ;
        · le DOSSIER de vérification (#dossier — PEC_DOCS.rendreDossier 'partenaire') ; le KYB affiché au manager se DÉRIVE de ce dossier ;
        · le CONTRAT DE DISTRIBUTION (#contrat) : généré depuis le référentiel (PEC_DOCS.genererDocument, modèle contrat_partenaire),
          lu, puis signé — D.contratPartenaireSigner(pointId, { via:'coffre' }) fait passer le point à « contrat signé » puis
@@ -36,7 +38,7 @@
        · les ACCEPTATIONS en vigueur (acceptationsRequises → acceptationsPoser) ; l'assistance (file hotline) ; la demande de
          RAPPEL (24/09, soir — fondatrice : « organise ça, la hotline gère » : PEC_BUS.demanderAppel) ; la déconnexion.
      (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : deux colonnes — ce qui ouvre la vente à gauche (à
-     faire, zone et tarif du nomade, mandat SEPA ou avance, parts par offre), l'identité à droite (fiche, dossier, contrat,
+     faire, tarif de déplacement du nomade, mandat SEPA ou avance, parts par offre), l'identité à droite (fiche, dossier, contrat,
      documents en vigueur) ; puis l'assistance et le rappel côte à côte. Sur téléphone, tout s'empile dans le même ordre. -->
 <style>
   .mp-kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
@@ -69,21 +71,26 @@
   .mp-carte{margin-bottom:14px}
   .mp-afaire{border:1.5px solid var(--color-amber-text)}
   .mp-afaire .mp-titre{margin-bottom:4px}
-  .mp-zone .meta{margin:4px 0 10px;line-height:1.5}
-  .mp-zone-villes{display:flex;flex-wrap:wrap;gap:6px}
-  .mp-zone-champs{display:flex;gap:9px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}
-  .mp-zone-champs label{flex:1 1 100%}
-  #mp-zone-rayon{max-width:120px}
-  .mp-zone-etat{margin:8px 0 0;line-height:1.5}
-  /* `.pec-btn` ne vit que dans la feuille du back-office (payencash-manager.css), que cette app ne charge pas : « Enregistrer ma
-     zone » sortait en bouton nu. Défini ici, le temps qu'il rejoigne la feuille commune. */
+  /* `.pec-btn` ne vit que dans la feuille du back-office (payencash-manager.css), que cette app ne charge pas : « Enregistrer »
+     sortait en bouton nu. Défini ici, le temps qu'il rejoigne la feuille commune. */
   .pec-btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:10px;background:var(--color-primary);color:#fff;font:inherit;font-weight:800;text-decoration:none;cursor:pointer}
   .pec-btn--sm{min-height:36px;padding:8px 14px;font-size:12.5px;border-radius:10px}
-  .mp-tarif .meta{line-height:1.5}
-  .mp-tarif-actuel{margin:4px 0 10px;font-weight:700;color:var(--color-ink)}
-  .mp-tarif-champs > div + div{margin-top:10px}
-  .mp-tarif-note{margin:8px 0 0}
-  .mp-tarif .pec-btn{margin-top:10px}
+  /* (24/09, nuit) MON TARIF DE DÉPLACEMENT : le départ, puis une ligne par palier du réseau — son prix, ou vide s'il n'y va pas */
+  .mp-dep .meta{line-height:1.5}
+  .mp-dep-actuel{margin:4px 0 12px;font-weight:700;color:var(--color-ink)}
+  .mp-dep-depart{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .mp-dep-depart select{flex:1 1 180px;min-width:0}
+  .mp-dep-pos-etat{margin:6px 0 12px}
+  .mp-dep-pos-etat button{border:0;background:none;padding:0;font:inherit;font-weight:800;color:var(--color-primary-dark);text-decoration:underline;cursor:pointer}
+  .mp-dep-grille{display:grid;grid-template-columns:1fr;gap:6px;margin:4px 0 12px}
+  .mp-dep-l{display:flex;align-items:center;justify-content:space-between;gap:10px;border-radius:10px;background:var(--color-bg);padding:6px 6px 6px 12px}
+  .mp-dep-l .k{font-size:12.5px;font-weight:700;color:var(--color-ink)}
+  .mp-dep-l .v{display:flex;align-items:center;gap:6px}
+  .mp-dep-l input{width:118px;text-align:right}
+  .mp-dep-l .e{font-weight:800;color:var(--color-muted)}
+  .mp-dep .pec-input.ko{border-color:#C0463A;box-shadow:0 0 0 2px rgba(192,70,58,.13)}
+  .mp-dep-note{margin:8px 0 0}
+  .mp-dep .pec-btn{margin-top:10px}
   .mp-h2{margin:16px 0 8px}
   .mp-pourquoi{margin:0 0 8px;line-height:1.5}
   .mp-note{margin:8px 0 0;line-height:1.5}
@@ -138,8 +145,7 @@
     .mp-titre{font-size:16px}
     .mp-carte{margin-bottom:18px}
     .pec-btn--sm{font-size:13.5px;min-height:40px;padding:9px 18px}
-    .mp-tarif-champs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px}
-    .mp-tarif-champs > div + div{margin-top:0}
+    .mp-dep-grille{grid-template-columns:1fr 1fr}
     .mp-h2{margin:22px 0 10px}
     .mp-h2.premier{margin-top:0}
     .mp-liste{padding:8px 24px}
@@ -195,41 +201,29 @@
             <div id="mp-afaire-liste"></div>
           </div>
 
-          <!-- (19/09, soir — « le distributeur, lorsqu'il s'inscrit, définit lui-même sa zone ; le manager ne définit plus la zone »)
-               MA ZONE DE DÉPLACEMENT — distributeur nomade uniquement. Les villes viennent du référentiel : on en choisit. -->
-          <div class="pec-card mp-carte mp-zone" id="mp-zone" hidden>
-            <div class="mp-titre">Ma zone de déplacement</div>
-            <p class="meta">C'est <b>toi</b> qui la définis, et toi seul : PayEnCash ne t'assigne aucun secteur. Les demandes de rencontre des clients d'une marque te sont proposées dans ta zone.</p>
-            <div id="mp-zone-villes" class="mp-zone-villes"></div>
-            <div class="mp-zone-champs">
-              <label class="pec-input-label" for="mp-zone-rayon">Jusqu'à combien de kilomètres autour ? (facultatif)</label>
-              <input class="pec-input" id="mp-zone-rayon" type="number" min="0" max="100" step="1" placeholder="15">
-              <button type="button" class="pec-btn pec-btn--sm tap" id="mp-zone-ok">Enregistrer ma zone</button>
-            </div>
-            <p id="mp-zone-etat" class="meta mp-zone-etat">—</p>
-          </div>
-
-          <!-- ══ (24/09, soir — arbitrage fondatrice : « tarif libre convenu ») MON TARIF DE DÉPLACEMENT — distributeur nomade seul.
-               Il le fixe, l'affiche et le convient avec son client ; PayEnCash ne pose ni plancher, ni plafond, ni tarif conseillé — un
-               tarif imposé tirerait le contrat de commission vers la subordination. Le data-layer tranche (partenaireTarifSet) et son
-               refus s'affiche tel quel ; l'affichage courant est celui que lit le client (partenaireTarifLbl). ══ -->
-          <div class="pec-card mp-carte mp-tarif" id="mp-tarif" hidden>
+          <!-- ══ (24/09, nuit — fondatrice : « chaque distributeur nomade affiche son propre prix de déplacement pour le rayon de
+               déplacement : il paramètre de 0 à 1 km un prix, etc., jusqu'à 20 ; libre concurrence ») MON TARIF DE DÉPLACEMENT —
+               distributeur nomade seul. Son point de départ (une ville du réseau, et sa position exacte s'il veut : jamais montrée) et
+               SES prix par palier : les bornes sont celles du réseau (nomadeRef), les prix les siens, libres. Le data-layer tranche
+               (partenaireDeplacementSet : des paliers qui se suivent depuis 0 km, plus loin jamais moins cher) et son refus s'affiche
+               tel quel, sur la case en faute. Il remplace la zone de plusieurs villes et le tarif unique d'avant. ══ -->
+          <div class="pec-card mp-carte mp-dep" id="mp-dep" hidden>
             <div class="mp-titre">Mon tarif de déplacement</div>
-            <p class="meta mp-tarif-actuel" id="mp-tarif-actuel">—</p>
-            <div class="mp-tarif-champs">
-              <div>
-                <label class="pec-input-label" for="mp-tarif-montant">Tarif (euros — vide : « à convenir »)</label>
-                <input class="pec-input" id="mp-tarif-montant" type="text" inputmode="decimal" autocomplete="off" placeholder="à convenir">
-              </div>
-              <div>
-                <label class="pec-input-label" for="mp-tarif-mention">Mention courte (facultatif)</label>
-                <input class="pec-input" id="mp-tarif-mention" type="text" autocomplete="off" placeholder="ex. offert dans ma commune">
-              </div>
+            <p class="meta mp-dep-actuel" id="mp-dep-actuel">—</p>
+            <label class="pec-input-label" for="mp-dep-ville">Je pars de</label>
+            <div class="mp-dep-depart">
+              <select class="pec-input" id="mp-dep-ville"></select>
+              <button type="button" class="pec-btn-secondary pec-btn--sm tap" id="mp-dep-pos">Ma position exacte</button>
             </div>
-            <div class="mp-err" id="mp-tarif-err" role="alert" hidden>—</div>
-            <div class="mp-ok" id="mp-tarif-ok" hidden>—</div>
-            <button type="button" class="pec-btn pec-btn--sm tap" id="mp-tarif-go">Enregistrer</button>
-            <p class="meta mp-tarif-note">Tu fixes ton tarif librement et tu le conviens avec ton client ; PayEnCash ne pose ni plancher, ni plafond, ni tarif conseillé. Tu le factures en ton nom.</p>
+            <p class="meta mp-dep-pos-etat" id="mp-dep-pos-etat">—</p>
+            <div class="pec-input-label">Mes prix, selon la distance jusqu’au client</div>
+            <div class="mp-dep-grille" id="mp-dep-grille" role="group" aria-label="Mes prix selon la distance"></div>
+            <label class="pec-input-label" for="mp-dep-mention">Mention courte (facultatif)</label>
+            <input class="pec-input" id="mp-dep-mention" type="text" autocomplete="off" maxlength="140" placeholder="ex. je viens en scooter">
+            <div class="mp-err" id="mp-dep-err" role="alert" hidden>—</div>
+            <div class="mp-ok" id="mp-dep-ok" hidden>—</div>
+            <button type="button" class="pec-btn pec-btn--sm tap" id="mp-dep-go">Enregistrer</button>
+            <p class="meta mp-dep-note" id="mp-dep-note">—</p>
           </div>
 
           <!-- ══ LE MANDAT SEPA (#sepa — commerce sédentaire) : signé une fois, réutilisé à chaque prélèvement ══ -->
@@ -329,6 +323,14 @@
         </div>
       </div>
 
+      <!-- ══ (24/09, nuit — fondatrice : « un partenaire du réseau, sauf micro, peut ajouter un collaborateur… le compte principal a
+           un accès sur tout ce qui se passe ») MON ÉQUIPE — commerce sédentaire seulement : la liste, l'ajout (prénom, mobile), le
+           partage de l'accès par SMS ou WhatsApp, et ce que chacun a vendu ce mois-ci (PEC_EQUIPE, data-layer « collaborateurs »). ══ -->
+      <div id="mp-equipe-z" hidden>
+        <h2 class="pec-h2 mp-h2" id="equipe">Mon équipe</h2>
+        <div id="mp-equipe"></div>
+      </div>
+
       <!-- L'ASSISTANCE ET LE RAPPEL, CÔTE À CÔTE SUR BUREAU : écrire à la hotline (la réponse revient dans le fil du point), ou
            se faire rappeler (24/09, soir — fondatrice : « organise ça, la hotline gère »). -->
       <div class="pec-cols pec-cols--2 mp-bas">
@@ -370,26 +372,21 @@
     </div>
   </div><!-- /pec-body -->
 
-  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
-    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
-    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
-    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
-    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
-    <a class="pec-tab" aria-current="page" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
-  </nav>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="07-mon-point.html"></nav><!-- (24/09, nuit) la barre se pose depuis PEC_PART.menu : écrite une fois, celle du titulaire ou du collaborateur -->
 
 </div>
 </div>
 <script>
   (function () {
     var D = window.PEC_DATA, DOCS = window.PEC_DOCS, P = window.PEC_PART; if (!D || !DOCS || !P) return;
+    if (P.reserveTitulaire()) return;   // (24/09, nuit) Mon point est au titulaire : un collaborateur a « Mon accès »
     function $(id) { return document.getElementById(id); }
     function esc(v) { return D.esc(v); }
     function dateFr(ts) { var q = new Date(ts); return q.toLocaleDateString('fr-FR') + ' à ' + q.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
     function heure(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
     function pct(x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; }
     function dire(id, m, ok) { var e = $(id); if (!e) return; e.hidden = !m; e.textContent = m || '—'; e.className = ok ? 'mp-ok' : 'mp-err'; }
-    var dossierRendu = null, ficheSaisie = false, sepaFormOuvert = false, sepaArme = false, tarifSaisi = false;
+    var dossierRendu = null, ficheSaisie = false, sepaFormOuvert = false, sepaArme = false;
     function par() { return P.par(); }
     function kv(l, v, brut) { return '<div class="mp-kv"><span class="l">' + esc(l) + '</span><span class="v">' + (brut ? v : (v == null || v === '' ? '—' : esc(v))) + '</span></div>'; }
     function adresseDe(p) { return [p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(', '); }
@@ -402,6 +399,17 @@
     }
     // LA GARDE DU SOCLE : elle pose et fait suivre la fiche de vente ; sans bandeau à masquer ici, le point reste lisible quel que soit son état
     P.garde({ desactiver: [] });
+
+    /* ── MON ÉQUIPE (24/09, nuit) — « sauf micro » : un distributeur nomade n'a pas la section (le data-layer le refuserait aussi).
+       Le module se monte une fois et se repeint seul sur le bus. ── */
+    function rendreEquipe() {
+      var z = $('mp-equipe-z'), p = P.point(); if (!z) return;
+      var ok = !!(p && window.PEC_EQUIPE && !D.partenaireEstMobile(p));
+      z.hidden = !ok;
+      if (ok && z.getAttribute('data-point') !== p.id) { z.setAttribute('data-point', p.id); PEC_EQUIPE.gerer('mp-equipe', { type: 'point', parentId: p.id, par: function () { return P.par(); } }); }
+    }
+    rendreEquipe();
+    window.addEventListener('pec-bus', rendreEquipe);
 
     /* ── LA FICHE ─────────────────────────────────────────────────────────────────────────────────────────── */
     function rendreFiche() {
@@ -743,64 +751,71 @@
 
     $('mp-deconnexion').addEventListener('click', function () { P.deconnexion(); });
 
-    /* ══ LA ZONE, POSÉE PAR LE DISTRIBUTEUR NOMADE LUI-MÊME — le data-layer refuse qu'un commerce en ait une, et refuse une zone
-       vide : les motifs s'affichent tels quels. Les villes sont celles du réseau (ref.villesReseau) — aucune saisie libre. */
-    function rendreZone() {
-      var z = $('mp-zone'), p = P.point();
-      if (!z) return;
-      if (!p || !D.partenaireEstMobile(p)) { z.hidden = true; return; }
+    /* ══ (24/09, nuit) MON TARIF DE DÉPLACEMENT — son départ et ses prix par palier, posés par lui seul (partenaireDeplacementSet) ; le
+       refus du data-layer s'affiche tel quel, et la case qu'il nomme se marque. Les champs ne se repeignent pas sous la main : le bus
+       repeint la page à chaque geste. `depGeo` : undefined = garder la position enregistrée, null = partir du centre, {lat,lng} = relevée. */
+    var depSaisi = false, depGeo;
+    function depPosition(d) { return depGeo !== undefined ? depGeo : ((d && d.depart && d.depart.geo) || null); }
+    function rendreDeplacement() {
+      var z = $('mp-dep'), p = P.point(); if (!z) return;
+      if (!p || !D.partenaireEstMobile(p) || !D.partenaireDeplacement) { z.hidden = true; return; }
       z.hidden = false;
-      var choisies = ((p.zone || {}).villes) || [];
-      var zv = $('mp-zone-villes');
-      zv.innerHTML = (D.zoneVillesRef() || []).map(function (v) {
-        var on = choisies.indexOf(v.nom) !== -1;
-        return '<button type="button" class="pec-pill tap" data-ville="' + esc(v.nom) + '" aria-pressed="' + on + '" style="border:1.5px solid ' + (on ? 'var(--color-primary)' : 'var(--color-sep)') + ';background:' + (on ? 'var(--color-mint)' : 'var(--color-surface)') + ';font-weight:700;cursor:pointer">' + esc(v.nom) + '</button>';
-      }).join('');
-      [].forEach.call(zv.querySelectorAll('[data-ville]'), function (b) {
-        b.addEventListener('click', function () {
-          var on = b.getAttribute('aria-pressed') === 'true';
-          b.setAttribute('aria-pressed', String(!on));
-          b.style.borderColor = !on ? 'var(--color-primary)' : 'var(--color-sep)';
-          b.style.background = !on ? 'var(--color-mint)' : 'var(--color-surface)';
-        });
-      });
-      var ry = $('mp-zone-rayon');
-      if (document.activeElement !== ry) ry.value = (p.zone && p.zone.rayonKm) ? p.zone.rayonKm : '';
-      $('mp-zone-etat').textContent = choisies.length ? 'Zone actuelle : ' + D.partenaireZoneLbl(p) : 'Aucune zone définie — tant qu\'elle est vide, aucune demande de rencontre ne peut t\'être proposée.';
-    }
-    $('mp-zone-ok').addEventListener('click', function () {
-      var p = P.point(); if (!p) return;
-      var villes = [].filter.call(document.querySelectorAll('#mp-zone-villes [data-ville]'), function (b) { return b.getAttribute('aria-pressed') === 'true'; }).map(function (b) { return b.getAttribute('data-ville'); });
-      var r = D.partenaireZoneSet(p.id, { villes: villes, rayonKm: $('mp-zone-rayon').value }, par());
-      var e = $('mp-zone-etat');
-      if (!r.ok) { e.textContent = r.motif; e.style.color = '#8E2A1E'; return; }
-      e.style.color = ''; rendreZone();
-    });
-
-    /* ══ LE TARIF DE DÉPLACEMENT DU DISTRIBUTEUR NOMADE (24/09, soir) — fixé par lui seul ; le data-layer tranche (partenaireTarifSet :
-       euros de 0 à 1 000, ou vide = « à convenir ») et son refus s'affiche tel quel ; ce que le client lit vient de partenaireTarifLbl.
-       Les champs ne sont repeints que si la main n'y est pas : le bus repeint la page à chaque geste. */
-    function rendreTarif() {
-      var z = $('mp-tarif'), p = P.point(); if (!z) return;
-      if (!p || !D.partenaireEstMobile(p) || !D.partenaireTarifSet) { z.hidden = true; return; }
-      z.hidden = false;
-      $('mp-tarif-actuel').textContent = 'Ce que ton client lit aujourd’hui : ' + D.partenaireTarifLbl(p) + '.';
-      if (!tarifSaisi) {
-        $('mp-tarif-montant').value = p.tarifDeplacement == null ? '' : String(p.tarifDeplacement).replace('.', ',');
-        $('mp-tarif-mention').value = p.tarifMention || '';
+      var d = D.partenaireDeplacement(p), R = D.nomadeRef();
+      $('mp-dep-actuel').textContent = d.pret
+        ? 'Les clients lisent : « ' + D.partenaireTarifLbl(p) + ' » — quand tu es disponible (interrupteur de l’accueil).'
+        : 'Tu n’apparais pas encore sur la carte de Mes bons : choisis ta ville de départ et donne au moins ton prix ' + R.paliers[0].lbl + '.';
+      if (!depSaisi) {
+        var dv = (d.depart && d.depart.ville) || ((p.zone && p.zone.villes && p.zone.villes[0]) || p.ville || '');
+        $('mp-dep-ville').innerHTML = '<option value="">— Choisis ta ville —</option>' + D.zoneVillesRef().map(function (v) {
+          return '<option value="' + esc(v.nom) + '"' + (v.nom === dv ? ' selected' : '') + '>' + esc(v.nom) + '</option>'; }).join('');
+        $('mp-dep-grille').innerHTML = d.paliers.map(function (x) {
+          return '<label class="mp-dep-l"><span class="k">' + esc(x.lbl) + '</span><span class="v"><input class="pec-input" type="text" inputmode="decimal" autocomplete="off" data-palier="' + x.a + '"'
+            + ' value="' + (x.tarif == null ? '' : esc(String(x.tarif).replace('.', ','))) + '" placeholder="je n’y vais pas" aria-label="Mon prix ' + esc(x.lbl) + '"><span class="e">€</span></span></label>';
+        }).join('');
+        $('mp-dep-mention').value = d.mention || '';
+        depGeo = undefined;
       }
+      var g = depPosition(d);
+      $('mp-dep-pos-etat').innerHTML = g
+        ? 'Départ : <b>ta position exacte</b> — jamais montrée ; le client ne lit qu’une distance, arrondie. <button type="button" id="mp-dep-centre">Partir du centre de la ville</button>'
+        : 'Départ : <b>le centre de la ville</b> choisie (le client lit « ≈ » devant la distance). « Ma position exacte » la mesure au plus juste.';
+      $('mp-dep-note').textContent = 'Tes prix sont libres, palier par palier, jusqu’à ' + R.rayonMaxKm + ' km : PayEnCash ne pose ni plancher, ni plafond, ni tarif conseillé. '
+        + 'Laisse vide un palier où tu ne vas pas. Le client voit ton prix pour SA distance, à côté de celui des autres ' + D.terme('nomade', 'pluriel') + ', et choisit ; tu le lui factures en ton nom.';
     }
-    ['mp-tarif-montant', 'mp-tarif-mention'].forEach(function (id) { $(id).addEventListener('input', function () { tarifSaisi = true; $('mp-tarif-ok').hidden = true; $('mp-tarif-err').hidden = true; }); });
-    $('mp-tarif-go').addEventListener('click', function () {
+    $('mp-dep').addEventListener('input', function () { depSaisi = true; $('mp-dep-ok').hidden = true; $('mp-dep-err').hidden = true; });
+    $('mp-dep').addEventListener('change', function () { depSaisi = true; });
+    $('mp-dep').addEventListener('click', function (e) {
+      var c = e.target.closest ? e.target.closest('#mp-dep-centre') : null; if (!c) return;
+      depSaisi = true; depGeo = null; rendreDeplacement();
+    });
+    $('mp-dep-pos').addEventListener('click', function () {
+      var b = this, et = $('mp-dep-pos-etat');
+      if (!window.PEC_GEO) { et.textContent = 'La position n’est pas disponible sur cet appareil : ton départ reste le centre de la ville.'; return; }
+      b.textContent = 'Localisation…';
+      PEC_GEO.localiser(function (f) {
+        PEC_GEO.noterAccord();
+        b.textContent = 'Ma position exacte'; depSaisi = true; depGeo = { lat: f.lat, lng: f.lng }; rendreDeplacement();
+      }, function (m) { b.textContent = 'Ma position exacte'; et.textContent = m; });
+    });
+    $('mp-dep-go').addEventListener('click', function () {
       var p = P.point(); if (!p) return;
-      var r = D.partenaireTarifSet(p.id, { tarif: $('mp-tarif-montant').value, mention: $('mp-tarif-mention').value }, par());
-      if (!r.ok) { dire('mp-tarif-err', r.motif); if (r.champ === 'tarif') $('mp-tarif-montant').focus(); return; }
-      tarifSaisi = false;
+      var paliers = {}, dep = { ville: $('mp-dep-ville').value }, g = depPosition(D.partenaireDeplacement(p));
+      [].forEach.call(document.querySelectorAll('#mp-dep-grille [data-palier]'), function (i) { paliers[i.getAttribute('data-palier')] = i.value; });
+      if (g) dep.geo = g;
+      [].forEach.call(document.querySelectorAll('#mp-dep .ko'), function (x) { x.classList.remove('ko'); });
+      var r = D.partenaireDeplacementSet(p.id, { depart: dep, paliers: paliers, mention: $('mp-dep-mention').value }, par());
+      if (!r.ok) {
+        dire('mp-dep-err', r.motif);
+        var f = r.champ === 'ville' ? $('mp-dep-ville') : (r.champ && r.champ.indexOf('palier-') === 0 ? document.querySelector('#mp-dep-grille [data-palier="' + r.champ.slice(7) + '"]') : null);
+        if (f) { f.classList.add('ko'); f.focus(); }
+        return;
+      }
+      depSaisi = false;
       tout();
-      dire('mp-tarif-ok', '✓ Enregistré — ' + D.partenaireTarifLbl(D.partenaire(p.id)) + '.', true);
+      dire('mp-dep-ok', '✓ Enregistré — ' + D.partenaireTarifLbl(D.partenaire(p.id)) + '.', true);
     });
 
-    function tout() { rendreFiche(); rendreSepa(); rendreAvance(); rendrePart(); rendreDossier(); rendreContrat(); rendreAcceptations(); rendreZone(); rendreTarif(); rendreRappel(); }
+    function tout() { rendreFiche(); rendreSepa(); rendreAvance(); rendrePart(); rendreDossier(); rendreContrat(); rendreAcceptations(); rendreDeplacement(); rendreRappel(); }
     tout();
     // (écran non sourd) une pièce validée ou refusée par le manager, le point activé ou suspendu, une recharge constatée, une remise déposée, un rappel passé : l'écran se repeint
     window.addEventListener('pec-bus', tout);

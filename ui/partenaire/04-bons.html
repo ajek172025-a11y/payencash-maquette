@@ -58,6 +58,11 @@
   .bl-act button{border:1px solid var(--color-sep);border-radius:8px;background:var(--color-surface);padding:5px 8px;font:inherit;font-size:10.5px;font-weight:700;color:var(--color-ink);cursor:pointer;white-space:nowrap}
   .bl-act button[data-annuler]{color:#B3372B;border-color:rgba(179,55,43,.35)}
   .bl-msg{margin:0 0 10px;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.45}
+  /* (24/09, nuit) le filtre « Vendu par » à côté de la recherche ; le collaborateur ne voit ni la colonne des vendeurs, ni ce que le point doit */
+  .bl-filtres{display:flex;gap:8px;flex-wrap:wrap}
+  .bl-filtres .bl-recherche{flex:1 1 220px;min-width:0}
+  .bl-filtres .bl-vendeur{flex:0 1 220px;min-width:0}
+  .bl-table--moi .c-vendeur,.bl-table--moi .c-du{display:none}
   .bl-msg.ko{background:rgba(179,55,43,.1);color:#B3372B}.bl-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
   .bl-panel{margin-top:12px;padding:14px}
   .bl-panel textarea{width:100%;resize:vertical;margin-top:8px}
@@ -130,7 +135,7 @@
       <!-- (24/09, soir) L'EN-TÊTE DE PAGE : le titre, le point et le délai d'annulation (lu au référentiel) -->
       <div class="pec-page-tete bl-tete">
         <div class="tx">
-          <h1>Bons vendus</h1>
+          <h1 id="bl-titre">Bons vendus</h1>
           <p class="sous"><span id="bl-enseigne">—</span> · l’état de chaque bon de marque, réimpression, annulation au comptoir <span id="bl-delai">—</span></p>
         </div>
       </div>
@@ -158,12 +163,17 @@
 
       <div class="bl-msg" id="bl-msg" role="status" hidden></div>
 
-      <input class="pec-input bl-recherche" type="search" data-fsearch="#bl-rows > tr" placeholder="Code, marque, montant, date…" aria-label="Rechercher un bon">
+      <!-- (24/09, nuit) LE TITULAIRE VOIT TOUT, ET PAR QUI : le filtre « Vendu par » (lui, puis chacun de ses collaborateurs) ; le
+           collaborateur ne voit que ses bons — la liste lui est filtrée à la source (techBons par vendeur), pas masquée à l'écran -->
+      <div class="bl-filtres">
+        <input class="pec-input bl-recherche" type="search" data-fsearch="#bl-rows > tr" placeholder="Code, marque, montant, date…" aria-label="Rechercher un bon">
+        <select class="pec-input bl-vendeur" id="bl-vendeur" aria-label="Vendu par" hidden></select>
+      </div>
       <div class="meta" data-fvide="#bl-rows > tr" data-fvide-txt="Aucun bon ne correspond à « %q »." style="display:none;padding:10px 0 0"></div>
 
       <div class="bl-wrap">
         <table data-fsortable class="bl-table">
-          <thead><tr><th>Bon</th><th>Date</th><th>Montant</th><th>Je dois</th><th>État</th><th aria-hidden="true"></th></tr></thead>
+          <thead><tr><th>Bon</th><th>Date</th><th class="c-vendeur">Vendu par</th><th>Montant</th><th class="c-du">Je dois</th><th>État</th><th aria-hidden="true"></th></tr></thead>
           <tbody id="bl-rows" data-fpage="10"></tbody>
         </table>
       </div>
@@ -194,13 +204,7 @@
     </div>
   </div><!-- /pec-body -->
 
-  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
-    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
-    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
-    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
-    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
-    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
-  </nav>
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire" data-part-menu="04-bons.html"></nav><!-- (24/09, nuit) la barre se pose depuis PEC_PART.menu : écrite une fois, celle du titulaire ou du collaborateur -->
 
 </div>
 </div>
@@ -219,7 +223,21 @@
     P.garde({ desactiver: [] });
 
     function message(txt, ok) { var m = $('bl-msg'); m.hidden = !txt; m.textContent = txt || ''; m.className = 'bl-msg ' + (ok ? 'ok' : 'ko'); }
-    function bonsDuPoint() { var r = P.revendeur(); return r ? D.techBons({ revendeurId: r.id }) : []; }
+    /* (24/09, nuit) LES BONS À LIRE : ceux du point pour le titulaire (tous, ou ceux d'un vendeur choisi), les SIENS pour un
+       collaborateur — le filtre part de la vente qui a fait naître le bon (techBons par vendeur) */
+    function filtreVendeur() { var k = P.collab(); if (k) return k.identifiant; var s = $('bl-vendeur'); return (s && s.value) || null; }
+    function bonsDuPoint() { var r = P.revendeur(); if (!r) return []; var q = { revendeurId: r.id }, v = filtreVendeur(); if (v) q.par = v; return D.techBons(q); }
+    function peindreVendeurs() {
+      var s = $('bl-vendeur'), p = P.point(), k = P.collab(); if (!s) return;
+      var l = (!k && p && D.collaborateurs) ? D.collaborateurs('point', p.id) : [];
+      s.hidden = !l.length;
+      if (!l.length) { s.innerHTML = ''; return; }
+      var cur = s.value, moi = (P.compteSession() || {}).identifiant || '';
+      var opts = [{ v: '', t: 'Tous les vendeurs' }, { v: moi, t: 'Toi (titulaire)' }].concat(l.map(function (x) { return { v: x.identifiant, t: x.nomAffiche + (x.statut === 'clos' ? ' (accès retiré)' : '') }; }));
+      var sig = opts.map(function (o) { return o.v + '=' + o.t; }).join('|');
+      if (s.getAttribute('data-sig') !== sig) { s.setAttribute('data-sig', sig); s.innerHTML = opts.map(function (o) { return '<option value="' + esc(o.v) + '">' + esc(o.t) + '</option>'; }).join(''); }
+      if (opts.some(function (o) { return o.v === cur; })) s.value = cur;
+    }
     function trouver(code) { return bonsDuPoint().filter(function (b) { return b.code === code; })[0] || null; }
     /* ANNULABLE ICI ? — la même règle que techBonAnnuler (non utilisé, dans le délai, vente pas partie au prélèvement) : le
        bouton ne s'offre que quand le geste peut aboutir ; le data-layer reste seul juge au clic. */
@@ -267,24 +285,30 @@
     }
 
     function rendre() {
-      var p = P.point(), r = P.revendeur(), R = D.techRef(), tb = $('bl-rows');
+      var p = P.point(), r = P.revendeur(), R = D.techRef(), tb = $('bl-rows'), k = P.collab();
       if (!$('bl-enseigne')) return;
+      $('bl-titre').textContent = k ? 'Mes ventes' : 'Bons vendus';
+      document.title = 'PayEnCash PARTENAIRE — ' + (k ? 'Mes ventes' : 'Bons vendus');   // l'onglet dit la même chose que la page
+      document.querySelector('.bl-table').classList.toggle('bl-table--moi', !!k);
+      $('bl-du-titre').hidden = $('bl-du').hidden = !!k;   // ce que le point doit regarde le titulaire
+      peindreVendeurs();
       $('bl-enseigne').textContent = p ? p.enseigne : 'aucun point rattaché';
       $('bl-delai').textContent = 'dans les ' + R.annulationMinutes + ' min';
       /* (24/09, soir — relecture juridique) le distributeur nomade n'ACHÈTE pas le bon : il le vend pour notre compte, sur ce qu'il
          a payé d'avance — la phrase suit le mode */
-      $('bl-note').textContent = 'Un bon de marque vaut ' + D.bonsRef().validiteMois + ' mois et s’utilise en une ou plusieurs fois, uniquement sur le site de la marque, depuis l’app Mes bons. '
+      $('bl-note').textContent = 'Un bon de marque vaut ' + D.bonsRef().validiteMois + ' mois et se dépense en une ou plusieurs fois, uniquement sur le site de la marque. '
         + (r && D.techPaieParAvance(r)
           ? 'Tu l’as vendu pour le compte de ' + R.nom + ' : son prix réseau s’est imputé sur ton avance — annuler le recrédite.'
           : 'Tu l’as acheté à ' + R.nom + ' en le vendant : son prix réseau part au prélèvement de l’arrêté — annuler dans les ' + R.annulationMinutes + ' min retire la vente du prélèvement.')
         + ' Un bon déjà utilisé ne s’annule plus : seule la marque peut encore rembourser.';
-      rendreDu();
+      if (!k) rendreDu();
       if (!p || !r) {
         $('bl-nb').textContent = '0'; $('bl-eur').textContent = '0 €'; $('bl-annules').textContent = '0';
-        tb.innerHTML = '<tr data-fvide-row><td colspan="6" class="meta" style="text-align:center;padding:18px">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</td></tr>';
+        tb.innerHTML = '<tr data-fvide-row><td colspan="7" class="meta" style="text-align:center;padding:18px">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</td></tr>';
         return;
       }
-      var mois = D.techVentes({ revendeurId: r.id, mois: D.techPeriodeCourante() });
+      var qm = { revendeurId: r.id, mois: D.techPeriodeCourante() }, fv = filtreVendeur(); if (fv) qm.par = fv;
+      var mois = D.techVentes(qm);
       var vives = mois.filter(function (v) { return v.statut !== 'annulee'; });
       $('bl-nb').textContent = String(vives.length);
       $('bl-eur').textContent = D.eur(vives.reduce(function (a, v) { return a + v.montant; }, 0));
@@ -292,11 +316,11 @@
       var tous = bonsDuPoint();
       /* on ne redessine que si la liste a changé : un redessin perd le tri choisi par en-tête et la page courante — le bus
          réveille l'écran bien plus souvent que la liste ne bouge */
-      var emp = tous.map(function (b) { var v = b.venteRef ? D.techVente(b.venteRef) : null; return b.code + '|' + b.etat + '|' + b.solde + '|' + (annulable(b, R) ? 1 : 0) + '|' + (v ? v.statut : '-'); }).join(';');
+      var emp = (fv || '*') + '#' + tous.map(function (b) { var v = b.venteRef ? D.techVente(b.venteRef) : null; return b.code + '|' + b.etat + '|' + b.solde + '|' + (annulable(b, R) ? 1 : 0) + '|' + (v ? v.statut : '-'); }).join(';');
       if (emp === derniereEmpreinte && tb.children.length) return;
       derniereEmpreinte = emp;
       if (!tous.length) {
-        tb.innerHTML = '<tr data-fvide-row><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucun bon vendu pour l\'instant — la première vente se fait dans <a href="03-vendre.html" style="color:var(--color-primary-dark);font-weight:700">Vendre</a>.</td></tr>';
+        tb.innerHTML = '<tr data-fvide-row><td colspan="7" class="meta" style="text-align:center;padding:18px">' + (fv && !k ? 'Aucun bon vendu par ce vendeur pour l\'instant.' : (k ? 'Tu n\'as vendu aucun bon pour l\'instant' : 'Aucun bon vendu pour l\'instant') + ' — la première vente se fait dans <a href="03-vendre.html" style="color:var(--color-primary-dark);font-weight:700">Vendre</a>.') + '</td></tr>';
         return;
       }
       tb.innerHTML = tous.map(function (b) {
@@ -311,8 +335,9 @@
         return '<tr data-code="' + esc(b.code) + '">' +
           '<td><b>' + esc(masque(b.code)) + '</b><br><span class="mono">' + esc(b.marchand) + '</span></td>' +
           '<td data-s="' + esc(iso) + '">' + esc(d.toLocaleDateString('fr-FR')) + '<br><span class="mono">' + esc(pad(d.getHours()) + ':' + pad(d.getMinutes())) + '</span></td>' +
+          '<td class="c-vendeur" data-s="' + esc(v ? D.vendeurNom(v.par) : '') + '">' + esc(v ? D.vendeurNom(v.par) : '—') + '</td>' +
           '<td class="n" data-s="' + esc(b.montant) + '">' + esc(D.eur(b.montant)) + '</td>' +
-          '<td class="n" data-s="' + esc(v ? v.prixPoint : -1) + '">' + pCell + '</td>' +
+          '<td class="n c-du" data-s="' + esc(v ? v.prixPoint : -1) + '">' + pCell + '</td>' +
           '<td>' + pillEtat(b) + (detail ? '<br><span class="mono">' + esc(detail) + '</span>' : '') + '</td>' +
           '<td><div class="bl-act">' +
             (b.etat !== 'cancelled' ? '<button type="button" class="tap" data-reimprimer="' + esc(b.code) + '">Réimprimer</button>' : '') +
@@ -371,6 +396,8 @@
       derniereEmpreinte = null; rendre();
     });
 
+    // (24/09, nuit) choisir un vendeur relit la liste depuis la source : ses bons, ses nombres du mois
+    $('bl-vendeur').addEventListener('change', function () { derniereEmpreinte = null; rendre(); });
     rendre();
     // (écran non sourd) une vente, une annulation, un bon utilisé chez la marque, un prélèvement réglé ou impayé : la liste se repeint
     window.addEventListener('pec-bus', rendre);

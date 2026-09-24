@@ -23,20 +23,29 @@
 <style>
   body{margin:0;background:#f4f1ec;font-family:var(--font-ui,system-ui,-apple-system,"Segoe UI",sans-serif);color:#2c2a26}
   .bt-wrap{max-width:760px;margin:0 auto;padding:0 18px 60px}
-  .bt-bar{background:#2c2a26;color:#fff;padding:13px 18px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:12px}
-  .bt-bar span{float:right;font-weight:600;letter-spacing:0;text-transform:none;opacity:.75}
+  .bt-bar{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:3px 14px;background:#2c2a26;color:#fff;padding:13px 18px;font-size:12px}
+  .bt-bar b{font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+  .bt-bar span{font-weight:600;opacity:.75}
   .bt-note{max-width:760px;margin:14px auto 0;padding:11px 14px;border-radius:12px;background:#fff8e6;border:1px solid #e4cf94;font-size:12.5px;line-height:1.6;color:#6b5418}
   h1{font-size:24px;letter-spacing:-0.02em;margin:22px 0 3px}
   .sub{margin:0;font-size:13px;color:#7b756c}
   .bt-card{background:#fff;border-radius:16px;box-shadow:0 6px 20px rgba(44,42,38,.08);padding:16px 17px;margin-top:14px}
   .bt-l{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #f0ece4;font-size:13.5px}
   .bt-l:last-of-type{border-bottom:none}
-  .bt-l img,.bt-l .ph{flex:none;width:44px;height:44px;border-radius:10px;background:#efe9df}
+  .bt-l img,.bt-l .ph{flex:none;width:44px;height:44px;border-radius:10px;background:#efe9df;object-fit:cover}
+  .bt-l .ph{display:flex;align-items:center;justify-content:center;font-weight:800;color:#7b756c}
   .bt-l b{display:block}
   .bt-l small{color:#7b756c}
   .bt-l .px{margin-left:auto;font-weight:800}
   .bt-tot{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding-top:12px;border-top:2px solid #2c2a26;font-size:15px;font-weight:800}
   .bt-tot b{font-size:22px}
+  .bt-rem{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:13px;color:#115c46}
+  .bt-vide{font-size:13px;line-height:1.6;color:#6b645a}
+  .bt-vide a{color:#10a06a;font-weight:800}
+  .bt-test{display:flex;align-items:center;gap:10px;margin-top:12px;padding-top:12px;border-top:2px solid #2c2a26;font-size:15px;font-weight:800}
+  .bt-test span{flex:1}
+  .bt-test input{width:110px;border:1.5px solid #e3ded4;border-radius:10px;padding:9px 10px;font:inherit;font-size:16px;text-align:right}
+  .bt-test input:focus-visible{outline:2px solid #10a06a;outline-offset:1px}
   .bt-moy{display:flex;align-items:center;gap:11px;width:100%;border:1.5px solid #e3ded4;border-radius:14px;background:#fff;padding:13px 14px;margin-top:9px;font:inherit;font-size:13.5px;text-align:left;cursor:pointer}
   .bt-moy .ic{flex:none;font-size:19px}
   .bt-moy small{display:block;color:#7b756c;font-size:11.5px;margin-top:2px}
@@ -44,23 +53,23 @@
   .bt-cfg{margin-top:18px;border-radius:14px;background:#fff;border:1px dashed #cfc7ba;padding:13px 15px;font-size:12.5px;line-height:1.6;color:#7b756c}
   .bt-cfg code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11.5px;color:#2c2a26}
   .bt-cfg a{color:#10a06a;font-weight:800}
+  .bt-foot{background:#2c2a26;color:#fff;padding:26px 18px 34px}
+  .bt-foot-in{max-width:760px;margin:0 auto}
+  .bt-foot-cap{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.7;margin-bottom:12px}
 </style>
 </head>
 <body>
 
-<div class="bt-bar"><span id="bt-marque" style="float:none;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:1">Boutique de démonstration</span> <span>maquette du site e-commerce d’une marque — démonstration</span></div>
+<div class="bt-bar"><b id="bt-marque">Boutique de démonstration</b><span>maquette du site e-commerce d’une marque — démonstration</span></div>
 
 <div class="bt-note" id="bt-note">—</div>
 
 <div class="bt-wrap">
   <h1>Ta commande</h1>
-  <p class="sub">Commande <b id="bt-ref">—</b> · livraison offerte</p>
+  <p class="sub">Commande <b id="bt-ref">—</b></p>
 
-  <!-- (23/09, audit) LE PANIER SE CALCULE, IL NE SE RECOPIE PAS. Trois nombres écrits à la main — deux lignes et
-       un total — c'est trois occasions de les laisser diverger, et le total est celui qu'on ne relit jamais. Les
-       articles viennent d'une boutique de démonstration déclarée comme telle, le total est leur somme, et le
-       montant passé au bouton PayEnCash est CE total. Les pièces sont de la mode : c'est à ces marques-là que
-       nous nous adressons, et une démonstration qui vend des bougies ne démontre rien. -->
+  <!-- (23/09, audit) LE PANIER SE CALCULE, IL NE SE RECOPIE PAS : le total est la somme des lignes, et le montant passé au
+       bouton PayEnCash est CE total. (24/09, nuit) Les lignes sont les ARTICLES PUBLIÉS PAR CETTE MARQUE (voir le script). -->
   <div class="bt-card" id="bt-panier"></div>
 
   <div class="bt-card">
@@ -72,8 +81,9 @@
     <button type="button" class="bt-moy" id="bt-vir"><span class="ic">🏦</span><span style="min-width:0;flex:1"><b>Virement</b><small>les moyens de la boutique, pas les nôtres</small></span></button>
 
     <!-- ══ LES DEUX LIGNES QUE LA MARQUE COLLE, ET RIEN D'AUTRE ══════════════════════════════════════════
-         Le bouton « Bon d'achat {marque} » apparaît ici, à côté de ses moyens ; au clic, la fenêtre du bon proposé
-         et son choix « Comment veux-tu payer ? » (payencash-comment-payer.js). -->
+         Le bouton « Bon d'achat {marque} » apparaît ici, à côté de ses moyens ; au clic, la fenêtre du bon proposé :
+         « J'ai un bon » (son code couvre la commande), sinon « Où l'acheter » — un point de vente, ou un distributeur
+         nomade qui se déplace (24/09, nuit — plus de chemin « en ligne »). -->
     <div data-payencash="" data-commande="" id="bt-pec" style="margin-top:9px"></div>
 
     <div class="bt-ok" id="bt-ok" hidden>—</div>
@@ -81,6 +91,15 @@
 
   <div class="bt-cfg" id="bt-cfg">—</div>
 </div>
+
+<!-- (24/09, nuit — fondatrice : « un outil à insérer sur chaque pied de page d'une marque, qui aide à ouvrir la page client et à
+     choisir son montant ») LE PIED DE PAGE DE LA MARQUE — le bloc « bon d'achat » qu'elle colle en une ligne (data-payencash-bon). -->
+<footer class="bt-foot" id="bt-foot" hidden>
+  <div class="bt-foot-in">
+    <div class="bt-foot-cap" id="bt-foot-cap">—</div>
+    <div id="bt-bon" data-fond="sombre"></div>
+  </div>
+</footer>
 
 <script>
 /* LA CLÉ PUBLIQUE VIENT DU COMPTE DE LA MARQUE, jamais d'une valeur écrite ici : soit celle passée dans
@@ -104,26 +123,42 @@
     }
   }
 
-  /* ══ (23/09, audit) LE PANIER SE CALCULE ═══════════════════════════════════════════════════════════════
-     Les pièces sont celles d'une marque de mode — c'est à ces marques-là que nous nous adressons ; une vignette
-     neutre tient la place de la photo, que la vraie boutique pose elle-même. Le TOTAL est leur somme, et c'est LUI qui
-     part au bouton PayEnCash : un total recopié à la main est un total qui ment dès qu'on touche une ligne.
+  /* ══ (24/09, nuit — fondatrice : « simuler ce que ça donne sur un site ») LE PANIER VIENT DE SES PUBLICATIONS ═════════════
+     Les lignes sont les articles que CETTE marque a publiés (Outils), encore en stock — les mêmes que sa boutique dans Mes bons
+     et son site hébergé : une marque de billets ne vend pas un sweat, et un panier écrit ici mentait pour toutes les autres. Le
+     TOTAL est leur somme ; la remise « avec le bon d'achat » que la marque a publiée baisse ce que le bon doit couvrir — c'est ce
+     montant-là qui part au bouton. Sans article publié, la page n'en invente pas : une commande de test, au montant que la
+     marque saisit, et le bouton suit (data-montant), comme sur un vrai tunnel dont le total change.
      La référence de commande se dérive de la date : deux démonstrations ne portent pas le même numéro. */
-  var PANIER = [
-    { nom: 'Hoodie oversize', det: 'Taille M · coton lourd', prix: 89 },
-    { nom: 'Sneakers basses', det: 'Pointure 42 · cuir blanc', prix: 129 }
-  ];
-  var mnt = Math.round(PANIER.reduce(function (a, p) { return a + p.prix; }, 0) * 100) / 100;
   var eur = function (x) { return D ? D.eur(x) : String(x).replace('.', ',') + ' €'; };
+  var esc = function (v) { return D ? D.esc(v) : String(v == null ? '' : v); };
+  var r2 = function (v) { return Math.round(v * 100) / 100; };
+  var photo = function (src) { return /^(https?:|data:|blob:)/.test(String(src || '')) ? src : ''; };
   var cmd = 'CMD-' + new Date().getFullYear() + '-' + String(Math.floor(Date.now() / 1000) % 100000).padStart(5, '0');
-  hote.setAttribute('data-montant', mnt.toFixed(2));
+  var mnt = 0;
+  function poserMontant(v) { mnt = v > 0 ? v : 0; hote.setAttribute('data-montant', mnt > 0 ? mnt.toFixed(2) : ''); }
   hote.setAttribute('data-commande', cmd);
-  $('bt-panier').innerHTML = PANIER.map(function (p) {
-    return '<div class="bt-l"><span class="ph" aria-hidden="true"></span>'
-      + '<span style="min-width:0"><b>' + p.nom + '</b><small>' + p.det + '</small></span>'
-      + '<span class="px">' + eur(p.prix) + '</span></div>';
-  }).join('') + '<div class="bt-tot"><span>Total</span><b id="bt-total">' + eur(mnt) + '</b></div>';
   $('bt-ref').textContent = cmd;
+  var arts = (m && D.techArticles) ? D.techArticles({ marchandId: m.id }).filter(function (a) { return D.techArticleStock(a).dispo > 0; }).slice(0, 2) : [];
+  if (arts.length) {
+    var total = r2(arts.reduce(function (t, a) { return t + (+a.prix || 0); }, 0));
+    var remise = r2(arts.reduce(function (t, a) { return t + (+a.remise || 0); }, 0));
+    $('bt-panier').innerHTML = arts.map(function (a) {
+      var st = D.techArticleStock(a), t = (st.tailles || []).filter(function (x) { return x.qte > 0; })[0], src = photo(a.photo);
+      var det = [a.categorie, t ? 'Taille ' + t.taille : ''].filter(Boolean).join(' · ');
+      return '<div class="bt-l">' + (src ? '<img src="' + esc(src) + '" alt="">' : '<span class="ph" aria-hidden="true">' + esc(String(a.modele || '?').charAt(0)) + '</span>')
+        + '<span style="min-width:0"><b>' + esc(a.modele) + '</b><small>' + esc(det) + '</small></span>'
+        + '<span class="px">' + eur(a.prix) + '</span></div>';
+    }).join('')
+      + '<div class="bt-tot"><span>Total</span><b id="bt-total">' + eur(total) + '</b></div>'
+      + (remise > 0 ? '<div class="bt-rem"><span>Remise avec le bon d’achat ' + esc(m.raisonSociale) + '</span><b>−' + eur(remise) + '</b></div>' : '');
+    poserMontant(r2(total - remise));
+  } else if (m) {
+    $('bt-panier').innerHTML = '<div class="bt-vide"><b>' + esc(m.raisonSociale) + ' n’a encore publié aucun article en stock.</b> '
+      + 'Publie-les depuis <a href="09-outils.html">Outils</a> : ce panier les reprend. En attendant, une commande de test, au montant que tu saisis — le bouton suit.</div>'
+      + '<label class="bt-test"><span>Commande de test</span><input id="bt-test" type="text" inputmode="decimal" autocomplete="off" placeholder="0,00"> €</label>';
+    $('bt-test').addEventListener('input', function () { poserMontant(r2(parseFloat(String(this.value).replace(',', '.')) || 0)); majCfg(); });
+  }
 
   if (!m) {
     /* PAS DE MARQUE AVEC UNE CLÉ : on ne monte pas un bouton qui ne pourra rien faire. */
@@ -136,6 +171,9 @@
   }
 
   hote.setAttribute('data-payencash', pk);
+  $('bt-bon').setAttribute('data-payencash-bon', pk);
+  $('bt-foot-cap').textContent = 'Le pied de page de ' + m.raisonSociale;
+  $('bt-foot').hidden = false;
   $('bt-marque').textContent = m.raisonSociale;
   document.title = m.raisonSociale + ' — Commande (démonstration du bouton PayEnCash Solution)';
   $('bt-note').innerHTML = '<b>Ceci n’est pas une page PayEnCash.</b> C’est la maquette du site de <b>' + D.esc(m.raisonSociale) + '</b>, '
@@ -144,11 +182,16 @@
 
   /* CE QUE LA PAGE PORTE VRAIMENT : le montant est le total du panier, la référence celle de la commande — les deux lignes
      montrées sont celles qui sont posées, pas un exemple à côté. */
-  $('bt-cfg').innerHTML = 'Ce que cette marque a collé dans sa page :<br>'
-    + '<code>&lt;script src="…/ui/tech/payencash-tech-widget.js"&gt;&lt;/script&gt;</code><br>'
-    + '<code>&lt;div data-payencash="' + D.esc(pk) + '" data-montant="' + D.esc(mnt.toFixed(2)) + '" data-commande="' + D.esc(cmd) + '"&gt;&lt;/div&gt;</code><br><br>'
-    + 'Sa clé <b>secrète</b> n’apparaît nulle part dans cette page — elle vit sur son serveur, et nous n’en gardons que l’empreinte. '
-    + '<a href="10-compte.html?s=integration#api">Retour à son compte</a>';
+  function majCfg() {
+    $('bt-cfg').innerHTML = 'Ce que cette marque a collé dans sa page :<br>'
+      + '<code>&lt;script src="…/ui/tech/payencash-tech-widget.js"&gt;&lt;/script&gt;</code><br>'
+      + '<code>&lt;div data-payencash="' + D.esc(pk) + '" data-montant="' + D.esc(mnt.toFixed(2)) + '" data-commande="' + D.esc(cmd) + '"&gt;&lt;/div&gt;</code><br>'
+      + 'et, dans son pied de page, le bloc « bon d’achat » :<br>'
+      + '<code>&lt;div data-payencash-bon="' + D.esc(pk) + '" data-fond="sombre"&gt;&lt;/div&gt;</code><br><br>'
+      + 'Sa clé <b>secrète</b> n’apparaît nulle part dans cette page — elle vit sur son serveur, et nous n’en gardons que l’empreinte. '
+      + '<a href="10-compte.html?s=integration#api">Retour à son compte</a>';
+  }
+  majCfg();
 
   /* LE BOUTON PRÉVIENT LA PAGE DE LA MARQUE QUAND SA COMMANDE EST COUVERTE — entièrement, par un bon ou par
      plusieurs (21/09 ; 23/09 : « couvert », pas « payé » — nous n'avons rien réglé) — et c'est SON tunnel qui décide

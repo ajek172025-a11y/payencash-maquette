@@ -98,14 +98,17 @@
         + '<div class="p">' + (a.remise > 0 ? '<b>' + esc(D.eur(net)) + '</b> <s style="color:#6B7A74">' + esc(D.eur(a.prix)) + '</s> avec ce bon d’achat' : '<b>' + esc(D.eur(a.prix)) + '</b>') + '</div>'
         + '<div class="t">' + (st.epuise ? 'Épuisé' : esc(st.tailles.filter(function (t) { return t.qte > 0; }).map(function (t) { return t.taille + ' (' + t.qte + ')'; }).join(' · '))) + '</div></a>';
     }).join('') : '<p class="cite">Les articles arrivent.</p>';
-    var v = D.techVenteLien(m.id);
-    $('s-bon-t').textContent = 'Un bon d’achat ' + m.raisonSociale + ', au montant que tu veux';
-    $('s-bon-p').textContent = 'Valable uniquement sur ' + (site.domaine || String(m.siteUrl || '').replace(/^https?:\/\//, '')) + ' (' + D.refArticle((R.seuils || {}).reseauLimiteSource || '') + '). Ni remboursable en espèces, ni échangé contre de la monnaie · valable ' + D.bonsRef().validiteMois + ' mois.';
-    if (v) {
-      var url = D.techVenteLienUrl(v.slug);
-      $('s-bon-a').href = url;
-      try { $('s-qr').innerHTML = ''; window.PEC_QR.render('s-qr', url, { ecc: 'M' }); } catch (e) {}
-    } else { $('s-bon-a').href = '#'; $('s-qr').innerHTML = ''; }
+    /* (24/09, nuit) LE BLOC DU BON EST CELUI DU WIDGET DE PIED DE PAGE (techBlocBon) : mêmes mots, même adresse, écrits une fois.
+       Sans lien de vente, le bloc dit pourquoi — pas de bouton vers « # ». */
+    var bb = D.techBlocBon(m.id);
+    $('s-bon-t').textContent = bb.ok ? bb.titre : 'Un bon d’achat ' + m.raisonSociale;
+    $('s-bon-p').textContent = bb.ok ? bb.mentions : bb.motif;
+    $('s-bon-a').style.display = bb.ok ? '' : 'none';
+    $('s-qr').innerHTML = '';
+    if (bb.ok) {
+      $('s-bon-a').href = bb.url; $('s-bon-a').textContent = bb.cta;
+      try { window.PEC_QR.render('s-qr', bb.url, { ecc: 'M' }); } catch (e) {}
+    }
     /* LE RÉSEAU RÉEL — celui qui est né d'inscriptions (PEC_TECH.reseau), la même lecture que la vitrine et l'espace. */
     var rz = PEC_TECH.reseau(), pts = rz.commerces, mob = rz.nomades, villes = {};
     pts.forEach(function (p) { if (p.ville) villes[p.ville] = 1; });
