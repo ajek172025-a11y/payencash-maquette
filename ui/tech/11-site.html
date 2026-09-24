@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Boutique — PayEnCash Solution</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-qr.js"></script>
+<script src="../assets/payencash-tech.js"></script><!-- PEC_TECH.reseau : les commerces et distributeurs nomades RÉELS du réseau, la même lecture que l'espace et la vitrine -->
+<!-- LE SITE WEB D'UNE MARQUE (23/09, fondatrice : « abonnement à 19,00 €, inclus la création d'un site web depuis leur nom
+     de domaine, tourné vers leur marque, ultra facile d'usage »).
+     UNE SEULE PAGE, TOUTE DÉRIVÉE : le nom, l'accroche et la couleur qu'elle a posés dans Compte › Abonnement ; ses articles
+     publiés depuis Outils (visuel, prix, remise, tailles × quantités) ; son lien de vente (Paiement) avec son flashcode ;
+     le réseau qui vend ses bons ; les mentions du bon. Rien n'est écrit ici qu'on ne puisse relire dans l'app.
+     Ce que la page ne fait PAS : encaisser. Elle mène au bon d'achat, qui s'achète au comptoir d'un commerce du réseau.
+     Sans la formule qui le comprend (siteWeb) ou sans validation, la page le dit — elle n'affiche pas une vitrine
+     à une marque qui ne l'a pas. -->
+<style>
+  :root{--m:#0F2A24}
+  body{margin:0;background:#FBFCFB;color:#1B2A24;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 18px}
+  .hero{background:var(--m);color:#fff;padding:56px 0 46px}
+  .hero .caps{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.75}
+  .hero h1{font-size:clamp(30px,5vw,54px);line-height:1.05;letter-spacing:-.02em;margin:10px 0 0;max-width:18ch}
+  .hero p{font-size:16px;line-height:1.6;max-width:56ch;opacity:.92;margin:14px 0 0}
+  .hero .acts{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .btn{display:inline-block;border-radius:999px;padding:12px 20px;font-weight:800;text-decoration:none;font-size:14px}
+  .btn--b{background:#fff;color:var(--m)} .btn--o{border:1.5px solid rgba(255,255,255,.6);color:#fff}
+  section{padding:40px 0 8px}
+  h2{font-size:12px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;color:#6B7A74;margin:0 0 14px}
+  .grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:18px 14px}
+  .art{display:block;text-decoration:none;color:inherit}
+  .art .ph{aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:var(--m)}
+  .art .ph img{width:100%;height:100%;object-fit:cover;display:block}
+  .art .n{font-size:15px;font-weight:800;margin-top:9px} .art .p{font-size:14px;margin-top:2px} .art .t{font-size:11.5px;color:#6B7A74;margin-top:2px}
+  .bon{display:grid;grid-template-columns:1fr auto;gap:18px;align-items:center;background:#fff;border:1px solid #E3E9E6;border-radius:16px;padding:20px 22px}
+  .bon .q svg{width:132px;height:132px;display:block}
+  /* (23/09, soir — audit) SUR UN TÉLÉPHONE, LE BON ET SON FLASHCODE S'EMPILENT : côte à côte, le titre tombait mot à mot */
+  @media (max-width:560px){.bon{grid-template-columns:1fr}.bon .q{justify-self:center}}
+  .cite{font-size:13px;line-height:1.7;color:#6B7A74}
+  .foot{border-top:1px solid #E3E9E6;margin-top:40px;padding:22px 0 40px;font-size:12px;color:#6B7A74;line-height:1.7}
+  .hs{padding:60px 18px;text-align:center;color:#6B7A74;font-size:15px;line-height:1.7}
+</style>
+</head>
+<body>
+<div id="hs" class="hs" hidden>—</div>
+<div id="site" hidden>
+  <header class="hero"><div class="wrap">
+    <div class="caps" id="s-caps">—</div>
+    <h1 id="s-h1">—</h1>
+    <p id="s-accroche">—</p>
+    <div class="acts"><a class="btn btn--b" id="s-cta" href="#bon">Offrir ou acheter un bon d’achat</a><a class="btn btn--o" id="s-site" href="#" target="_blank" rel="noopener">Notre boutique en ligne</a></div>
+  </div></header>
+  <div class="wrap">
+    <section id="articles"><h2>Nos articles</h2><div class="grille" id="s-articles"></div></section>
+    <section id="bon"><h2>Le bon d’achat</h2><div class="bon"><div><div style="font-size:22px;font-weight:800;letter-spacing:-.01em" id="s-bon-t">—</div><p class="cite" id="s-bon-p">—</p><a class="btn btn--b" id="s-bon-a" href="#" style="background:var(--m);color:#fff;margin-top:8px">Choisir mon montant</a></div><div class="q" id="s-qr"></div></div></section>
+    <section id="reseau"><h2>Où l’acheter</h2><p class="cite" id="s-reseau">—</p></section>
+    <div class="foot" id="s-foot">—</div>
+  </div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, $ = function (i) { return document.getElementById(i); };
+  if (!D || !D.techMarchand) return;
+  var esc = function (v) { return D.esc(v); };
+  var id = (new URLSearchParams(location.search)).get('m') || '';
+  var m = D.techMarchand(id), R = D.techRef();
+  function horsService(txt) { $('hs').hidden = false; $('hs').textContent = txt; $('site').hidden = true; }
+  if (!m) { horsService('Ce site n’existe pas.'); return; }
+  var site = D.techMarchandSite(m);
+  /* (23/09, soir — audit) DEUX RAISONS DE NE PAS SERVIR LE SITE, DEUX PHRASES : la formule ne le comprend pas, ou le compte de
+     la marque n'est pas encore validé (site.actif exige les deux). Dire « pas de formule » à une marque qui l'a payée, c'était faux. */
+  if (!site.actif) {
+    horsService(site.inclus
+      ? m.raisonSociale + ' prépare son site : il s’ouvre dès que son compte ' + R.nom + ' est validé.'
+      : m.raisonSociale + ' n’a pas encore de site : il est compris dans la formule « ' + (D.techFormules().filter(function (f) { return f.siteWeb; })[0] || {}).nom + ' » de ' + R.nom + '.');
+    return;
+  }
+  document.title = m.raisonSociale + ' — boutique';
+  if (site.couleur) document.documentElement.style.setProperty('--m', site.couleur);
+  $('hs').hidden = true; $('site').hidden = false;
+
+  function peindre() {
+    site = D.techMarchandSite(m);
+    $('s-caps').textContent = site.domaine || m.siteUrl.replace(/^https?:\/\//, '');
+    $('s-h1').textContent = m.raisonSociale;
+    $('s-accroche').textContent = site.accroche || ('Nos articles, et notre bon d’achat — à s’offrir, ou à offrir.');
+    $('s-site').href = m.siteUrl;
+    var arts = D.techArticles({ marchandId: m.id });
+    $('s-articles').innerHTML = arts.length ? arts.map(function (a) {
+      var st = D.techArticleStock(a), net = Math.round((a.prix - (a.remise || 0)) * 100) / 100, src = PEC_TECH.photo(a.photo);   // une photo d'article est absolue ou embarquée
+      return '<a class="art" href="' + esc(D.techArticleUrl(a.slug)) + '"><div class="ph">' + (src ? '<img src="' + esc(src) + '" alt="" loading="lazy">' : '') + '</div>'
+        + '<div class="n">' + esc(a.modele) + '</div>'
+        + '<div class="p">' + (a.remise > 0 ? '<b>' + esc(D.eur(net)) + '</b> <s style="color:#6B7A74">' + esc(D.eur(a.prix)) + '</s> avec ce bon d’achat' : '<b>' + esc(D.eur(a.prix)) + '</b>') + '</div>'
+        + '<div class="t">' + (st.epuise ? 'Épuisé' : esc(st.tailles.filter(function (t) { return t.qte > 0; }).map(function (t) { return t.taille + ' (' + t.qte + ')'; }).join(' · '))) + '</div></a>';
+    }).join('') : '<p class="cite">Les articles arrivent.</p>';
+    var v = D.techVenteLien(m.id);
+    $('s-bon-t').textContent = 'Un bon d’achat ' + m.raisonSociale + ', au montant que tu veux';
+    $('s-bon-p').textContent = 'Valable uniquement sur ' + (site.domaine || String(m.siteUrl || '').replace(/^https?:\/\//, '')) + ' (' + D.refArticle((R.seuils || {}).reseauLimiteSource || '') + '). Ni remboursable en espèces, ni échangé contre de la monnaie · valable ' + D.bonsRef().validiteMois + ' mois.';
+    if (v) {
+      var url = D.techVenteLienUrl(v.slug);
+      $('s-bon-a').href = url;
+      try { $('s-qr').innerHTML = ''; window.PEC_QR.render('s-qr', url, { ecc: 'M' }); } catch (e) {}
+    } else { $('s-bon-a').href = '#'; $('s-qr').innerHTML = ''; }
+    /* LE RÉSEAU RÉEL — celui qui est né d'inscriptions (PEC_TECH.reseau), la même lecture que la vitrine et l'espace. */
+    var rz = PEC_TECH.reseau(), pts = rz.commerces, mob = rz.nomades, villes = {};
+    pts.forEach(function (p) { if (p.ville) villes[p.ville] = 1; });
+    /* le réseau porte le nom de la maison (le nom de Solution sans son suffixe), pas celui du produit qu'il vend ; les pluriels s'écrivent */
+    var pl = function (n, mot, s2) { return n + ' ' + mot + (n > 1 ? (s2 || 's') : ''); }, reseauNom = String(R.nom || 'PayEnCash').replace(/\s+Solution$/i, '');
+    $('s-reseau').textContent = pts.length
+      ? 'Au comptoir de ' + pl(pts.length, 'commerce') + ' du réseau ' + reseauNom + (Object.keys(villes).length ? ' — ' + Object.keys(villes).join(', ') : '') + (mob.length ? ' — et par ' + mob.length + ' ' + esc(D.terme('nomade', mob.length > 1 ? 'pluriel' : 'nom')) + (mob.length > 1 ? ' qui se déplacent' : ' qui se déplace') : '') + '.'
+      : 'Le réseau ' + reseauNom + ' n’a pas encore de commerce actif : le premier apparaîtra ici.';
+    var soc = D.societeLigne ? D.societeLigne() : '';
+    $('s-foot').innerHTML = '<b>' + esc(m.raisonSociale) + '</b> · SIRET ' + esc(m.siret || '—') + '<br>Bons d’achat achetés et distribués par ' + esc(soc || R.nom) + ' — ' + esc(R.nom) + ' : ' + esc(D.slogan ? D.slogan() : '') + '.';
+  }
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

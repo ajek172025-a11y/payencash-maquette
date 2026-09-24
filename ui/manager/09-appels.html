@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Centre d’appels</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<!--
+  CENTRE D'APPELS — route `/appels`.
+  Un SÉLECTEUR DE JOUR en tête (la planification accepte n'importe quelle date passée) et un bloc SATISFACTION du
+  mois en cours au-dessus de la liste. (23/09 — pivot grossiste) Les appels concernent les utilisateurs de Mes bons (rappel
+  demandé depuis l'app Mes bons, appel de bienvenue, appel entrant), les commerces du réseau et les marques ; les
+  types viennent du référentiel (APPEL_TYPES), jamais écrits ici. Le numéro est rendu cliquable (`tel:`) : sans ça,
+  l'opérateur recopie un numéro à la main, et se trompe.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `hotline_calls`, `satisfaction_responses` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Centre d’appels</h1>
+        <p class="sub">Appels planifiés du jour sélectionné.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <div class="pec-controlbar">
+          <label>
+            Jour
+            <!-- (03/09 — zéro-dur) la valeur = periodeCourante().dateISO, plus jamais « 2026-07-31 » figé -->
+            <input class="pec-search" style="max-width:150px" type="date" id="ap-jour" aria-label="Jour des appels">
+          </label>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" id="ap-aujourdhui">Aujourd’hui</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Satisfaction (mois en cours)</h2><p class="s">Agrégée sur les questionnaires saisis en clôture d’appel.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="pec-grid pec-grid--3" style="margin-bottom:14px">
+          <div class="pec-kpi">
+            <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-star"/></svg> Note moyenne</div>
+            <div class="val" id="ap-note">—</div>
+            <div class="hint">« Application intuitive ? » — de 1 à 5.</div>
+          </div>
+          <div class="pec-kpi">
+            <div class="lbl">Réponses</div>
+            <div class="val" id="ap-reponses">0</div>
+            <div class="hint">Questionnaires complétés ce mois-ci.</div>
+          </div>
+          <div class="pec-kpi">
+            <div class="lbl">Appels planifiés ce jour</div>
+            <div class="val" id="ap-n">0</div>
+            <div class="hint">Le bloc disparaît si aucun questionnaire n’a été saisi.</div>
+          </div>
+        </div>
+
+        <div class="pec-list">
+          <div class="pec-card pec-card--flat" id="ap-sat" style="text-align:center;color:var(--color-muted);font-size:13px">Aucun questionnaire saisi pour l'instant — les verbatims réels des clients vivront ici.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-list">
+
+      <!-- ZÉRO appel en dur (28/08) : la liste = les rappels et sécurisations
+           demandés par les clients (bus). -->
+      <!-- (07/09 — audit navigation : toute liste se cherche, se trie et se pagine) -->
+      <input class="pec-search" type="search" data-fsearch="#ap-rows > *" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+      <div class="meta" data-fvide="#ap-rows > *" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+      <div id="ap-rows" data-fpage="15"></div>
+      <div class="pec-card" id="ap-vide" style="text-align:center;color:var(--color-muted);font-size:13px;padding:18px">Aucun appel planifié — les rappels demandés dans l'app arrivent ici en direct.</div>
+
+      <div class="pec-card pec-listcard">
+        <div class="pec-listcard-head">
+          <span class="ref">Modèle</span>
+          <span class="who" style="color:var(--color-ink);font-weight:700">Questionnaire d'enquête satisfaction</span>
+          <span class="meta">s'ouvre en clôture d'un appel « enquête »</span>
+        </div>
+        <hr class="pec-sep">
+        <!-- Le questionnaire ne s'ouvre QUE pour un appel de type « enquête satisfaction » :
+             un rappel pré-départ se clôt d'un seul bouton. -->
+        <div style="display:grid;gap:12px;margin-top:12px">
+          <!-- (08/09 — audit hotline) LA VOIE NORMALE est le questionnaire envoyé automatiquement au client (par e-mail depuis le 24/09) :
+               cette saisie sert quand la réponse arrive PAR TÉLÉPHONE, et elle vaut la même chose (même table). -->
+          <p class="meta" id="sat-voie" style="margin:0"></p>
+          <label style="display:grid;gap:5px;font-size:13px;font-weight:700;color:var(--color-ink)">
+            Appel concerné (ou référence de vente, de bon)
+            <div style="display:flex;gap:8px;flex-wrap:wrap"><select class="pec-search" id="sat-appel" aria-label="Appel concerné" style="max-width:260px"><option value="">— choisir un appel du jour —</option></select><input class="pec-search" type="text" id="sat-ref" aria-label="Référence de vente ou de bon" placeholder="ou réf. de vente / de bon (VNT-…, TB-…)" style="max-width:220px"></div>
+          </label>
+          <label style="display:grid;gap:5px;font-size:13px;font-weight:700;color:var(--color-ink)">
+            Pourquoi avoir acheté un bon de marque au comptoir ?
+            <input class="pec-search" type="text" id="sat-raison" aria-label="Raison d’usage" placeholder="Ex. : offrir un bon · un commerce à côté de chez moi">
+          </label>
+
+          <div style="display:grid;gap:7px;font-size:13px;font-weight:700;color:var(--color-ink)">
+            Application intuitive ? (1 = pas du tout, 5 = très)
+            <div style="display:flex;gap:8px" data-fpick>
+              <button class="pec-filter tap" aria-pressed="false">1</button>
+              <button class="pec-filter tap" aria-pressed="false">2</button>
+              <button class="pec-filter tap" aria-pressed="false">3</button>
+              <!-- (03/09) « 4 » était pré-coché : une note ne se présume pas -->
+              <button class="pec-filter tap" aria-pressed="false">4</button>
+              <button class="pec-filter tap" aria-pressed="false">5</button>
+            </div>
+          </div>
+
+          <label style="display:grid;gap:5px;font-size:13px;font-weight:700;color:var(--color-ink)">
+            Suggestions / fonctionnalités souhaitées
+            <input class="pec-search" type="text" id="sat-suggestions" aria-label="Suggestions" placeholder="Ex. : retrouver plus vite une marque">
+          </label>
+
+          <label style="display:grid;gap:5px;font-size:13px;font-weight:700;color:var(--color-ink)">
+            Notes internes
+            <input class="pec-search" type="text" id="sat-notes" aria-label="Notes internes" placeholder="Visible équipe uniquement — jamais le client">
+          </label>
+          <!-- (07/09 — audit manager) le questionnaire ÉCRIT : D.satisfactionAjouter (miroir `satisfaction_responses`), journalisé -->
+          <button class="pec-btn tap" style="width:fit-content" type="button" id="sat-enregistrer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-check"/></svg> Enregistrer le questionnaire</button>
+          <p class="meta" id="sat-msg" style="margin:0"></p>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div>Quand la journée est vide, l’écran affiche « Aucun appel planifié aujourd’hui » — ou « Aucun appel pour le <code id="ap-ex-passe">—</code> » sur une date passée. Le sélecteur ne va jamais au-delà d’aujourd’hui : une planification future n’aurait aucun appel à montrer.</div>
+    </div>
+
+    <div class="pec-notice" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Les types d’appel viennent du référentiel</b> (APPEL_TYPES), jamais écrits ici : <span id="ap-types">—</span>.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div>Les appels passent par un service de <b>téléphonie API</b> (click-to-call, prestataire à arbitrer) : chaque appel — vers un utilisateur de Mes bons, un commerce du réseau ou une marque — est journalisé (horodatage, motif, résultat, durée).</div>
+    </div>
+  </main>
+
+</div>
+
+<script src="../assets/payencash-bus.js"></script>
+<script>
+  // les appels RÉELS : demandés depuis l'app (bus) — rappel, sécurisation
+  (function () {
+    if (!window.PEC_BUS) return;
+    var D = window.PEC_DATA || null;
+    // JOUR, SEUIL, SATISFACTION DÉRIVÉS (03/09 — zéro-dur)
+    var per = (D && D.periodeCourante) ? D.periodeCourante() : null;
+    var jour = document.getElementById('ap-jour');
+    var aujourdhui = per ? per.dateISO : new Date().toISOString().slice(0, 10);
+    jour.value = aujourdhui; jour.max = aujourdhui;   // jamais au-delà d'aujourd'hui
+    var hier = (D && D.periodeCourante) ? D.periodeCourante(new Date(Date.now() - 86400000)).dateISO : '—';
+    document.getElementById('ap-ex-passe').textContent = hier;
+    // les types d'appel, lus du référentiel — la notice les liste tels quels
+    (function () { var z = document.getElementById('ap-types'), T = (D && D.APPEL_TYPES) || {}; if (!z) return; var l = Object.keys(T).map(function (k) { return T[k].lbl || k; }); z.textContent = l.length ? l.join(' · ') : 'aucun type au référentiel'; })();
+    function majSat() {
+      var sat = (D && D.satisfactionsGet) ? D.satisfactionsGet() : [];
+      var notes = sat.map(function (x) { return +x.note; }).filter(function (n) { return n > 0; });
+      document.getElementById('ap-reponses').textContent = String(sat.length);
+      document.getElementById('ap-note').textContent = notes.length ? (Math.round(notes.reduce(function (a, b) { return a + b; }, 0) / notes.length * 10) / 10).toLocaleString('fr-FR') + '/5' : '—';
+      var aR = sat.filter(function (x) { return x.aRelancer; }).length;
+      // (08/09) le SEUIL de relance vient du référentiel (ref.hotline.satisfactionSeuilReclamation) — « ≤ 3 » était écrit ici
+      var seuil = (((D && D.ref) || {}).hotline || {}).satisfactionSeuilReclamation || 0;
+      document.getElementById('ap-sat').textContent = sat.length ? (sat.length + ' réponse' + (sat.length > 1 ? 's' : '') + ' reçue' + (sat.length > 1 ? 's' : '') + (aR ? ' · ' + aR + ' note' + (aR > 1 ? 's' : '') + (seuil ? ' ≤ ' + seuil : '') + ' → réclamation ouverte (SAV)' : '')) : 'Aucune réponse pour l\'instant — les notes arrivent des questionnaires envoyés aux clients.';
+    }
+    majSat();
+    // (08/09) le CANAL d'envoi vient du référentiel (ref.hotline.satisfactionCanal) — jamais écrit dans la page
+    (function () {
+      var v = document.getElementById('sat-voie'); if (!v) return;
+      var canal = (((D && D.ref) || {}).hotline || {}).satisfactionCanal;
+      v.textContent = canal
+        ? 'Voie normale : le questionnaire part tout seul au client par ' + canal + ' à la fin de l\'appel ou de la demande, et il note depuis son app. Cette saisie ne sert qu\'à consigner une réponse reçue par téléphone.'
+        : 'Cette saisie ne sert qu\'à consigner une réponse reçue par téléphone.';
+    })();
+    // ENREGISTRER LE QUESTIONNAIRE (07/09) : note 1–5 obligatoire, rattaché à un appel du jour ou à une réf — persisté, journalisé
+    document.getElementById('sat-enregistrer').addEventListener('click', function () {
+      var noteBtn = document.querySelector('[data-fpick] [aria-pressed="true"]'), msg = document.getElementById('sat-msg');
+      var r = D.satisfactionAjouter({ appelId: document.getElementById('sat-appel').value || null, ref: document.getElementById('sat-ref').value.trim() || null,
+        note: noteBtn ? noteBtn.textContent.trim() : null, raison: document.getElementById('sat-raison').value, suggestions: document.getElementById('sat-suggestions').value, notes: document.getElementById('sat-notes').value }, acteurSat());
+      if (!r.ok) { msg.style.color = 'var(--color-danger)'; msg.textContent = r.motif; return; }
+      msg.style.color = 'var(--color-primary-dark)'; msg.textContent = '✓ Questionnaire enregistré (note ' + r.reponse.note + '/5' + (r.reponse.aRelancer ? ' — à relancer par le SAV' : '') + ') par ' + acteurSat() + '.';
+      ['sat-raison', 'sat-suggestions', 'sat-notes', 'sat-ref'].forEach(function (id) { document.getElementById(id).value = ''; });
+      if (noteBtn) noteBtn.setAttribute('aria-pressed', 'false');
+      majSat();
+    });
+    function acteurSat() { var s = D.session && D.session(); return (s && s.identifiant) || 'manager'; }
+    document.getElementById('ap-aujourdhui').addEventListener('click', function () { jour.value = aujourdhui; maj(); });
+    jour.addEventListener('change', maj);
+    function isoDe(t) { return (D && D.periodeCourante) ? D.periodeCourante(new Date(t)).dateISO : new Date(t).toISOString().slice(0, 10); }
+    function maj() {
+      var sel = jour.value || aujourdhui;
+      // les appels DU JOUR sélectionné (un appel sans date reste visible)
+      var apls = PEC_BUS.appels().filter(function (a) { return !a.at || isoDe(a.at) === sel; });
+      document.getElementById('ap-n').textContent = String(apls.filter(function (a) { return a.statut !== 'fait'; }).length);
+      document.getElementById('ap-vide').textContent = sel === aujourdhui ? 'Aucun appel planifié aujourd’hui — les rappels demandés dans l’app arrivent ici en direct.' : 'Aucun appel pour le ' + sel + '.';
+      var selA = document.getElementById('sat-appel'), cur = selA.value;
+      selA.innerHTML = '<option value="">— choisir un appel du jour —</option>' + apls.map(function (a) { return '<option value="' + a.id + '">' + (D ? D.esc(D.appelTypeLbl(a)) : a.type) + ' · ' + (D ? D.esc(a.client || a.nom || a.tel || a.ref || a.id) : (a.client || a.id)) + (a.ref ? ' · ' + (D ? D.esc(a.ref) : a.ref) : '') + '</option>'; }).join('');
+      if (cur) selA.value = cur;
+      document.getElementById('ap-rows').innerHTML = apls.map(function (a) {
+        var fait = a.statut === 'fait';
+        // (08/09) les trois issues du bus s'affichent : « sans réponse » et « à rappeler » restent en file
+        var etat = fait ? 'Terminé' + (a.faitPar ? ' · ' + a.faitPar : '')
+                 : a.statut === 'sans_reponse' ? 'Sans réponse · ' + (a.tentatives || 1) + ' tentative' + ((a.tentatives || 1) > 1 ? 's' : '')
+                 : a.statut === 'rappeler' ? 'À rappeler' : null;
+        return '<div class="pec-card pec-listcard"><div class="pec-listcard-head">' +
+          '<span class="ref">' + (a.ref || a.id) + '</span>' +
+          '<span class="who" style="color:var(--color-ink);font-weight:700">' + (D ? D.esc(a.client || '—') : (a.client || '—')) + '</span>' +
+          '<span class="meta">' + (D ? D.esc(D.appelTypeLbl(a)) : a.type) + (a.tel ? ' · ' + a.tel : '') + '</span>' +
+          '<span style="margin-left:auto;display:flex;gap:10px">' +
+          (etat ? '<span class="pec-pill' + (fait ? ' pec-pill--done' : '') + '">' + etat + '</span> ' : '') +
+          (fait ? '' : '<button class="pec-btn pec-btn--sm tap" data-fait="' + a.id + '" data-issue="fait"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-check"/></svg> Terminé</button>'
+                     + ' <button class="pec-btn pec-btn--sm pec-btn--ghost tap" data-fait="' + a.id + '" data-issue="sans_reponse">Sans réponse</button>'
+                     + ' <button class="pec-btn pec-btn--sm pec-btn--ghost tap" data-fait="' + a.id + '" data-issue="rappeler">À rappeler</button>') +
+          '</span></div></div>';
+      }).join('');
+      document.getElementById('ap-vide').style.display = apls.length ? 'none' : '';
+    }
+    // « Terminé » = PEC_BUS.traiterAppel (plus de location.reload : la liste se re-dérive)
+    document.getElementById('ap-rows').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-fait]'); if (!b) return;
+      // (08/09 — audit hotline) l'appel est SIGNÉ par la session (par) et son ISSUE est celle du bouton :
+      // fait · sans réponse (retenté) · à rappeler. Le compte rendu, facultatif, est lu par le client dans son assistance.
+      var id2 = b.getAttribute('data-fait'), issue = b.getAttribute('data-issue') || 'fait';
+      var cr = issue === 'fait' ? (window.prompt('Compte rendu de l\'appel (facultatif — le client le lit dans son assistance) :', '') || '') : '';
+      PEC_BUS.traiterAppel(id2, { par: acteurSat(), statut: issue, compteRendu: cr }); maj();
+      var selA2 = document.getElementById('sat-appel'); if (selA2 && issue === 'fait') selA2.value = id2;   // (07/09) l'appel clos est présélectionné dans le questionnaire
+    });
+    maj();
+    window.addEventListener('pec-bus', maj);
+    window.addEventListener('storage', maj);
+  })();
+</script>
+</body>
+</html>

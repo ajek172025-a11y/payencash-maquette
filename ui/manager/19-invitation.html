@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Inviter un manager / hotline</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) la coque du back-office -->
+<!--
+  INVITATION D'UN MANAGER / CONSEILLER HOTLINE — route `/invitation`.
+  (03/09 — protocole unique de compte) Ce formulaire CRÉE réellement l'invitation :
+    PEC_DATA.compteCreer('manager' | 'hotline', {nom, email, role, identifiant: email, invitePar})
+    → compte au statut `invite` (table `comptes`), validité ref.invitations.validiteH,
+      journal bus `compte_cree` ; « invité par » = la session manager (PEC_DATA.session()).
+  Le lien d'activation (01-connexion.html?invit=<id>) est AFFICHÉ ici : en démo aucun
+  e-mail ne part. En production il n'existe que dans l'e-mail envoyé (jeton haché).
+  L'invité CHOISIT son mot de passe à l'activation : personne d'autre ne le connaît.
+  E-mail et rôle sont figés par l'invitation — impossible de s'attribuer un rôle
+  supérieur avec un lien d'opérateur.
+-->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `manager_users`, `accounts`, `verification_codes` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Inviter un manager ou un conseiller hotline</h1>
+        <p class="sub">Invitation émise par <b id="inv-par">—</b>. L’invité choisit son mot de passe à l’activation ; l’e-mail et le rôle sont figés par l’invitation.</p>
+      </div>
+    </div>
+
+    <div style="max-width:640px">
+  <p id="inv-nosession" hidden class="pec-notice" style="margin-bottom:16px"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span>Aucune session manager : <a href="01-connexion.html">connectez-vous</a> pour que l’invitation porte votre nom (« invité par »).</span></p>
+
+  <form id="inv-form">
+    <div class="pec-panel" style="margin-bottom:16px"><div class="pec-panel-body">
+      <div style="margin-bottom:14px">
+        <label class="pec-input-label" for="nom">Nom affiché</label>
+        <input class="pec-input" id="nom" type="text" autocomplete="name" placeholder="Prénom N.">
+        <p style="margin:6px 0 0;font-size:11.5px;color:var(--color-muted-2)">Ce qui apparaîtra dans le journal d’audit à côté de chaque action.</p>
+      </div>
+      <div style="margin-bottom:14px">
+        <label class="pec-input-label" for="inv-mail">Adresse e-mail (identifiant de connexion)</label>
+        <input class="pec-input" id="inv-mail" type="email" autocomplete="email" placeholder="prenom@payencash.fr">
+        <p style="margin:6px 0 0;font-size:11.5px;color:var(--color-muted-2)">Refusée si un compte existe déjà avec cet identifiant.</p>
+      </div>
+      <div>
+        <label class="pec-input-label" for="inv-role">Rôle</label>
+        <select class="pec-input" id="inv-role"><!-- options DÉRIVÉES de PEC_DATA.ROLES_MANAGER (07/09) : plus un libellé en dur --></select>
+      </div>
+    </div></div>
+
+    <p id="inv-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="inv-err-txt"></span></p>
+    <button class="pec-btn tap" type="submit" id="inv-go">Créer l’invitation</button>
+  </form>
+
+  <!-- résultat : le compte invité existe, lien d'activation + échéance -->
+  <div class="pec-card" id="inv-result" hidden style="margin-top:16px">
+    <p class="pec-section-label">Invitation créée</p>
+    <div class="pec-setting" style="padding-top:0">
+      <div><div class="t">Compte invité</div><div class="s" id="inv-result-sub">—</div></div>
+      <div class="pec-setting-control"><span class="pec-pill pec-pill--wait">Invité — mot de passe à créer</span></div>
+    </div>
+    <div class="pec-setting">
+      <div><div class="t">Lien d’activation</div><div class="s">Valable jusqu’au <b id="inv-expire">—</b> · un seul usage.</div></div>
+      <div class="pec-setting-control"><a class="pec-btn pec-btn--sm tap" id="inv-lien" href="#" target="_blank">Ouvrir le lien ↗</a></div>
+    </div>
+    <p class="meta" style="margin:8px 0 0;font-family:var(--font-mono);font-size:11.5px;word-break:break-all" id="inv-lien-txt">—</p>
+  </div>
+
+  <div class="pec-notice pec-notice--info" style="margin-top:22px">
+    <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-lock"/></svg>
+    <div>L’invité choisit son mot de passe à l’activation — il n’est communiqué à personne, pas même à qui l’a invité. C’est ce qui rend ses actions attribuables à lui seul dans le journal.</div>
+  </div>
+
+  <div class="pec-notice" style="margin-top:16px">
+    <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-clock"/></svg>
+    <div>Le lien est valable <b id="inv-validite">—</b> et ne sert qu’une fois. Passé ce délai, il affiche « invitation expirée » — il faut en émettre un nouveau, l’ancien ne peut pas être réactivé. En démo, aucun e-mail ne part : le lien s’affiche ici.</div>
+  </div>
+
+  <div class="pec-notice pec-notice--info" style="margin-top:16px">
+    <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+    <div>Ce lien ne sert qu’à créer un <b>compte interne</b> (manager ou hotline). Un <b>commerce du réseau</b> suit un tout autre circuit — il s’inscrit depuis l’app partenaire, dépose son dossier, signe le contrat de distribution, puis le point est activé depuis <a href="29-partenaires.html">Commerces du réseau</a>. Une <b>marque</b> s’inscrit dans PayEnCash Solution et se valide depuis <a href="46-marques.html">Marques</a>.</div>
+  </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.compteCreer) return;
+    // le rôle se choisit dans LA liste (ROLES_MANAGER) : valeur = code de l'enum manager_users
+    document.getElementById('inv-role').innerHTML = (D.ROLES_MANAGER || []).map(function (r) { return '<option value="' + r.code + '" data-espace="' + r.espace + '">' + r.label + ' — ' + r.droits + '</option>'; }).join('');
+    var inv = (D.ref && D.ref.invitations) || {};
+    if (inv.validiteH) document.getElementById('inv-validite').textContent = inv.validiteH + ' heures';
+    // (règle 03/09) « invité par » = la session UNIQUEMENT si elle est manager — une session partenaire ou marque
+    // ouverte dans le même navigateur n'émet jamais une invitation interne
+    var sess = D.session ? D.session() : null;
+    if (sess && !/Manager/.test(String(sess.espace || ''))) sess = null;
+    var moi = sess && sess.identifiant ? sess.identifiant : null;
+    document.getElementById('inv-par').textContent = moi ? (moi + (sess.role ? ' (' + sess.role + ')' : '')) : '— (aucune session manager)';
+    document.getElementById('inv-nosession').hidden = !!moi;
+    document.getElementById('inv-go').disabled = !moi;
+    function dateFr(ts) { var d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + d.getFullYear() + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    document.getElementById('inv-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = document.getElementById('inv-err');
+      if (!moi) { err.hidden = false; document.getElementById('inv-err-txt').textContent = 'Connectez-vous d’abord (session manager requise).'; return; }
+      var sel = document.getElementById('inv-role'), opt = sel.options[sel.selectedIndex];
+      var esp = opt.getAttribute('data-espace') || 'manager', email = document.getElementById('inv-mail').value.trim().toLowerCase();
+      var r = D.compteCreer(esp, { nom: document.getElementById('nom').value.trim(), email: email, role: sel.value, identifiant: email, invitePar: moi });
+      if (!r.ok) { err.hidden = false; document.getElementById('inv-err-txt').textContent = r.motif; return; }
+      err.hidden = true;
+      var lien = '01-connexion.html?invit=' + r.compte.id;
+      document.getElementById('inv-result').hidden = false;
+      document.getElementById('inv-result-sub').textContent = (r.compte.profil.nom || r.compte.identifiant) + ' · ' + r.compte.identifiant + ' · ' + ((D.roleManager(sel.value) || {}).label || sel.value) + ' (' + ((D.ESPACES_COMPTE[esp] || {}).label || esp) + ')';
+      document.getElementById('inv-expire').textContent = r.compte.inviteExpireAt ? dateFr(r.compte.inviteExpireAt) : '—';
+      document.getElementById('inv-lien').href = lien;
+      document.getElementById('inv-lien-txt').textContent = lien;
+      document.getElementById('inv-form').reset();
+    });
+  })();
+</script>
+</body>
+</html>

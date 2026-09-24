@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Comptes &amp; accès</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  COMPTES & ACCÈS — le poste de VALIDATION de tous les comptes (fondatrice 03/09 : « création de compte, connexion,
+  échanges entre apps : un vrai process finalisé »). Une seule table (PEC_DATA.comptesTous) pour les espaces du
+  protocole (ESPACES_COMPTE — les filtres en dérivent, rien n'est écrit ici) : utilisateur Mes bons, commerce du
+  réseau, manager, hotline. Cycle : créé dans l'app → vérifié (code SMS / e-mail) → À VALIDER ici (KYB · documents)
+  → actif (entre dans son référentiel métier) → suspendu / réactivé / refusé. Tout est journalisé sur le bus (compte_*),
+  rien n'est simulé : un compte validé ici se connecte dans SON app avec SES identifiants.
+  (23/09 — pivot grossiste) LES MARQUES n'entrent pas dans cette table : elles naissent dans PayEnCash Solution
+  (techMarchands) et se valident depuis « Marques » — l'écran les compte, avec leur état, et y renvoie.
+-->
+<style>
+  .cp-row{cursor:pointer}.cp-row.on td{background:var(--color-mint)}
+  .meta{font-size:11px;color:var(--color-muted)}
+  .kv{display:grid;grid-template-columns:130px 1fr;gap:4px 10px;font-size:12.5px;margin-top:6px}
+  .kv span:nth-child(odd){color:var(--color-muted)}
+  .chk{display:flex;flex-wrap:wrap;gap:8px 14px;margin:10px 0;font-size:12.5px}
+  .chk label{display:flex;align-items:center;gap:6px}
+  .jl{list-style:none;margin:0;padding:0}.jl li{padding:6px 0;border-bottom:1px solid var(--color-sep);font-size:12px}
+  .jl li:last-child{border-bottom:none}
+  .filt{display:flex;gap:8px;flex-wrap:wrap}
+  .filt button{border:1px solid var(--color-sep);background:var(--color-surface);border-radius:999px;padding:6px 11px;font:inherit;font-size:11.5px;font-weight:700;color:var(--color-ink);cursor:pointer}
+  .filt button.on{background:var(--color-ink);color:#fff;border-color:var(--color-ink)}
+  .pec-btn-sm{border:1px solid var(--color-sep);background:var(--color-surface);border-radius:999px;padding:6px 11px;font:inherit;font-size:11.5px;font-weight:700;color:var(--color-ink);cursor:pointer}
+  .pec-btn-sm[disabled]{opacity:.45;cursor:not-allowed}
+  .pec-btn-sm.prim{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `accounts`, `manager_users`, `login_events`, `verification_codes`, `partners`, `tech_merchants` — miroir server/db/schema.sql (partie 6) -->
+<div class="pec-admin">
+  <aside class="pec-aside" data-pec-nav></aside>
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Comptes &amp; accès — tous les espaces</h1>
+        <p class="sub">Chaque compte est créé dans son app (Mes bons, partenaire), vérifié par code, puis validé ici : KYB pour un commerce du réseau (son point s'active ensuite dans <a href="29-partenaires.html">Commerces du réseau</a>). Les marques se valident depuis <a href="46-marques.html">Marques</a>. Un compte validé se connecte immédiatement avec ses identifiants ; un compte suspendu est bloqué partout.</p>
+      </div>
+      <div class="pec-topbar-actions"><button class="pec-btn pec-btn--sm tap" id="cp-inviter">Inviter un manager / hotline</button></div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:22px" id="cp-kpis"></div>
+
+    <div class="pec-grid pec-grid--2" style="grid-template-columns:1.6fr 1fr;align-items:start">
+      <div class="pec-panel">
+        <div class="pec-panel-head"><div><h2>Comptes</h2><p class="s" id="cp-sub">—</p></div></div>
+        <div class="pec-panel-body">
+          <div class="filt" id="cp-filt" style="margin-bottom:10px">
+            <button data-f="a_valider">À valider</button><button data-f="a_verifier">À vérifier</button><button data-f="invite">Invités</button><button data-f="actif">Actifs</button><button data-f="suspendu">Suspendus</button><button data-f="refuse">Refusés</button><button data-f="" class="on">Tous</button>
+          </div>
+          <div class="filt" id="cp-esp" style="margin-bottom:12px"><!-- DÉRIVÉ de ESPACES_COMPTE : un espace ajouté ou retiré au data-layer suit tout seul --></div>
+          <input class="pec-search" type="search" data-fsearch="#cp-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+          <div class="meta" data-fvide="#cp-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+          <table data-fsortable class="pec-table">
+            <thead><tr><th>Compte</th><th>Espace</th><th>Vérifications</th><th>Statut</th><th>Créé</th><th>Actions</th></tr></thead>
+            <tbody id="cp-rows" data-fpage="15"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="pec-panel">
+        <div class="pec-panel-head"><div><h2 id="cp-d-nom">Fiche</h2><p class="s" id="cp-d-sub">Clique un compte pour valider, refuser ou suspendre.</p></div></div>
+        <div class="pec-panel-body" id="cp-d-body"><p class="meta">Aucun compte sélectionné.</p></div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-top:16px">
+      <div class="pec-panel-head"><div><h2>Marques — PayEnCash Solution</h2><p class="s" id="cp-mq-s">Les marques ont leur propre espace : elles se valident depuis « Marques », dossier et déclaration « réseau limité » à l'appui.</p></div><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="46-marques.html">Marques →</a></div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Marque</th><th>Site</th><th>Dirigeant</th><th>État</th><th>Inscrite le</th></tr></thead>
+          <tbody id="cp-mq-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-top:16px">
+      <div class="pec-panel-head"><div><h2>Journal des comptes</h2><p class="s">Créations, vérifications, validations, connexions — depuis le bus, en direct.</p></div></div>
+      <div class="pec-panel-body">
+<input class="pec-search" type="search" data-fsearch="#cp-journal > *" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+<div class="meta" data-fvide="#cp-journal > *" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+<ul class="jl" id="cp-journal" data-fpage="15"></ul></div>
+    </div>
+
+    <!-- ── JOURNAL DE CONNEXION (fondatrice 05/09 : « de vrais logs de connexion pour chaque
+         espace ») : chaque TENTATIVE, réussie ou refusée, avec son espace, son identifiant,
+         son motif de refus et l'appareil. Les échecs sont l'intérêt du journal. ── -->
+    <div class="pec-panel" style="margin-top:16px">
+      <div class="pec-panel-head">
+        <div><h2>Journal de connexion <span class="pec-pill" id="cx-n" style="background:var(--color-mint);color:var(--color-primary-dark)">0</span></h2>
+        <p class="s">Chaque tentative d'entrée dans un espace — <b>réussie ou refusée</b>, avec son motif. <span id="cx-retenue">—</span></p></div>
+        <div class="pec-topbar-actions"><button class="pec-btn-sm" id="cx-purger">Purger le journal</button></div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="filt" id="cx-esp" style="margin-bottom:10px"><!-- DÉRIVÉ de ESPACES_COMPTE --></div>
+        <div class="filt" id="cx-res" style="margin-bottom:12px">
+          <button data-r="" class="on">Tout</button><button data-r="ko">Refusées seulement</button>
+        </div>
+        <input class="pec-search" type="search" data-fsearch="#cx-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#cx-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Quand</th><th>Espace</th><th>Identifiant</th><th>Résultat</th><th>Appareil</th></tr></thead>
+          <tbody id="cx-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Invitation manager / hotline (formulaire réel : crée un compte « invité » avec lien d'activation) -->
+    <div class="pec-panel" id="cp-inv-panel" style="margin-top:16px;display:none">
+      <div class="pec-panel-head"><div><h2>Inviter un manager ou un conseiller hotline</h2><p class="s">Le compte est créé « invité » ; la personne crée son mot de passe depuis le lien d'activation, valable <span id="cp-inv-validite">—</span>.</p></div></div>
+      <div class="pec-panel-body">
+        <div class="pec-grid pec-grid--4" style="gap:10px">
+          <input id="inv-nom" class="pec-input" placeholder="Prénom N." style="border:1px solid var(--color-sep);border-radius:10px;padding:8px 10px;font:inherit">
+          <input id="inv-email" class="pec-input" placeholder="prenom@payencash.fr" style="border:1px solid var(--color-sep);border-radius:10px;padding:8px 10px;font:inherit">
+          <select id="inv-role" style="border:1px solid var(--color-sep);border-radius:10px;padding:8px 10px;font:inherit"><!-- options DÉRIVÉES de PEC_DATA.ROLES_MANAGER : la même liste que 17/19, valeur = code --></select>
+          <button class="pec-btn-sm prim" id="inv-envoyer">Créer l'invitation</button>
+        </div>
+        <p class="meta" id="inv-msg" style="margin-top:8px"></p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.comptesTous) return;
+    var esc = function (v) { return D.esc(v); };
+    var rows = document.getElementById('cp-rows'), sel = null, fStatut = '', fEsp = '';
+    // l'acteur = la session MANAGER uniquement (une session partenaire ou marque ouverte dans le même navigateur ne signe pas les validations)
+    var moi = (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)';
+    var ESP = D.ESPACES_COMPTE || {};
+    // LES FILTRES PAR ESPACE SE DÉRIVENT DU PROTOCOLE : un espace qui disparaît du data-layer disparaît d'ici
+    var boutonsEspaces = function (id, attr) {
+      var z = document.getElementById(id); if (!z) return;
+      z.innerHTML = '<button ' + attr + '="" class="on">Tous les espaces</button>' + Object.keys(ESP).map(function (k) { return '<button ' + attr + '="' + esc(k) + '">' + esc(ESP[k].label || k) + '</button>'; }).join('');
+    };
+    boutonsEspaces('cp-esp', 'data-e'); boutonsEspaces('cx-esp', 'data-e');
+    function pill(t, cls, st) { return '<span class="pec-pill' + (cls ? ' ' + cls : '') + '"' + (st ? ' style="' + st + '"' : '') + '>' + esc(t) + '</span>'; }
+    function stPill(c) {
+      var m = { actif: pill('Actif', 'pec-pill--done'), a_valider: pill('À valider', '', 'background:var(--color-amber-well);color:var(--color-amber-text)'), a_verifier: pill('Code à confirmer'), invite: pill('Invité'), suspendu: pill('Suspendu', '', 'background:var(--color-amber-well);color:var(--color-amber-text)'), refuse: pill('Refusé', 'pec-pill--wait') };
+      return m[c.statut] || pill(D.STATUTS_COMPTE[c.statut] || c.statut);
+    }
+    function dateFr(ts) { if (!ts) return 'démo'; var d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    function verifsTxt(c) {
+      var E = ESP[c.espace] || {}, out = [];
+      (E.verifs || []).forEach(function (k) { out.push((c.verifs[k] ? '✓ ' : '· ') + (k === 'sms' ? 'SMS' : 'e-mail')); });
+      (E.validation || []).forEach(function (k) { out.push((c.verifs[k] ? '✓ ' : '· ') + k.toUpperCase()); });
+      return out.length ? out.join(' ') : '—';
+    }
+    function kpis(L) {
+      var aVal = L.filter(function (c) { return c.statut === 'a_valider'; }).length, aVer = L.filter(function (c) { return c.statut === 'a_verifier'; }).length;
+      var act = L.filter(function (c) { return c.statut === 'actif'; }).length, sus = L.filter(function (c) { return c.statut === 'suspendu'; }).length;
+      var crees = L.filter(function (c) { return !c.seed; }).length;
+      var mqs = D.techMarchandsGet ? D.techMarchandsGet() : [];
+      document.getElementById('cp-kpis').innerHTML =
+        '<div class="pec-kpi"><div class="lbl">À valider</div><div class="val">' + aVal + '</div><div class="hint">KYB · documents — et ' + PEC_DATA.nb(mqs.filter(function (m) { return m.statut === 'pending'; }).length, 'marque') + ' en attente</div></div>' +
+        '<div class="pec-kpi"><div class="lbl">Codes à confirmer</div><div class="val">' + aVer + '</div><div class="hint">SMS / e-mail côté utilisateur</div></div>' +
+        '<div class="pec-kpi"><div class="lbl">Actifs</div><div class="val">' + act + '</div><div class="hint">' + crees + ' créés via les apps · ' + (L.length - crees) + ' de démo</div></div>' +
+        '<div class="pec-kpi"><div class="lbl">Suspendus</div><div class="val">' + sus + '</div><div class="hint">bloqués à la connexion</div></div>';
+    }
+    function render() {
+      var L = D.comptesPourManager().filter(function (c) { return c.statut !== 'supprime'; });
+      kpis(L);
+      var vis = L.filter(function (c) { return (!fStatut || c.statut === fStatut) && (!fEsp || c.espace === fEsp); });
+      document.getElementById('cp-sub').textContent = vis.length + ' compte' + (vis.length > 1 ? 's' : '') + (fStatut || fEsp ? ' (filtre)' : '') + ' · session manager : ' + moi;
+      rows.innerHTML = vis.map(function (c) {
+        var mu = (c.espace === 'manager' || c.espace === 'hotline') ? D.managersGet().filter(function (x) { return x.id === c.id; })[0] : null;   // la ligne manager_users
+        var nom = mu ? mu.full_name : ((c.profil && (c.profil.nom || c.profil.enseigne)) || c.identifiant);
+        var act = '';
+        if (c.statut === 'a_valider') act = '<button class="pec-btn-sm prim" data-act="valider" data-id="' + esc(c.id) + '">Valider</button> <button class="pec-btn-sm" data-act="refuser" data-id="' + esc(c.id) + '">Refuser</button>';
+        else if (c.statut === 'actif') act = '<button class="pec-btn-sm" data-act="suspendre" data-id="' + esc(c.id) + '">Suspendre</button>';
+        else if (c.statut === 'suspendu') act = '<button class="pec-btn-sm" data-act="reactiver" data-id="' + esc(c.id) + '">Réactiver</button>';
+        else if (c.statut === 'a_verifier') act = '<span class="meta">en attente du code</span>';
+        else if (c.statut === 'refuse') act = '<button class="pec-btn-sm" data-act="rouvrir" data-id="' + esc(c.id) + '">Rouvrir</button>';   // un refus n'est pas définitif : rouvrir ou recandidature
+        else if (c.statut === 'clos') act = '<span class="meta">contrat terminé</span>';
+        else if (c.statut === 'invite') act = '<span class="meta">lien d\'activation envoyé</span>';
+        return '<tr class="cp-row' + (sel === c.id ? ' on' : '') + '" data-id="' + esc(c.id) + '"><td><b>' + esc(nom) + '</b><br><span class="meta">' + esc(c.identifiant) + (c.seed ? ' · démo' : '') + '</span></td><td>' + esc(c.espaceLabel) + '</td><td><span class="meta">' + esc(verifsTxt(c)) + '</span></td><td>' + stPill(c) + '</td><td class="meta">' + esc(dateFr(c.creeAt)) + '</td><td>' + act + '</td></tr>';
+      }).join('') || '<tr><td colspan="6" class="meta" style="text-align:center;padding:16px">Aucun compte pour ce filtre.</td></tr>';
+      detail(); journal(); marques();
+    }
+    function detail() {
+      var c = sel ? D.compte(sel) : null, body = document.getElementById('cp-d-body');
+      if (!c) { document.getElementById('cp-d-nom').textContent = 'Fiche'; document.getElementById('cp-d-sub').textContent = 'Clique un compte pour valider, refuser ou suspendre.'; body.innerHTML = '<p class="meta">Aucun compte sélectionné.</p>'; return; }
+      var E = ESP[c.espace] || {}, p = c.profil || {};
+      var mu = (c.espace === 'manager' || c.espace === 'hotline') ? D.managersGet().filter(function (x) { return x.id === c.id; })[0] : null;
+      document.getElementById('cp-d-nom').textContent = mu ? mu.full_name : (p.nom || p.enseigne || c.identifiant);
+      document.getElementById('cp-d-sub').textContent = (E.label || c.espace) + ' · ' + (D.STATUTS_COMPTE[c.statut] || c.statut) + (c.refId ? ' · lié à ' + c.refId : '');
+      var kv = ['Identifiant', esc(c.identifiant), 'E-mail', esc(p.email || '—'), 'Téléphone', esc(p.tel || '—'), 'Ville', esc(p.ville || '—')];
+      // le profil du commerce du réseau : ce qui identifie le distributeur au contrat, et le point qu'il rejoint
+      if (c.espace === 'partenaire') kv.push('Enseigne', esc(p.enseigne || '—'), 'Mode', esc((D.PARTENAIRE_MODES[p.mode] || D.PARTENAIRE_MODES.sedentaire || {}).lbl || '—'), 'SIRET', esc(p.siret || '—'), 'Responsable', esc(p.responsable || '—'), 'Point rattaché', c.refId ? '<a href="29-partenaires.html">' + esc(c.refId) + '</a>' + (D.partenaire && D.partenaire(c.refId) ? ' — ' + esc(D.partenaireStatutLbl(D.partenaire(c.refId).statut)) : '') : 'aucun — rattaché ou créé à la validation');
+      if (c.espace === 'client') kv.push('Fiche', '<a href="18-fiche-client.html?id=' + esc(c.id) + '">Utilisateurs Mes bons</a>');
+      if (c.espace === 'manager' || c.espace === 'hotline') kv.push('Rôle', mu ? esc(mu.role_label) : '—', 'Invité par', esc(c.invitePar || '—'), 'Activation', c.inviteExpireAt ? ('avant le ' + esc(dateFr(c.inviteExpireAt))) : '—');
+      var html = '<div class="kv">' + kv.map(function (x) { return '<span>' + x + '</span>'; }).join('') + '</div>';
+      var cases = (E.validation || []);
+      if (c.statut === 'a_valider') {
+        /* le dossier n'est pas une case : il est DÉRIVÉ du coffre et dit en clair ; seule l'habilitation reste un geste */
+        var dosA = D.dossierCandidat ? D.dossierCandidat(c) : null;
+        if (dosA && dosA.sansDossier) dosA = null;
+        var oblA = (dosA && window.PEC_DOCS) ? (PEC_DOCS.piecesDe(dosA.portee) || []).filter(function (p) { return p.obligatoire && !p.genere; }).map(function (p) { return p.label; }).join(', ') : '';
+        html += (dosA ? '<p class="meta" style="margin:8px 0">Dossier : ' + (dosA.ok ? '<b>complet</b> — ' + dosA.total + ' pièce' + (dosA.total > 1 ? 's' : '') + ' contrôlée' + (dosA.total > 1 ? 's' : '') + ' au coffre' : '<b style="color:var(--color-amber-text)">incomplet</b>' + (dosA.manquantes.length ? ' — manque ' + esc(dosA.manquantes.join(', ')) : '') + (dosA.enAttente.length ? ' · à contrôler : ' + esc(dosA.enAttente.join(', ')) + ' (<a href="42-verifications.html">Vérifications</a>)' : '') + (dosA.refusees.length ? (dosA.refusees.length > 1 ? ' · refusées : ' : ' · refusée : ') + esc(dosA.refusees.join(', ')) : '')) + '</p>' : '') +
+          '<div class="chk">' + cases.filter(function (k) { return !(dosA && (k === 'documents' || k === 'kyb')); }).map(function (k) { return '<label><input type="checkbox" data-v="' + esc(k) + '" ' + (c.verifs[k] ? 'checked' : '') + '> ' + esc({ kyb: 'KYB (Kbis, gérant, RIB) contrôlé', kyc: 'Identité contrôlée', documents: 'Dossier (' + (oblA || 'pièces obligatoires') + ') complet', habilitation: 'Habilitation délivrée' }[k] || k) + '</label>'; }).join('') + '</div>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="pec-btn-sm prim" data-act="valider" data-id="' + esc(c.id) + '">Valider le compte</button><input id="cp-motif" placeholder="motif de refus" style="border:1px solid var(--color-sep);border-radius:999px;padding:6px 10px;font:inherit;font-size:11.5px"><button class="pec-btn-sm" data-act="refuser" data-id="' + esc(c.id) + '">Refuser</button></div>' +
+          '<p class="meta" style="margin-top:8px">Valider crée l\'entrée métier : ' + esc({ client: 'l\'utilisateur Mes bons', partenaire: 'le point — rattaché par SIRET ou créé « contrat à signer » ; son activation se fait dans Commerces du réseau (29)' }[c.espace] || '—') + '.</p>';
+      }
+      if (c.statut === 'refuse') html += '<p class="meta" style="margin-top:10px">Refusé' + (c.motifRefus ? ' — ' + esc(c.motifRefus) : '') + '. Le candidat peut recandidater depuis l\'app (même identifiant) ; « Rouvrir » remet la candidature à valider.</p>';
+      if (c.statut === 'clos') html += '<p class="meta" style="margin-top:10px">Contrat terminé' + (c.motifClos ? ' — ' + esc(c.motifClos) : '') + (c.closAt ? ' (' + esc(dateFr(c.closAt)) + ')' : '') + '. Connexion refusée.</p>';
+      if (c.statut === 'actif' && D.dossierCandidat && !D.dossierCandidat(c).sansDossier && !D.dossierCandidat(c).coffre) html += '<p class="meta" style="margin-top:10px">Dossier validé sur papier (compte d\'origine) — aucune pièce au coffre.</p>';
+      if (c.statut === 'a_verifier') html += '<p class="meta" style="margin-top:10px">Codes de démo attendus côté utilisateur : ' + esc(Object.keys(D.compteCodes(c)).map(function (k) { return k.toUpperCase() + ' ' + D.compteCodes(c)[k]; }).join(' · ')) + ' (en production : envoyés par SMS / e-mail).</p>';
+      /* LE DOSSIER SE CONTRÔLE ICI AUSSI : le manager qui a la fiche sous les yeux ouvre les pièces, les valide ou les refuse
+         sans changer d'écran — c'est le même composant que Vérifications, la même vérité. */
+      var dosD = D.dossierCandidat ? D.dossierCandidat(c) : null;
+      if (dosD && !dosD.sansDossier && window.PEC_DOCS && PEC_DOCS.rendreDossier) {
+        html += '<h3 style="font-size:12px;margin:14px 0 4px">Dossier de vérification</h3><div id="cp-d-dossier"></div>';
+      }
+      html += '<h3 style="font-size:12px;margin:14px 0 4px">Historique</h3><ul class="jl">' + ((c.journal || []).slice().reverse().map(function (j) { return '<li>' + esc(dateFr(j.at)) + ' · ' + esc(D.ref.auditLibelles[j.evt] || j.evt) + '</li>'; }).join('') || '<li class="meta">Compte de démo — aucun événement.</li>') + '</ul>';
+      body.innerHTML = html;
+      var zd = document.getElementById('cp-d-dossier');
+      if (zd) PEC_DOCS.rendreDossier(zd, dosD.portee, c.refId || c.id, { manager: true, par: moi, onChange: render });
+    }
+    function journal() {
+      var J = (window.PEC_BUS ? PEC_BUS.journal() : []).filter(function (j) { return /^compte_|^connexion$/.test(j.evt); }).slice(0, 25);
+      document.getElementById('cp-journal').innerHTML = J.map(function (j) { return '<li><b>' + esc(D.ref.auditLibelles[j.evt] || j.evt) + '</b> · ' + esc(j.nom || j.identifiant || j.ref) + ' <span class="meta">· ' + esc((ESP[j.espace] || {}).label || j.espace || '') + (j.par ? ' · par ' + esc(j.par) : '') + (j.motif ? ' · ' + esc(j.motif) : '') + ' · ' + esc(dateFr(j.at)) + '</span></li>'; }).join('') || '<li class="meta">Aucun événement de compte pour l\'instant.</li>';
+    }
+    // LES MARQUES — comptées ici, validées depuis 46 : la même donnée (techMarchands), un seul lieu de geste
+    function marques() {
+      var z = document.getElementById('cp-mq-rows'); if (!z || !D.techMarchands) return;
+      var l = D.techMarchands({});
+      document.getElementById('cp-mq-s').textContent = l.length ? l.length + ' marque' + (l.length > 1 ? 's' : '') + ' inscrite' + (l.length > 1 ? 's' : '') + ' — ' + PEC_DATA.nb(l.filter(function (m) { return m.statut === 'validated'; }).length, 'validée') + ', ' + l.filter(function (m) { return m.statut === 'pending'; }).length + ' en attente, ' + PEC_DATA.nb(l.filter(function (m) { return m.statut === 'suspended'; }).length, 'suspendue') + '. Elles se valident depuis « Marques », dossier et déclaration « réseau limité » à l\'appui.' : 'Les marques ont leur propre espace : elles se valident depuis « Marques », dossier et déclaration « réseau limité » à l\'appui. Aucune inscrite pour l\'instant.';
+      z.innerHTML = l.map(function (m) {
+        var dir = D.techMarchandDirigeant ? D.techMarchandDirigeant(m) : null;
+        return '<tr><td class="who">' + esc(m.raisonSociale) + '<div class="meta">' + esc(m.id) + ' · SIRET ' + esc(m.siret || '—') + '</div></td><td class="meta">' + esc(m.siteUrl || '—') + '</td><td>' + (dir ? esc(dir.nomComplet) + '<div class="meta">' + esc(dir.qualite) + '</div>' : '<span class="meta">non déclaré</span>') + '</td><td>' + pill(D.techStatutLbl(m.statut), m.statut === 'validated' ? 'pec-pill--done' : m.statut === 'suspended' ? 'pec-pill--off' : 'pec-pill--wait') + '</td><td class="meta">' + esc(dateFr(m.creeLe)) + '</td></tr>';
+      }).join('') || '<tr><td colspan="5" class="meta" style="text-align:center;padding:16px">Aucune marque — une marque naît de son inscription dans PayEnCash Solution.</td></tr>';
+    }
+    document.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]');
+      if (b) {
+        var id = b.getAttribute('data-id'), act = b.getAttribute('data-act');
+        var msgR = document.getElementById('cp-d-sub');
+        if (act === 'valider') { var v = {}; document.querySelectorAll('#cp-d-body [data-v]').forEach(function (i) { v[i.getAttribute('data-v')] = i.checked; }); var rv = D.compteValider(id, moi, v); if (rv && !rv.ok) { sel = id; render(); if (msgR) msgR.textContent = rv.motif; return; } }
+        else if (act === 'refuser') { var m = document.getElementById('cp-motif'); var rr = D.compteRefuser(id, m ? m.value.trim() : '', moi); if (rr && rr.ok === false) { sel = id; render(); if (msgR) msgR.textContent = rr.motif; var mm = document.getElementById('cp-motif'); if (mm) mm.focus(); return; } }   // refus motivé, sinon rien
+        else if (act === 'rouvrir') D.compteRouvrir(id, moi);
+        else if (act === 'suspendre') D.compteSuspendre(id, moi);
+        else if (act === 'reactiver') D.compteReactiver(id, moi);
+        sel = id; render(); return;
+      }
+      var tr = e.target.closest('tr[data-id]'); if (tr) { sel = tr.getAttribute('data-id'); render(); return; }
+      var f = e.target.closest('#cp-filt button'); if (f) { fStatut = f.getAttribute('data-f'); document.querySelectorAll('#cp-filt button').forEach(function (x) { x.classList.toggle('on', x === f); }); render(); return; }
+      var g = e.target.closest('#cp-esp button'); if (g) { fEsp = g.getAttribute('data-e'); document.querySelectorAll('#cp-esp button').forEach(function (x) { x.classList.toggle('on', x === g); }); render(); return; }
+    });
+    document.getElementById('cp-inviter').addEventListener('click', function () { var pnl = document.getElementById('cp-inv-panel'); pnl.style.display = pnl.style.display === 'none' ? 'block' : 'none'; });
+    document.getElementById('cp-inv-validite').textContent = (D.ref.invitations || {}).validiteH ? (D.ref.invitations || {}).validiteH + ' h' : '— (D.ref.invitations.validiteH absent)';
+    document.getElementById('inv-envoyer').addEventListener('click', function () {
+      var selR = document.getElementById('inv-role'), role = selR.value, esp = (selR.options[selR.selectedIndex] || {}).getAttribute('data-espace') || 'manager';
+      var r = D.compteCreer(esp, { nom: document.getElementById('inv-nom').value.trim(), email: document.getElementById('inv-email').value.trim(), role: role, identifiant: document.getElementById('inv-email').value.trim().toLowerCase(), invitePar: moi });
+      document.getElementById('inv-msg').textContent = r.ok ? ('Invitation créée — lien d\'activation : ../manager/01-connexion.html?invit=' + r.compte.id) : r.motif;
+      if (r.ok) { sel = r.compte.id; render(); }
+    });
+    document.getElementById('inv-role').innerHTML = (D.ROLES_MANAGER || []).map(function (r) { return '<option value="' + esc(r.code) + '" data-espace="' + esc(r.espace) + '">' + esc(r.label + ' — ' + r.droits) + '</option>'; }).join('');
+    var q = new URLSearchParams(location.search); if (q.get('f')) fStatut = q.get('f'); if (q.get('id')) sel = q.get('id');
+    window.addEventListener('storage', render); window.addEventListener('pec-bus', render);
+    render();
+  })();
+</script>
+<script>
+  // JOURNAL DE CONNEXION — 100 % dérivé de PEC_DATA.connexionsGet() : aucune ligne écrite ici.
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.connexionsGet) return;
+    var esc = function (v) { return D.esc(v); };
+    var espace = '', koSeuls = false;
+    function quand(ts) {
+      var d = new Date(ts), j = Math.floor((Date.now() - ts) / 86400000);
+      var h = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      return j === 0 ? ("aujourd'hui " + h) : j === 1 ? ('hier ' + h) : (d.toLocaleDateString('fr-FR') + ' ' + h);
+    }
+    function peindre() {
+      var l = D.connexionsGet({ espace: espace || undefined, echecsSeuls: koSeuls || undefined });
+      var n = document.getElementById('cx-n'); if (n) n.textContent = String(l.length);
+      var r = document.getElementById('cx-retenue');
+      if (r) r.textContent = 'Les ' + ((D.ref.securite || {}).journalConnexionsMax || '—') + ' dernières tentatives sont conservées.';
+      var tb = document.getElementById('cx-rows'); if (!tb) return;
+      if (!l.length) { tb.innerHTML = '<tr><td colspan="5" class="meta">Aucune tentative enregistrée' + (espace ? ' pour cet espace' : '') + '.</td></tr>'; return; }
+      tb.innerHTML = l.map(function (x) {
+        var res = x.evt === 'deconnexion'
+          ? '<span class="meta">Déconnexion</span>'
+          : x.ok ? '<b style="color:var(--color-primary-dark)">Connexion réussie</b>'
+                 : '<b style="color:#B3372B">Refusée</b> <span class="meta">— ' + esc(x.motif || '—') + '</span>';
+        return '<tr><td>' + esc(quand(x.at)) + '</td><td>' + esc(D.connexionEspaceLbl(x.espace)) + '</td><td>' + esc(x.identifiant || '—')
+          + (x.nom ? ' <span class="meta">· ' + esc(x.nom) + '</span>' : '') + '</td><td>' + res + '</td><td class="meta">' + esc(x.appareil || '—') + '</td></tr>';
+      }).join('');
+    }
+    document.getElementById('cx-esp').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-e]'); if (!b) return;
+      [].forEach.call(this.querySelectorAll('button'), function (o) { o.classList.toggle('on', o === b); });
+      espace = b.getAttribute('data-e'); peindre();
+    });
+    document.getElementById('cx-res').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-r]'); if (!b) return;
+      [].forEach.call(this.querySelectorAll('button'), function (o) { o.classList.toggle('on', o === b); });
+      koSeuls = b.getAttribute('data-r') === 'ko'; peindre();
+    });
+    document.getElementById('cx-purger').addEventListener('click', function () {
+      if (!window.confirm('Purger le journal de connexion ? Les tentatives enregistrées seront effacées.')) return;
+      D.connexionsPurger(); peindre();
+    });
+    peindre();
+    window.addEventListener('pec-bus', peindre);
+    window.addEventListener('storage', function (e) { if (!e.key || e.key === 'pec-connexions') peindre(); });
+  })();
+</script>
+</body>
+</html>

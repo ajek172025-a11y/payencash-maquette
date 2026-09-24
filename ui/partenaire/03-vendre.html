@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Vendre un bon de marque</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<script src="../assets/payencash-qr.js"></script><!-- le flashcode du ticket : il ouvre le bon dans l'app Mes bons -->
+<!-- VENDRE UN BON DE MARQUE (23/09 — le grossiste). POURQUOI : le commerce du réseau vend au comptoir les bons d'achat
+     DES MARQUES. Il nous achète le bon au moment où il le vend — valeur faciale moins sa part, celle de l'offre de la
+     marque — et il le revend à son client au prix qu'il affiche (la valeur faciale est le prix conseillé) ; ce qu'il nous
+     doit est prélevé après l'arrêté du soir (commerce sédentaire, mandat SEPA) ou débité de son avance à l'instant
+     (distributeur nomade). Le bon ne vaut que sur le site de la marque, et le client l'utilise depuis l'app Mes bons.
+     TROIS PORTES, UN SEUL GESTE :
+       · l'ORDRE DE VENTE que le client présente (?vendre=<slug> — le flashcode d'un bon proposé par une marque, lu
+         par techOrdreVente : la marque et ce qui manque encore, jamais recopiés dans l'adresse) ;
+       · la RENCONTRE servie par un distributeur nomade (?rdv=<id> — techRencontre : la marque et le montant sont ceux
+         que le client a demandés ; techRencontreServir émet et rattache le code) ;
+       · la VENTE LIBRE : le client choisit une marque du réseau et un montant.
+     COMMENT LE CLIENT RÈGLE AU COMPTOIR NE NOUS REGARDE PAS (règle du 18/09) : c'est une vente du commerce à son
+     client. L'écran ne demande que ce qui nous concerne — que le commerce confirme avoir ENCAISSÉ le montant — et
+     note le moyen (espèces / carte) pour la seule vigilance de l'app de l’utilisateur (MOYENS_COMPTOIR), au titre de
+     notre politique de prévention de la fraude.
+     TOUT VIENT DU DATA-LAYER : les marques qui vendent (techMarchands + techMarchandPeutTravailler), ce qui ouvre ou
+     ferme la caisse (techPeutVendre, lu AVANT la vente et appliqué À la vente), la répartition (techRepartition),
+     l'émission (techBonEmettre → techBonVendu), le ticket (techBonTicketHTML). Chaque refus s'affiche TEL QUEL.
+     Garde du socle (PEC_PART.garde) : point non actif → formulaire masqué, bandeau qui dit pourquoi, rejoué sur le bus.
+     (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : le comptoir à gauche (marque et montant sur une
+     ligne, le bouton à sa taille, à droite), et dans un panneau : les ventes d'aujourd'hui de ce point, l'encours et le plafond
+     (techEncours) ou l'avance (avanceSolde), la règle en une note. Sur téléphone, le panneau suit le comptoir. -->
+<style>
+  .pt-garde{border-radius:16px;background:var(--color-amber-well);padding:14px;margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--color-amber-text)}
+  .pt-garde .s{margin-top:4px;font-size:12px}
+  .v-hint{font-size:11px;color:var(--color-muted);margin-top:4px;line-height:1.5}
+  .v-note{text-align:center;margin:10px 0 0}
+  .v-check{display:flex;gap:10px;align-items:flex-start;margin:14px 0 4px;padding:11px 12px;border-radius:12px;background:var(--color-card);font-size:13px;line-height:1.45;cursor:pointer}
+  .v-check input{margin-top:2px;width:18px;height:18px;flex:none}
+  .v-err{margin:10px 0 0;padding:10px 12px;border-radius:12px;background:rgba(179,55,43,.1);color:#B3372B;font-size:12px;font-weight:700;line-height:1.45}
+  .v-ok{margin:0 0 10px;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);text-align:center;line-height:1.5}
+  /* CE QUE LA VENTE FAIT, avant le geste : ce que le commerce encaisse, ce qu'il garde, ce que nous lui achetons —
+     les nombres viennent de techRepartition, jamais d'un calcul d'écran. */
+  .v-du{margin:12px 0 0;padding:11px 12px;border-radius:12px;background:var(--color-mint);font-size:12.5px;line-height:1.5;color:var(--color-primary-dark)}
+  .v-du .r{display:flex;justify-content:space-between;gap:10px;padding:3px 0}
+  .v-du .r > span:last-child{flex:none;white-space:nowrap}
+  .v-du .r.tot{font-weight:800;border-top:1px solid rgba(15,42,36,.12);margin-top:3px;padding-top:6px}
+  .v-du .sub{margin-top:5px;font-size:11px;opacity:.85}
+  .v-fait{margin:0 0 10px}
+  .v-moyen{display:flex;gap:7px;margin-top:8px}
+  .v-moyen label{flex:1;text-align:center;cursor:pointer}
+  /* le flashcode du ticket reprend la carte de l'ordre de vente du socle (.pec-ordre) : un seul dessin */
+  .v-flash{margin-top:10px}
+  /* (24/09, soir) les classes de mise en page — les styles en ligne des blocs sont partis ici, pour avoir deux échelles */
+  /* l'en-tête de page vit DANS .pec-info-body, qui n'espace pas ses enfants : sans marge, le sous-titre touchait la carte du
+     comptoir (le téléphone avait 14 px sous le sous-titre, on les lui rend) */
+  .v-tete{margin:0 0 14px}
+  .v-formcard{padding:16px}
+  .v-deux > div + div{margin-top:10px}
+  .v-btns{margin-top:12px}
+  .v-btns .pec-cta{width:100%}
+  .v-res-actions{display:flex;flex-direction:column;gap:8px;margin:14px 0 8px}
+  .v-res-actions .pec-btn-secondary{width:100%}
+  .v-ferme{padding:14px 16px;border:1.5px solid var(--color-amber-text)}
+  .v-ferme .t{font-weight:800;font-size:13.5px;color:var(--color-amber-text)}
+  .v-ferme .meta{margin:5px 0 0;line-height:1.55;font-size:11.5px;color:var(--color-muted)}
+  .v-ferme .pec-cta{width:100%;margin-top:12px}
+  .v-demande{border-radius:14px;background:var(--color-mint);padding:12px 13px;margin:0 0 12px;font-size:12.5px;line-height:1.5;color:var(--color-mint-ink)}
+  .v-demande-note{display:block;margin-top:4px;font-size:11px;opacity:.85}
+  .v-cadre{margin:16px 0 18px}
+  .v-cadre .tx{font-size:12.5px;line-height:1.55}
+  .v-sec{margin:14px 0 8px}
+  .v-note-p{margin:6px 0 0;font-size:12px;line-height:1.5;color:var(--color-muted)}
+  .v-note-p a{color:var(--color-primary-dark);font-weight:700}
+  .v-vj{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--color-sep)}
+  .v-vj:first-child{border-top:0}
+  .v-vj .h{flex:none;font-family:var(--font-mono);font-size:11px;color:var(--color-muted)}
+  .v-vj .m{flex:1;min-width:0;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .v-vj .pec-pill{font-size:10px;padding:3px 8px}
+  .v-vj .n{flex:none;font-weight:800;font-size:13.5px;white-space:nowrap}
+  .v-kv{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
+  .v-kv:first-child{border-top:0}
+  .v-kv .l{min-width:0;color:var(--color-muted)}
+  .v-kv .v{white-space:nowrap;font-weight:800}
+  .v-kv.tot .v{color:var(--color-primary-dark);font-size:15px}
+  .v-jauge{height:7px;border-radius:99px;background:var(--color-bg);overflow:hidden;margin:4px 0 6px}
+  .v-jauge i{display:block;height:100%;background:var(--color-ink)}
+  .v-jauge i.warn{background:var(--color-amber-text)}
+  /* À L'IMPRESSION, SEUL LE TICKET SORT — pas le cadre, pas la barre d'onglets. Le cadre du téléphone
+     (hauteur fixe, overflow caché) est libéré pour que le ticket ne soit pas coupé. */
+  @media print {
+    body * { visibility: hidden; }
+    #v-ticket, #v-ticket * { visibility: visible; }
+    #v-ticket { position: absolute; left: 0; top: 0; }
+    .pec-scene, .pec-device, .pec-body { overflow: visible !important; height: auto !important; max-height: none !important; }
+  }
+  /* ── LE BUREAU : deux champs par ligne, le bouton à sa taille, le panneau à droite, l'échelle de lecture d'un écran ── */
+  @media (min-width:1024px){
+    .pt-garde{padding:18px 22px;font-size:15px} .pt-garde .s{font-size:13.5px}
+    .v-hint{font-size:12.5px}
+    .v-formcard{padding:24px 28px}
+    .v-deux{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;align-items:start}
+    .v-deux > div + div{margin-top:0}
+    .v-check{font-size:14.5px;padding:14px 16px}
+    .v-err{font-size:13.5px}
+    .v-ok{font-size:15px;text-align:left}
+    .v-note{text-align:left}
+    .v-du{font-size:14px;padding:14px 16px} .v-du .sub{font-size:12.5px}
+    .v-moyen label{flex:0 0 auto;padding:8px 16px}
+    .v-btns{display:flex;justify-content:flex-end}
+    .v-btns .pec-cta{width:fit-content}
+    .v-res-actions{flex-direction:row}
+    .v-res-actions .pec-btn-secondary{width:fit-content}
+    .v-tete{margin-bottom:24px}
+    .v-ferme{padding:22px 24px}                            /* la marge de bureau des cartes, que la classe de la page masquait */
+    .v-ferme .t{font-size:16px} .v-ferme .meta{font-size:13.5px} .v-ferme .pec-cta{width:fit-content}
+    .v-demande{font-size:14px;padding:16px 18px}
+    .v-demande-note{margin-top:6px;font-size:12.5px}
+    .v-cadre{margin:18px 0 0} .v-cadre .tx{font-size:13.5px}
+    .v-sec{margin:0 0 10px}
+    .pec-card + .v-sec{margin-top:22px}
+    .v-note-p{font-size:13px}
+    .v-vj{padding:10px 0} .v-vj .h{font-size:12.5px} .v-vj .m{font-size:14px} .v-vj .n{font-size:15px} .v-vj .pec-pill{font-size:11px;padding:4px 10px}
+    .v-kv{font-size:13.5px;padding:8px 0} .v-kv.tot .v{font-size:18px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+
+      <div class="pec-page-tete v-tete">
+        <div class="tx">
+          <h1 id="v-titre">Vendre un bon de marque</h1>
+          <p class="sous" id="v-sous">—</p>
+        </div>
+      </div>
+
+      <!-- GARDE (socle) : point non actif (contrat à signer, intégration, suspendu, clos, aucun) → bandeau honnête, formulaire masqué. -->
+      <div id="pt-garde" class="pt-garde" hidden><b id="pt-garde-titre">—</b><div id="pt-garde-txt" class="s">—</div></div>
+
+      <div class="pec-cols pec-cols--principal">
+        <div class="pec-colonne">
+
+          <!-- LA CAISSE FERMÉE PAR LA RÈGLE DE VENTE (techPeutVendre) : mandat SEPA absent, impayé, encours au plafond, garantie ou
+               solde d'avance — le motif du data-layer, tel quel, et la porte pour régler. Rien ne sert d'encaisser son client pour
+               un bon que l'émission refusera. -->
+          <div class="pec-card v-ferme" id="v-ferme" hidden>
+            <div class="t">La vente est fermée</div>
+            <p class="meta" id="v-ferme-txt">—</p>
+            <a class="pec-cta pec-cta--tight tap" id="v-ferme-cta" href="07-mon-point.html">Régler dans Mon point</a>
+          </div>
+
+          <!-- CE QUE LE CLIENT PRÉSENTE : l'ordre de vente d'un bon proposé, ou la rencontre qu'un distributeur nomade vient servir. -->
+          <div id="v-demande" class="v-demande" hidden></div>
+
+          <!-- LE FORMULAIRE — la marque et le montant (sur une ligne au bureau), ce que la vente fait, l'encaissement confirmé, émettre -->
+          <div class="pec-card pec-card--elevated v-formcard" id="v-form">
+            <div class="v-deux">
+              <div>
+                <label class="pec-input-label" for="v-marque">Marque du bon</label>
+                <select class="pec-input" id="v-marque"></select>
+                <div class="v-hint" id="v-marque-aide">—</div>
+              </div>
+              <div>
+                <label class="pec-input-label" for="v-montant">Montant du bon</label>
+                <input class="pec-input" id="v-montant" type="text" inputmode="decimal" placeholder="le montant que le client demande, en euros" autocomplete="off">
+                <div class="v-hint" id="v-limites">—</div>
+              </div>
+            </div>
+            <div class="v-du" id="v-du" hidden></div>
+            <!-- LE BON NE S'ÉMET QU'UNE FOIS ENCAISSÉ : la case dit le MONTANT encaissé — jamais par quel moyen, ce n'est pas notre affaire -->
+            <label class="v-check" for="v-recu"><input type="checkbox" id="v-recu"><span id="v-recu-txt">J'ai encaissé le montant auprès du client</span></label>
+            <!-- (23/09, fondatrice : « KYC : dépasse 250 € de bons en espèces, 500 € si CB ») LE MOYEN, NOTÉ POUR LA VIGILANCE : l'app du
+                 porteur compte ses bons par moyen pour savoir quand demander sa pièce d'identité. Les libellés viennent de MOYENS_COMPTOIR. -->
+            <div class="v-moyen" id="v-moyen" role="radiogroup" aria-label="Réglé par"></div>
+            <div class="v-btns"><button type="button" class="pec-cta pec-cta--tight tap" id="v-emettre">Émettre le bon</button></div>
+            <div class="v-err" id="v-erreur" role="alert" hidden></div>
+          </div>
+
+          <!-- LE TICKET — rendu par techBonTicketHTML (une seule source, la même que la réimpression), avec le flashcode qui ouvre le bon
+               dans l'app Mes bons : à imprimer et à remettre au client -->
+          <div id="v-resultat" hidden>
+            <div class="v-ok" id="v-ok">✓ Bon émis</div>
+            <div class="v-du v-fait" id="v-fait" hidden></div>
+            <div id="v-ticket"></div>
+            <div class="v-res-actions">
+              <button type="button" class="pec-cta tap" id="v-imprimer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-file"/></svg>Imprimer le ticket</button>
+              <button type="button" class="pec-btn-secondary tap" id="v-nouveau">Nouveau bon</button>
+            </div>
+            <p class="v-hint v-note">Remets le ticket au client : le code vaut titre, il ne sera pas remplacé en cas de perte. Le bon reste réimprimable dans « Bons vendus », et annulable au comptoir <span id="v-annul-txt">—</span> s'il n'a pas servi.</p>
+          </div>
+
+        </div>
+
+        <aside class="pec-colonne">
+          <!-- LES VENTES D'AUJOURD'HUI DE CE POINT — dérivées (techVentes du mois, à partir de minuit, annulées exclues) -->
+          <p class="pec-section-label v-sec">Aujourd'hui, à ce comptoir</p>
+          <div class="pec-card" id="v-jour"></div>
+
+          <!-- L'ENCOURS ET LE PLAFOND (techEncours) — ou l'avance disponible du distributeur nomade (avanceSolde) -->
+          <p class="pec-section-label v-sec" id="v-enc-titre">Encours et plafond</p>
+          <div class="pec-card" id="v-encours"></div>
+
+          <!-- Le cadre, en clair — chiffres du référentiel (techRef, techModes), jamais écrits ici -->
+          <div class="pec-mint-banner v-cadre">
+            <div class="tx" id="v-cadre">—</div>
+          </div>
+        </aside>
+      </div>
+
+    </div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" aria-current="page" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, P = window.PEC_PART; if (!D || !P || !D.techBonEmettre) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function pct(x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; }
+    function r2(x) { return Math.round(x * 100) / 100; }
+    function heure(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    function montantSaisi() { var i = $('v-montant'); if (!i) return 0; return Math.round((parseFloat(String(i.value || '').replace(/\s/g, '').replace(',', '.')) || 0) * 100) / 100; }
+    var Q = new URLSearchParams(location.search);
+    /* LES TROIS PORTES — une rencontre prime sur un ordre de vente, un ordre de vente sur un choix de marque : chacune
+       porte déjà ce que l'autre demanderait. Une porte qui ne mène plus à rien (rencontre annulée, bon proposé couvert)
+       le DIT, et la vente redevient libre. */
+    var rdvId = Q.get('rdv') || null, slug = rdvId ? null : (Q.get('vendre') || null), marqueVoulue = Q.get('marque') || null;
+    var verrou = null;   // { marchandId, montant, source:'ordre'|'rdv', slug } : ce que la porte a posé, qui ne se ressaisit pas
+
+    /* L'ADRESSE ABSOLUE DE L'APP MES BONS — le ticket quitte l'écran (imprimé, photographié) : son flashcode doit mener
+       quelque part depuis n'importe où, jamais un chemin relatif à cette page. Un bon né d'un bon proposé s'ouvre SUR ce bon
+       proposé (05-offre : il s'y range et s'y utilise) ; un bon de vente libre s'ouvre sur sa fiche (02-bon). */
+    function urlApp(b) {
+      var base = location.href, i = base.indexOf('/ui/'), racine = i > -1 ? base.slice(0, i) + '/ui/bons/' : '../bons/';
+      var o = verrou && verrou.slug ? verrou.slug : null;
+      return o ? racine + '05-offre.html?o=' + encodeURIComponent(o) + '&code=' + encodeURIComponent(b.code)
+               : racine + '02-bon.html?code=' + encodeURIComponent(b.code);
+    }
+    /* LE FLASHCODE DU TICKET — la carte de l'ordre de vente du socle (.pec-ordre, v2.css), un seul dessin : le client le
+       scanne, l'app Mes bons s'ouvre sur son bon. Sans encodeur sur cet appareil, le code imprimé suffit, et on le dit. */
+    function flashHTML(b) {
+      var url = urlApp(b);
+      var qr = (window.PEC_QR && PEC_QR.svg) ? PEC_QR.svg(url, { size: 112 }) : '';
+      return '<div class="pec-ordre v-flash"><div class="pec-ordre-qr">' + (qr || '<span>Flashcode indisponible sur cet appareil — le code suffit.</span>') + '</div>'
+        + '<div class="pec-ordre-txt"><b>À scanner avec l’app Mes bons</b><span>Le bon s’y range au nom de son utilisateur et s’utilise chez ' + esc(b.marchand) + ' — et nulle part ailleurs.</span><span class="ref">' + esc(b.code) + '</span></div></div>';
+    }
+
+    // GARDE POINT (socle) : rejouée sur le bus — un point suspendu puis réactivé rouvre l'écran sans rechargement ;
+    // un point coupé pendant qu'un ticket est affiché garde le ticket lisible (le bon est émis), mais ferme « Nouveau bon ».
+    P.garde({ masquer: ['v-form', 'v-ferme'], desactiver: ['v-emettre', 'v-nouveau'] });
+
+    /* LES MARQUES QUI VENDENT — validées, et qui peuvent travailler avec nous (documents acceptés, contrat-cadre signé,
+       déclaration « réseau limité » validée) : la même règle que l'émission, lue avant. */
+    function marques() {
+      return D.techMarchands({ statut: 'validated' }).filter(function (m) { return D.techMarchandPeutTravailler(m.id).ok; })
+        .sort(function (a, b) { return String(a.raisonSociale).localeCompare(String(b.raisonSociale), 'fr'); });
+    }
+    function marqueChoisie() { var s = $('v-marque'); return s && s.value ? D.techMarchand(s.value) : null; }
+    var marquesPeintes = '';
+    function majMarques() {
+      var s = $('v-marque'), l = marques(), sig = l.map(function (m) { return m.id; }).join('|') + '#' + (verrou ? verrou.marchandId : '');
+      if (sig === marquesPeintes) return;
+      marquesPeintes = sig;
+      var cur = s.value || (verrou && verrou.marchandId) || marqueVoulue || '';
+      s.innerHTML = l.length ? l.map(function (m) { return '<option value="' + esc(m.id) + '">' + esc(m.raisonSociale) + ' — ' + esc(String(m.siteUrl || '').replace(/^https?:\/\//, '')) + '</option>'; }).join('')
+        : '<option value="">Aucune marque ne vend encore ses bons dans le réseau</option>';
+      if (cur && l.some(function (m) { return m.id === cur; })) s.value = cur;
+      s.disabled = !!verrou || !l.length;
+      $('v-marque-aide').textContent = l.length
+        ? (verrou ? 'La marque est celle que le client présente.' : 'Le client choisit la marque : son bon ne vaudra que sur le site de celle-ci.')
+        : 'Dès qu’une marque du réseau est prête à vendre, elle apparaît ici.';
+    }
+
+    /* CE QUE LA VENTE FAIT — techRepartition sur l'offre de LA marque : ce que le commerce encaisse, ce qu'il garde, ce que
+       nous lui achetons (prélevé à l'arrêté, ou débité de son avance à l'instant). Aucune arithmétique ici. */
+    function majDu() {
+      var z = $('v-du'), m = marqueChoisie(), mt = montantSaisi(), r = P.revendeur();
+      $('v-recu-txt').textContent = mt > 0 ? 'J\'ai encaissé ' + D.eur(mt) + ' auprès du client' : 'J\'ai encaissé le montant auprès du client';
+      if (!m || !(mt > 0)) { z.hidden = true; return; }
+      var mo = D.techMarchandMode(m), d = D.techRepartition(mt, { mode: mo }), avance = !!(r && D.techPaieParAvance(r));
+      /* L'ENCOURS SE DIT ICI, SUR LA VENTE — la caisse reste ouverte (un montant plus petit passe) : c'est CE montant qui
+         porterait l'encours du commerce au-delà de son plafond, et la règle unique (techPeutVendre) le chiffre. */
+      var v = P.vente(m.id, mt), depasse = !avance && !v.ok && v.refus === 'encours';
+      z.hidden = false;
+      z.innerHTML = (depasse ? '<div class="r" style="color:#B3372B"><span>' + esc(v.motif) + '</span><span></span></div>' : '')
+        + (!d.valide ? '<div class="r" style="color:#B3372B"><span>Répartition impossible sur ce montant.</span><span></span></div>' : '')
+        + '<div class="r"><span>Valeur faciale du bon (prix conseillé au client)</span><span>' + esc(D.eur(d.montant)) + '</span></div>'
+        + '<div class="r"><span>Ta part ' + esc(pct(d.partPointPct)) + ' (offre « ' + esc(mo.libelle) + ' » de ' + esc(m.raisonSociale) + ')</span><span>− ' + esc(D.eur(d.partPoint)) + '</span></div>'
+        + '<div class="r tot"><span>' + (avance ? 'Débité de ton avance' : 'Prélevé à l’arrêté') + '</span><span>' + esc(D.eur(d.prixPoint)) + '</span></div>'
+        + '<div class="sub">' + (avance ? 'Le débit part à l’émission du bon : rien ne reste dû.' : 'Nous t’achetons ce bon à l’instant ; le prélèvement part au prochain arrêté de ' + esc(D.techRef().paiement.arreteHeure) + '.') + '</div>';
+    }
+
+    /* LA CAISSE — la règle unique (techPeutVendre) sur la marque et le montant saisis : fermée, elle se lit AVANT que le
+       client sorte son argent, avec la porte pour régler. */
+    function majCaisse() {
+      var z = $('v-ferme'), f = $('v-form'), res = $('v-resultat');
+      if (window.__ptBloque) { z.hidden = true; return; }
+      var m = marqueChoisie();
+      var v = P.vente(m ? m.id : null, montantSaisi());
+      var ferme = !v.ok && v.refus !== 'encours';   // un encours dépassé se dit sur la vente, pas en fermant la caisse
+      z.hidden = !ferme;
+      if (ferme) {
+        $('v-ferme-txt').textContent = v.motif;
+        var href = { mandat: '07-mon-point.html#sepa', garantie: '07-mon-point.html#avance', solde: '07-mon-point.html#avance', impaye: '05-releves.html', suspendu: '05-releves.html', non_valide: '08-notifications.html', documents: '07-mon-point.html#acceptations', aucun: '07-mon-point.html#fiche' }[v.refus] || '07-mon-point.html';
+        $('v-ferme-cta').href = href;
+        $('v-ferme-cta').textContent = /05-releves/.test(href) ? 'Voir mes relevés' : (/08-notif/.test(href) ? 'Voir mes notifications' : 'Ouvrir Mon point');
+      }
+      if (res.hidden) f.style.display = ferme ? 'none' : '';
+    }
+
+    /* LES PORTES — la rencontre et l'ordre de vente posent la marque et le montant, et les VERROUILLENT : c'est ce que le
+       client a demandé, pas une saisie. */
+    function majPortes() {
+      var z = $('v-demande'), r = P.revendeur();
+      if (verrou && verrou.source === 'ordre' && slug) {
+        var ov = D.techOrdreVente(slug);
+        if (ov && ov.vendable) return;   // rien n'a bougé : le bandeau est déjà posé
+      }
+      if (rdvId && D.techRencontre) {
+        var rv = D.techRencontre(rdvId);
+        if (!rv || rv.statut !== 'acceptee' || !r || rv.revendeurId !== r.id) {
+          z.hidden = false; z.style.background = 'var(--color-amber-well)'; z.style.color = 'var(--color-amber-text)';
+          /* le mot du glossaire pour celui qui a pris la rencontre à notre place (24/09, soir) */
+          z.innerHTML = rv ? '<b>Cette rencontre est ' + esc(D.rencontreStatutLbl(rv.statut).toLowerCase()) + (rv.statut === 'acceptee' ? ' par un autre ' + esc(D.terme('nomade')) : '') + '.</b> Saisis la marque et le montant à la main pour une vente libre.'
+                           : '<b>Rencontre introuvable.</b> Saisis la marque et le montant à la main.';
+          rdvId = null; verrou = null; $('v-montant').readOnly = false; majMarques(); return;
+        }
+        verrou = { marchandId: rv.marchandId, montant: rv.montant, source: 'rdv', slug: rv.lienSlug };
+        z.hidden = false; z.style.background = 'var(--color-mint)'; z.style.color = 'var(--color-mint-ink)';
+        z.innerHTML = '<b>Rencontre ' + esc(rv.ref) + '</b> — ' + esc(rv.lieu) + '<br>Tu lui remets un bon <b>' + esc(rv.marchand) + '</b> de <b>' + esc(D.eur(rv.montant)) + '</b>. Encaisse-le, puis émets.';
+      } else if (slug && D.techOrdreVente) {
+        var ov2 = D.techOrdreVente(slug);
+        if (!ov2 || !ov2.vendable) {
+          z.hidden = false; z.style.background = 'var(--color-amber-well)'; z.style.color = 'var(--color-amber-text)';
+          z.innerHTML = ov2 ? '<b>Ce bon proposé est ' + esc(ov2.etatLbl.toLowerCase()) + '</b> — il n’y a plus rien à vendre dessus. Saisis la marque et le montant à la main pour une vente libre.'
+                            : '<b>Ordre de vente inconnu.</b> Ce flashcode ne correspond à aucun bon proposé par une marque — saisis la marque et le montant à la main.';
+          slug = null; verrou = null; $('v-montant').readOnly = false; majMarques(); return;
+        }
+        verrou = { marchandId: ov2.marchandId, montant: ov2.montant, source: 'ordre', slug: ov2.slug };
+        z.hidden = false; z.style.background = 'var(--color-mint)'; z.style.color = 'var(--color-mint-ink)';
+        z.innerHTML = '<b>Ordre de vente · ' + esc(ov2.reference || ov2.slug) + '</b><br>Vends-lui un bon <b>' + esc(ov2.marchand) + '</b> de <b>' + esc(D.eur(ov2.montant)) + '</b>'
+          + (ov2.montantDemande !== ov2.montant ? ' (ce qui manque encore sur ' + esc(D.eur(ov2.montantDemande)) + ' proposés)' : '') + ' : c’est ce que son flashcode demande. Encaisse-le, puis émets.'
+          + '<span class="v-demande-note">Le bon ne vaut que sur ' + esc(ov2.site || 'le site de cette marque') + ' — un réseau limité. Le client l’utilise depuis l’app Mes bons.</span>';
+      } else { verrou = null; }
+      if (verrou) {
+        majMarques();
+        $('v-marque').value = verrou.marchandId;
+        $('v-montant').value = String(verrou.montant).replace('.', ',');
+        $('v-montant').readOnly = true;
+      }
+    }
+
+    function majCadre() {
+      var R = D.techRef(), r = P.revendeur(), avance = !!(r && D.techPaieParAvance(r));
+      var parts = D.techModes().map(function (m) { return m.partPointPct; }).sort(function (a, b) { return a - b; });
+      /* (24/09, soir — relecture juridique) le distributeur nomade ne nous ACHÈTE pas le bon : il le vend pour notre compte, sur ce
+         qu'il a payé d'avance — la phrase suit le mode */
+      $('v-sous').textContent = 'Le client choisit une marque du réseau et un montant. '
+        + (avance ? 'Tu vends le bon pour le compte de ' + R.nom + ', sur l’avance que tu as payée' : 'Tu nous achètes le bon en le vendant')
+        + ', et il l’utilise depuis l’app Mes bons.';
+      $('v-limites').textContent = 'Le montant que le client demande. Le bon est valable ' + D.bonsRef().validiteMois + ' mois, en une ou plusieurs fois, uniquement sur le site de la marque.';
+      $('v-annul-txt').textContent = 'dans les ' + R.annulationMinutes + ' min';
+      /* (24/09, soir — relecture juridique) le nomade PAIE D'AVANCE la valeur des bons (jamais « avance les fonds » ni « se
+         rembourse ») ; le prix de revente est celui que le commerce affiche, la valeur faciale n'est que le prix conseillé */
+      $('v-cadre').innerHTML = '<b>Ce que tu vends :</b> le bon d’achat d’une marque du réseau, utilisable uniquement sur son site. Ton client te règle comme il veut, c’est ta vente. '
+        + (avance
+          ? 'Tu es <b>commissionnaire</b> : tu paies d’avance le prix réseau de chaque bon (valeur faciale moins ta part) sur l’avance que tu as versée ; ce paiement anticipé s’impute, sans intérêt, sur chaque bon édité — ta part est ta commission.'
+          : 'Tu <b>achètes</b> le bon à ' + esc(R.nom) + ' au moment où tu le vends (valeur faciale moins ta part), tu le revends au prix que tu affiches — la valeur faciale est le prix conseillé : ta part est ta marge. Ce que tu nous dois est arrêté à ' + esc(R.paiement.arreteHeure) + ' et prélevé sur ton mandat SEPA.')
+        + ' Ta part dépend de l’offre de la marque : de ' + esc(pct(parts[0])) + ' à ' + esc(pct(parts[parts.length - 1])) + ' de la valeur du bon.';
+      var mc = $('v-moyen');
+      if (!mc.children.length) mc.innerHTML = Object.keys(D.MOYENS_COMPTOIR || {}).map(function (k) {
+        return '<label class="pec-pill tap"><input type="radio" name="v-moyen" value="' + esc(k) + '" style="margin-right:5px">' + esc(D.MOYENS_COMPTOIR[k]) + '</label>';
+      }).join('');
+    }
+
+    /* ══ LE PANNEAU (24/09, soir) — ce que ce comptoir a fait aujourd'hui, et ce qui borne la caisse ═════════════════════════════
+       Les ventes du jour : techVentes du mois, à partir de minuit, annulées exclues (heure, marque, montant, état de la vente), une
+       page du référentiel au plus (logiciel.pageBons). L'encours et le plafond (techEncours) pour un commerce sédentaire ; l'avance
+       disponible et la garantie (avanceSolde) pour un distributeur nomade. Tout se relit sur le bus : une vente émise ici s'y
+       inscrit sans rechargement. */
+    function majPanneau() {
+      var zj = $('v-jour'), ze = $('v-encours'), zt = $('v-enc-titre'), r = P.revendeur(), p = P.point();
+      if (!zj || !ze) return;
+      if (!p || !r) { zj.innerHTML = ze.innerHTML = '<p class="v-note-p">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</p>'; return; }
+      var jour0 = new Date(); jour0.setHours(0, 0, 0, 0);
+      var l = D.techVentes({ revendeurId: r.id, mois: D.techPeriodeCourante() }).filter(function (v) { return v.statut !== 'annulee' && (v.at || 0) >= jour0.getTime(); });
+      var page = +((D.techRef().logiciel || {}).pageBons) || l.length, tot = l.reduce(function (a, v) { return a + (v.montant || 0); }, 0);
+      zj.innerHTML = l.length
+        ? l.slice(0, page).map(function (v) {
+            return '<div class="v-vj"><span class="h">' + esc(heure(v.at)) + '</span><span class="m">' + esc(v.marchand) + '</span>'
+              + '<span class="pec-pill ' + esc(D.techVenteStatutPill(v.statut)) + '">' + esc(D.techVenteStatutLbl(v.statut)) + '</span><span class="n">' + esc(D.eur(v.montant)) + '</span></div>';
+          }).join('')
+          + '<p class="v-note-p">' + l.length + ' bon' + (l.length > 1 ? 's' : '') + ' · ' + esc(D.eur(r2(tot))) + (l.length > page ? ' · tout dans <a href="04-bons.html">Bons vendus</a>' : '') + '</p>'
+        : '<p class="v-note-p">Aucun bon vendu aujourd’hui — le premier s’inscrira ici dès qu’il sera émis.</p>';
+      if (D.techPaieParAvance(r)) {
+        var av = D.avanceSolde('revendeur', r.id), A = D.techRef().avance;
+        zt.textContent = 'Mon avance';
+        ze.innerHTML = '<div class="v-kv tot"><span class="l">Avance disponible</span><span class="v"' + (av.bas ? ' style="color:var(--color-amber-text)"' : '') + '>' + esc(D.eur(av.solde)) + '</span></div>'
+          + '<div class="v-kv"><span class="l">Garantie' + (av.garantieVersee ? ' versée' : ' à verser') + '</span><span class="v">' + esc(D.eur(av.garantie)) + (av.garantieVersee ? '' : ' / ' + esc(D.eur(av.garantieDue))) + '</span></div>'
+          + '<p class="v-note-p">' + (av.bas ? 'Sous le seuil d’alerte de ' + esc(D.eur(A.soldeAlerte)) + ' — ' : '') + 'chaque bon vendu débite ton avance de son prix réseau. <a href="07-mon-point.html#avance">Verser une avance ›</a></p>';
+        return;
+      }
+      var enc = D.techEncours(r.id), part = enc.plafond > 0 ? Math.min(100, Math.round(enc.montant / enc.plafond * 100)) : 0;
+      zt.textContent = 'Encours et plafond';
+      ze.innerHTML = '<div class="v-kv tot"><span class="l">Vendu, pas encore prélevé</span><span class="v">' + esc(D.eur(enc.montant)) + '</span></div>'
+        + '<div class="v-jauge"><i style="width:' + part + '%"' + (enc.depasse ? ' class="warn"' : '') + '></i></div>'
+        + '<div class="v-kv"><span class="l">Plafond ' + esc(D.eur(enc.plafond)) + ' · ' + esc(String(enc.ventes)) + ' bon' + (enc.ventes > 1 ? 's' : '') + '</span><span class="v">' + (enc.depasse ? '<b style="color:var(--color-amber-text)">dépassé</b>' : 'reste ' + esc(D.eur(enc.reste))) + '</span></div>'
+        + (enc.impayes ? '<div class="v-kv"><span class="l" style="color:var(--color-danger);font-weight:700">' + (enc.prelevementsImpayes || 1) + ' prélèvement' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' impayé' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' (' + enc.impayes + ' bon' + (enc.impayes > 1 ? 's' : '') + ')</span><span class="v" style="color:var(--color-danger)">' + esc(D.eur(enc.impayeMontant)) + '</span></div>' : '')
+        + '<p class="v-note-p">Ce que tu nous dois part au prélèvement à l’arrêté de ' + esc(D.techRef().paiement.arreteHeure) + '. <a href="05-releves.html">Mes relevés ›</a></p>';
+    }
+    function majTout() {
+      if (!$('v-marque')) return;   // page voilée pendant que le bus réveillait ce rendu : rien à peindre
+      majCadre(); majMarques(); majPortes(); majDu(); majCaisse(); majPanneau();
+    }
+    $('v-marque').addEventListener('change', function () { $('v-erreur').hidden = true; majDu(); majCaisse(); });
+    $('v-montant').addEventListener('input', function () { $('v-erreur').hidden = true; majDu(); majCaisse(); });
+
+    function erreur(msg, champ) {
+      var e = $('v-erreur'); e.hidden = !msg; e.textContent = msg || '';
+      if (champ === 'montant') $('v-montant').focus(); else if (champ === 'recu') $('v-recu').focus();
+      e.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function formulaireVierge() {
+      $('v-montant').value = ''; $('v-montant').readOnly = false; $('v-recu').checked = false; $('v-erreur').hidden = true; $('v-du').hidden = true;
+      [].forEach.call(document.querySelectorAll('input[name="v-moyen"]'), function (i) { i.checked = false; });
+      verrou = null; rdvId = null; slug = null;
+      var z = $('v-demande'); if (z) { z.hidden = true; z.innerHTML = ''; }
+      majMarques(); majDu();
+    }
+
+    /* ÉMETTRE — le data-layer décide (marque prête, caisse ouverte, montant, quota de la marque, seuil légal, écriture) ; son
+       motif s'affiche TEL QUEL. Une rencontre passe par techRencontreServir (qui émet, marque vendu et rattache le code) ; un
+       ordre de vente et une vente libre par techBonEmettre puis techBonVendu — le bon est REMIS au client à l'instant. */
+    $('v-emettre').addEventListener('click', function () {
+      if (window.__ptBloque) return;
+      var r = P.revendeur(), m = marqueChoisie();
+      if (!r) { erreur('Aucune fiche de vente pour ce point — ' + (P._rvdRefus || 'connecte-toi avec l’identifiant de ton commerce.')); return; }
+      if (!m) { erreur('Choisis la marque du bon.'); return; }
+      if (!$('v-recu').checked) { erreur('Confirme d’abord avoir encaissé le montant auprès du client : le bon ne s’émet qu’une fois son prix reçu.', 'recu'); return; }
+      var moyen = (document.querySelector('input[name="v-moyen"]:checked') || {}).value || null;
+      var res;
+      if (verrou && verrou.source === 'rdv') {
+        var sv = D.techRencontreServir(rdvId, { revendeurId: r.id, prixRecu: true });
+        if (!sv.ok) { erreur(sv.motif, sv.champ); majCaisse(); return; }
+        res = { bon: sv.bon, ticket: sv.ticket, vente: sv.bon && sv.bon.venteRef ? D.techVente(sv.bon.venteRef) : null, rdv: true };
+      } else {
+        var em = D.techBonEmettre({ marchandId: m.id, revendeurId: r.id, montant: $('v-montant').value, par: P.par(), moyen: moyen });
+        if (!em.ok) { erreur(em.motif, em.champ); majCaisse(); return; }
+        var vd = D.techBonVendu(em.bon.code);
+        res = { bon: (vd.ok && vd.bon) || em.bon, ticket: em.ticket, vente: em.vente };
+      }
+      var b = res.bon, v = res.vente;
+      $('v-ticket').innerHTML = (res.ticket || D.techBonTicketHTML(b)) + flashHTML(b);
+      $('v-ok').innerHTML = '✓ Bon ' + esc(b.code) + ' émis — ' + esc(D.eur(b.montant)) + ' · ' + esc(b.marchand)
+        + (res.rdv ? '<br>Rencontre servie : remets le ticket à ton client, il pourra l’utiliser depuis son app.' : '');
+      var zf = $('v-fait');
+      if (v) {
+        zf.hidden = false;
+        /* (24/09, soir — relecture juridique) la valeur faciale est le prix CONSEILLÉ : le commerce revend au prix qu'il affiche */
+        zf.innerHTML = '<div class="r"><span>Valeur faciale du bon (prix conseillé au client)</span><span>' + esc(D.eur(v.montant)) + '</span></div>'
+          + '<div class="r"><span>Ta part ' + esc(pct(v.partPointPct)) + ', gardée</span><span>− ' + esc(D.eur(v.partPoint)) + '</span></div>'
+          + '<div class="r tot"><span>' + (v.paiement === 'avance' ? 'Débité de ton avance' : 'À prélever au prochain arrêté') + '</span><span>' + esc(D.eur(v.prixPoint)) + '</span></div>'
+          + '<div class="sub">Vente ' + esc(v.reference) + ' — ' + (v.paiement === 'avance' ? 'réglée : rien ne reste dû.' : 'prélevée sur ton mandat SEPA à l’échéance de l’arrêté.') + '</div>';
+      } else { zf.hidden = true; zf.innerHTML = ''; }
+      $('v-form').style.display = 'none';
+      $('v-ferme').hidden = true;
+      $('v-resultat').hidden = false;
+      formulaireVierge();   // la prochaine vente repart propre, et libre
+      majPanneau();         // la vente du jour s'inscrit dans le panneau à l'instant, sans attendre le bus
+      var body = document.querySelector('.pec-body'); if (body) body.scrollTop = 0;
+    });
+    $('v-imprimer').addEventListener('click', function () { window.print(); });
+    $('v-nouveau').addEventListener('click', function () {
+      if (window.__ptBloque) return;
+      $('v-resultat').hidden = true; $('v-ticket').innerHTML = ''; $('v-fait').hidden = true; $('v-fait').innerHTML = '';
+      $('v-form').style.display = '';
+      formulaireVierge(); majCaisse();   // la caisse a pu se fermer entre deux ventes (plafond d'encours, solde)
+      if (!$('v-form').style.display) $('v-montant').focus();
+    });
+
+    majTout();
+    // (écran non sourd) une marque validée, un mandat signé dans Mon point (autre onglet compris), un virement d'avance constaté : l'écran suit
+    window.addEventListener('pec-bus', majTout);
+    window.addEventListener('storage', majTout);
+  })();
+</script>
+</body>
+</html>

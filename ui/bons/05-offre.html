@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Un bon proposé par une marque</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- le coffre : l'identité vérifiée se lit sur le dossier du client (paliers de prévention de la fraude) -->
+<script src="../assets/payencash-garde.js"></script><!-- page PERSONNELLE : sans session, la garde ferme et propose la connexion en gardant ?o= -->
+<script src="../assets/payencash-bus.js"></script><!-- (23/09, nuit — APP·551) le journal : ranger et UTILISER un bon de marque se tracent avec le compte du porteur — sans le bus, l'app agissait en silence -->
+<script src="../assets/payencash-bons.js"></script>
+<script src="../assets/payencash-qr.js"></script><!-- le flashcode « ordre de vente » (ordreVenteBlocHTML) à présenter au comptoir -->
+<!-- UN BON PROPOSÉ PAR UNE MARQUE (?o=<slug>[&code=<code>]) — fondatrice 23/09 : « quand, depuis l'app Solution, la
+     marque partage un lien : si l'utilisateur possède l'app Mes bons → ouvrir l'app Mes bons, et y montrer où acheter
+     un bon s'il n'en a pas ; sinon, en ligne depuis la page partagée il découvre l'offre et télécharge l'app ; ça
+     permet de retracer ; l'app est OBLIGATOIRE pour utiliser un bon de marque ».
+     POURQUOI cette page : c'est ICI, et nulle part ailleurs, qu'un bon de marque s'UTILISE. La marque a proposé un bon
+     d'achat d'un montant précis (sa commande, son devis — techLien) ; le porteur, sous son compte client, utilise ses
+     bons rangés DE CETTE MARQUE (PEC_BONS.bonsDeMarque → PEC_BONS.utiliser : vérifier, puis techLienUtiliserBon avec
+     `par` = son compte — le data-layer refuse sans lui, et chaque usage le garde). S'il n'a pas de bon de cette marque,
+     la page dit OÙ L'ACHETER : les commerces du réseau PayEnCash qui vendent ses bons (techPoints — la même liste que
+     la page partagée) et le flashcode « ordre de vente » à présenter au comptoir (le commerce y lit la marque et le
+     montant) ; puis « tu viens de l'acheter ? » range le code (?code= arrive du comptoir mobile, pré-rempli).
+     CE QUE LA PAGE N'EST PAS : elle n'encaisse rien, ne réclame rien à personne, ne tient aucune dette. Elle décompte un
+     bon que le porteur possède, sur une proposition de sa marque. PayEnCash est secondaire (une ligne : elle a vendu
+     le bon à travers son réseau). Tout est RELU au bus : un bon proposé annulé, expiré ou couvert pendant qu'on le
+     regarde le dit et ferme les gestes.
+     ══ (24/09, soir — fondatrice : « je consulte et le design n'a pas été repris ») DEUX COLONNES SUR BUREAU ══
+     À gauche, la proposition de la marque : le montant (ou ce qui manque encore), l'état, la validité, le cadre, et où
+     acheter un bon s'il en manque ; à droite, tes bons de cette marque, et le code à ranger. Sur téléphone, une seule
+     colonne et l'ordre d'avant : les deux colonnes s'y fondent (display:contents) et chaque bloc reprend sa place par `order`. -->
+<style>
+  .bo-hdr{display:flex;align-items:center;gap:10px}
+  .bo-hdr h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-0.02em}
+  .bo-back{flex:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .bo-back .pec-ico{font-size:17px}
+  .bo-tete{padding:14px 16px;border:1.5px solid var(--color-mint)}
+  .bo-tete-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .bo-tete-h .g{min-width:0}
+  .bo-tete-h .pec-pill{flex:none;margin-top:4px}
+  .bo-tete .l{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted)}
+  .bo-tete .m{font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink);margin-top:3px}
+  .bo-tete .lbl{font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-primary-dark);margin-top:10px}
+  .bo-tete .v{display:flex;align-items:baseline;gap:3px;font-size:30px;font-weight:800;letter-spacing:-0.02em;font-variant-numeric:tabular-nums;color:var(--color-ink)}
+  .bo-tete .v small{font-size:13px;font-weight:700;color:var(--color-primary)}
+  .bo-tete .meta{margin-top:6px;font-size:11px;line-height:1.5;color:var(--color-muted)}
+  .bo-tete .meta .mono{font-family:var(--font-mono);color:var(--color-ink)}
+  .bo-cadre{margin:0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  .bo-cadre b{color:var(--color-muted)}
+  .bo-msg{border-radius:12px;padding:10px 12px;font-size:11.5px;line-height:1.55;font-weight:700}
+  .bo-msg.ko{background:var(--color-danger-well);color:var(--color-danger)}
+  .bo-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .bo-msg.off{background:var(--color-segment);color:var(--color-muted)}
+  .bo-bons-titre{margin:0 0 -6px}
+  .bo-bons{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+  .bo-msg-usage{margin-top:10px}
+  .bo-vide{padding-top:8px;padding-bottom:4px}
+  .bo-bon{padding:12px 14px}
+  .bo-bon-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .bo-bon-h .t{min-width:0}
+  .bo-bon-h .t b{display:block;font-size:13px;color:var(--color-ink)}
+  .bo-bon-h .t small{display:block;margin-top:1px;font-size:10.5px;color:var(--color-muted)}
+  .bo-bon-h .t .mono{font-family:var(--font-mono);color:var(--color-ink)}
+  .bo-bon .pec-pill{flex:none;font-size:9.5px;padding:3px 8px;margin-top:2px}
+  .bo-bon .reste{display:flex;align-items:baseline;gap:7px;margin-top:8px;font-size:11px;color:var(--color-muted)}
+  .bo-bon .reste b{margin-left:auto;font-size:17px;font-weight:800;color:var(--color-ink);font-variant-numeric:tabular-nums}
+  .bo-bon button[data-utiliser]{display:flex;width:100%;margin-top:10px}
+  .bo-acheter-t{margin:0 0 6px}
+  .bo-acheter-txt{font-size:11px;color:var(--color-muted);margin:0 0 8px;line-height:1.5}
+  .bo-liste{padding:0;overflow:hidden}
+  .bo-pt{display:flex;align-items:center;gap:10px;padding:10px 14px}
+  .bo-pt + .bo-pt{box-shadow:inset 0 1px 0 var(--color-sep)}
+  .bo-pt .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .bo-pt .ic .pec-ico{font-size:15px}
+  .bo-pt .t{min-width:0;flex:1}
+  .bo-pt .t b{display:block;font-size:12.5px;color:var(--color-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .bo-pt .t small{display:block;margin-top:1px;font-size:10.5px;line-height:1.45;color:var(--color-muted)}
+  .bo-form{padding:14px 16px}
+  .bo-form .bo-msg{margin-top:9px}
+  .bo-saisie{display:flex;gap:8px;align-items:stretch}
+  .bo-saisie .pec-input{flex:1;min-width:0;font-family:var(--font-mono);font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+  .bo-saisie .pec-cta{width:auto;min-width:0;flex:none;padding:0 16px}
+  .bo-aide{margin:8px 0 0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  .bo-lien{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .bo-rappel{margin:0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  .bo-rappel b{color:var(--color-muted)}
+  /* SUR TÉLÉPHONE ET TABLETTE, une colonne, l'ordre d'avant : les deux colonnes se fondent, chaque bloc reprend sa place */
+  @media (max-width:1023.98px){
+    #bo-page{padding:14px 18px 8px}
+    .bo-col{display:contents}
+    .bo-tete{order:1} .bo-cadre{order:2} #bo-etat{order:3} #bo-usage{order:4} #bo-acheter{order:5} .bo-form{order:6} .bo-rappel{order:7}
+  }
+  /* ══ (24/09, soir) LE BUREAU : deux colonnes, l'échelle des briques de la page ══ */
+  @media (min-width:1024px){
+    .bo-hdr{gap:14px}
+    .bo-hdr h1{font-size:28px;letter-spacing:-0.8px}
+    .bo-back{width:42px;height:42px}
+    .bo-col{display:flex;flex-direction:column;gap:18px}
+    .bo-tete,.bo-form{padding:22px 24px}
+    .bo-bon{padding:20px 22px}
+    .bo-tete .l{font-size:11.5px}
+    .bo-tete .m{font-size:26px}
+    .bo-tete .lbl{font-size:11.5px;margin-top:16px}
+    .bo-tete .v{font-size:44px}
+    .bo-tete .v small{font-size:18px}
+    .bo-tete .meta{font-size:13.5px;margin-top:8px}
+    .bo-cadre,.bo-rappel{font-size:12.5px;max-width:80ch}
+    .bo-msg{font-size:13.5px;padding:12px 14px}
+    .bo-bons{gap:14px;margin-top:18px}
+    .bo-bon-h .t b{font-size:16px} .bo-bon-h .t small{font-size:12.5px;margin-top:3px}
+    .bo-bon .pec-pill{font-size:12px;padding:5px 12px}
+    .bo-bon .reste{font-size:13px;margin-top:12px} .bo-bon .reste b{font-size:22px}
+    .bo-bon button[data-utiliser]{display:inline-flex;width:auto;margin-top:14px}
+    .bo-vide{padding-top:12px}
+    .bo-acheter-txt{font-size:13.5px;margin-bottom:12px}
+    .bo-pt{padding:14px 20px;gap:14px}
+    .bo-pt .ic{width:38px;height:38px;border-radius:12px} .bo-pt .ic .pec-ico{font-size:18px}
+    .bo-pt .t b{font-size:15px} .bo-pt .t small{font-size:13px;margin-top:2px}
+    .bo-saisie .pec-cta{padding:0 26px}
+    .bo-aide{font-size:13px}
+    .bo-lien{font-size:13.5px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll" id="bo-page">
+
+    <div class="bo-hdr">
+      <a href="01-mes-bons.html" class="tap bo-back" aria-label="Retour à mes bons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg></a>
+      <h1>Bon proposé</h1>
+    </div>
+
+    <!-- SANS BON PROPOSÉ (pas de slug, ou slug inconnu) — l'écran le dit, il n'invente pas une offre -->
+    <div id="bo-garde" class="pec-vide" hidden>
+      <span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg></span>
+      <p class="pec-vide-t">Ce bon proposé est introuvable</p>
+      <p class="pec-vide-s" id="bo-garde-txt">—</p>
+      <div class="pec-vide-actions"><a class="pec-cta pec-cta--tight tap" href="01-mes-bons.html">Retour à mes bons</a></div>
+    </div>
+
+    <div id="bo-corps" class="pec-cols pec-cols--2" hidden>
+
+      <!-- ══ À GAUCHE SUR BUREAU : LA PROPOSITION DE LA MARQUE ══ -->
+      <div class="bo-col">
+
+      <!-- ① EN TÊTE : la marque, le montant proposé (ou ce qui manque encore), la référence, la validité, l'état -->
+      <div class="pec-card bo-tete">
+        <div class="bo-tete-h">
+          <div class="g"><div class="l">Bon d’achat proposé par</div><div class="m" id="bo-marque">—</div></div>
+          <span class="pec-pill" id="bo-pill">—</span>
+        </div>
+        <div class="lbl" id="bo-lbl">Montant du bon</div>
+        <div class="v"><span id="bo-montant">—</span><small>€</small></div>
+        <div class="meta"><span id="bo-ref">—</span></div>
+        <div class="meta" id="bo-validite">—</div>
+      </div>
+
+      <!-- LE CADRE, EN UNE LIGNE : chez la marque, réseau limité, ni remboursable ni rendu en monnaie, PayEnCash a vendu -->
+      <p class="bo-cadre" id="bo-cadre">—</p>
+
+      <!-- ⑤ UN BON PROPOSÉ QUI N'A PLUS COURS (annulé, expiré, couvert) LE DIT — et les gestes se ferment -->
+      <div class="bo-msg" id="bo-etat" hidden>—</div>
+
+      <!-- OÙ L'ACHETER : les commerces du réseau qui vendent les bons de cette marque, et le flashcode « ordre de
+           vente » à présenter au comptoir — le commerce y lit la marque et le montant, rien à dicter -->
+      <div id="bo-acheter" hidden>
+        <p class="pec-section-label bo-acheter-t">Où acheter un bon</p>
+        <div class="bo-acheter-txt" id="bo-acheter-txt">—</div>
+        <div class="pec-card bo-liste">
+          <div id="bo-points"></div>
+          <div class="pec-ordre" id="bo-ordre" hidden></div>
+        </div>
+        <p class="bo-aide" id="bo-mobile" hidden>—</p>
+      </div>
+
+      </div>
+      <!-- ══ À DROITE SUR BUREAU : TES BONS DE CETTE MARQUE ══ -->
+      <div class="bo-col">
+
+      <!-- ② TES BONS DE CETTE MARQUE — rangés dans l'app, relus chez la marque ; un bouton par bon utilisable -->
+      <div id="bo-usage">
+        <p class="pec-section-label bo-bons-titre" id="bo-bons-titre">Tes bons</p>
+        <div id="bo-bons" class="bo-bons"></div>
+        <div class="bo-msg bo-msg-usage" id="bo-msg" role="status" hidden>—</div>
+
+        <!-- ③ AUCUN BON DE CETTE MARQUE — on le dit, et on montre où l'acheter -->
+        <div id="bo-vide" class="pec-vide bo-vide" hidden>
+          <span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span>
+          <p class="pec-vide-t" id="bo-vide-t">Tu n’as pas encore de bon</p>
+          <p class="pec-vide-s" id="bo-vide-s">—</p>
+        </div>
+      </div>
+
+      <!-- ④ TU VIENS DE L'ACHETER ? — ranger le code (PEC_BONS.ranger via ajouter) : il apparaît dans la liste, prêt -->
+      <form class="pec-card bo-form" id="bo-form" novalidate>
+        <label class="pec-input-label" for="bo-code">Tu viens de l’acheter ? Range son code</label>
+        <div class="bo-saisie">
+          <input class="pec-input" id="bo-code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="17" placeholder="Le code du ticket" aria-label="Le code imprimé sur le ticket du bon">
+          <button type="submit" id="bo-ranger-go" class="pec-cta pec-cta--tight tap">Ranger</button>
+        </div>
+        <div class="bo-msg ko" id="bo-ranger-err" role="alert" hidden></div>
+        <div class="bo-msg ok" id="bo-ranger-ok" role="status" hidden></div>
+        <p class="bo-aide" id="bo-ranger-aide">—</p>
+      </form>
+
+      <!-- CE QUE LA PAGE N'EST PAS — une ligne (le cadre du bon est dit en tête, on ne le redit pas) -->
+      <p class="bo-rappel"><b>À savoir.</b> Cette page n’encaisse rien : elle décompte un bon que tu possèdes, sur une proposition de sa marque. Elle ne détient aucune valeur et ne fait circuler aucun fonds.</p>
+
+      </div>
+    </div>
+
+    <div style="height:10px"></div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="05-offre.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, B = window.PEC_BONS; if (!D || !B || !D.techLien) return;
+    if (window.PEC_HORS_SESSION) return;   // la garde a remplacé la page par son invitation (elle garde ?o= pour revenir)
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function message(el, cls, txt) { el.hidden = !txt; el.className = el.className.replace(/\b(ko|ok|off)\b/g, '').replace(/\s+/g, ' ').trim() + (cls ? ' ' + cls : ''); el.textContent = txt || ''; }
+    function pluriel(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+    function r2(x) { return Math.round((+x || 0) * 100) / 100; }
+    var Q = new URLSearchParams(location.search);
+    var SLUG = Q.get('o') || '', CODE0 = B.formater(Q.get('code') || '');
+    var ordrePeint = '';
+
+    /* LE CADRE D'UN BON DE MARQUE — une ligne, aux mots du référentiel : chez elle seule (réseau limité, article cité
+       depuis techRef().seuils.reseauLimiteSource), ni remboursable ni rendu en monnaie, et le rôle de PayEnCash. */
+    function cadre(x) {
+      var R = D.techRef ? D.techRef() : {}, S = R.seuils || {};
+      var art = (S.reseauLimiteSource && D.refArticle) ? D.refArticle(S.reseauLimiteSource) : '';
+      return 'Utilisable uniquement chez ' + x.marchand + (x.site ? ' (' + String(x.site).replace(/^https?:\/\//, '') + ')' : '') + ' : c’est un réseau limité' + (art ? ' — ' + art : '') + '. '
+        + 'Ni remboursable en espèces, ni rendu en monnaie. PayEnCash a vendu ce bon à travers son réseau : elle ne l’émet pas, ne le tient pas et n’en détient aucune valeur.';
+    }
+
+    /* ① L'EN-TÊTE — tout vient du bon proposé (techLien) : marque, montant, ce qui manque encore, référence, validité, état */
+    function rendreTete(x) {
+      var couvert = x.etat === 'used' || !(x.restant > 0);
+      $('bo-marque').textContent = x.marchand;
+      $('bo-pill').className = 'pec-pill ' + (couvert ? 'pec-pill--done' : (x.etat === 'open' || x.etat === 'partial') ? 'pec-pill--live' : 'pec-pill--off');
+      $('bo-pill').textContent = D.techLienEtatLbl(x.etat);
+      $('bo-lbl').textContent = couvert ? 'Couvert' : (x.pris > 0 ? 'Il manque encore' : 'Montant du bon');
+      $('bo-montant').textContent = D.eur(couvert ? x.montant : x.restant).replace(/\s*€\s*$/, '');
+      var ref = [];
+      if (x.reference) ref.push('Réf. ' + x.reference);
+      if (x.client) ref.push('pour ' + x.client);
+      if (x.pris > 0) ref.push(D.eur(x.pris) + ' déjà pris sur ' + D.eur(x.montant));
+      $('bo-ref').textContent = ref.join(' · ') || 'Bon proposé ' + x.slug;
+      $('bo-validite').textContent = x.expireLe ? ((x.etat === 'expired' ? 'Expiré le ' : 'Valable jusqu’au ') + B.dateFr(x.expireLe)) : '';
+      $('bo-cadre').textContent = cadre(x);
+    }
+
+    /* ⑤ L'ÉTAT — un bon proposé annulé, expiré ou couvert le dit ; les gestes se ferment. Rend vrai si fermé. */
+    function rendreEtat(x) {
+      var n = (x.usages || []).length;
+      var couvert = x.etat === 'used' || !(x.restant > 0);
+      var ferme = couvert || x.etat === 'cancelled' || x.etat === 'expired';
+      var z = $('bo-etat');
+      if (!ferme) { z.hidden = true; return false; }
+      message(z, couvert ? 'ok' : 'off',
+        couvert ? 'Ta commande est couverte : ' + x.marchand + ' en est prévenue. ' + D.eur(x.montant) + (n ? ' couverts avec ' + pluriel(n, 'bon') + ' ' + x.marchand : '') + '. Rien de plus à faire.'
+        : x.etat === 'cancelled' ? x.marchand + ' a retiré ce bon proposé. Tes bons ' + x.marchand + ', eux, restent tels quels : ils s’utiliseront sur un prochain achat chez elle.'
+        : 'Ce bon proposé a expiré' + (x.expireLe ? ' le ' + B.dateFr(x.expireLe) : '') + '. Demande-en un nouveau à ' + x.marchand + ' ; tes bons restent tels quels.');
+      return true;
+    }
+
+    /* ② TES BONS DE CETTE MARQUE — relus chez la marque ; un bouton par bon actif, avec ce qu'il prendra */
+    function carteBon(r, x, ferme) {
+      var prend = r.etat === 'actif' && r.solde > 0 && x.restant > 0 ? Math.min(r.solde, x.restant) : 0;
+      var code = D.bonMasque ? D.bonMasque(r.code) : r.code;
+      return '<article class="pec-card bo-bon" data-code="' + esc(r.code) + '">' +
+        '<div class="bo-bon-h"><span class="t"><b>Bon ' + esc(r.emetteur) + '</b><small>code <span class="mono">' + esc(code) + '</span>' + (r.expireLe ? ' · ' + esc((r.etat === 'expire' ? 'expiré le ' : 'valable jusqu’au ') + B.dateFr(r.expireLe)) : '') + '</small></span>' +
+          '<span class="pec-pill ' + esc(r.pill) + '">' + esc(r.etatLbl) + '</span></div>' +
+        '<div class="reste"><span>Ce qu’il te reste sur ce bon</span><b>' + esc(D.eur(r.solde == null ? 0 : r.solde)) + '</b></div>' +
+        (prend > 0 && !ferme ? '<button type="button" class="pec-cta pec-cta--tight tap" data-utiliser="' + esc(r.code) + '">Utiliser ce bon (' + esc(D.eur(prend)) + ')</button>' : '') +
+      '</article>';
+    }
+    function rendreBons(x, ferme) {
+      var l = B.bonsDeMarque(x.marchandId);
+      var actifs = l.filter(function (r) { return r.etat === 'actif' && r.solde > 0; });
+      var dispo = r2(actifs.reduce(function (a, r) { return a + r.solde; }, 0));
+      $('bo-bons-titre').textContent = 'Tes bons ' + x.marchand + (l.length ? ' · ' + l.length : '');
+      $('bo-bons').innerHTML = l.map(function (r) { return carteBon(r, x, ferme); }).join('');
+      $('bo-vide').hidden = !!l.length;
+      $('bo-vide-t').textContent = 'Tu n’as pas encore de bon ' + x.marchand;
+      $('bo-vide-s').textContent = ferme ? 'Ce bon proposé n’attend plus rien.' : 'Un bon ' + x.marchand + ' s’achète au comptoir d’un commerce du réseau PayEnCash, au montant proposé. Tu ranges ensuite son code ici : il s’utilise tout de suite.';
+      // où l'acheter : tant que le bon proposé est ouvert et que ce que tu as ne suffit pas
+      var manque = !ferme && dispo < x.restant;
+      $('bo-acheter').hidden = !manque;
+      if (manque) rendreAcheter(x, r2(x.restant - dispo), !!l.length);
+      else { ordrePeint = ''; $('bo-ordre').innerHTML = ''; $('bo-ordre').hidden = true; }
+    }
+
+    /* OÙ L'ACHETER — les commerces du réseau qui vendent les bons de cette marque (techPoints : la même liste que la
+       page partagée), le flashcode « ordre de vente » (le commerce y lit la marque et le montant), et — s'il y en a —
+       les distributeurs nomades (mot du glossaire, D.terme) : la rencontre se demande depuis la page partagée, on ne la refait pas ici. */
+    function rendreAcheter(x, manque, dejaUn) {
+      var pts = D.techPoints ? D.techPoints(x.marchandId) : [];
+      $('bo-acheter-txt').textContent = (dejaUn ? 'Ce que tu as ne couvre pas tout : il manque ' + D.eur(manque) + '. ' : '')
+        + (pts.length ? 'Au comptoir d’un de ces commerces, présente le flashcode ci-dessous : il y lit ' + x.marchand + ' et le montant, tu n’as rien à dicter.' : x.marchand + ' n’a pas encore de commerce du réseau qui vend ses bons.');
+      $('bo-points').innerHTML = pts.map(function (p) {
+        return '<div class="bo-pt"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg></span>' +
+          '<span class="t"><b>' + esc(p.enseigne) + '</b><small>' + esc([p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ') || 'adresse non renseignée') + (p.geoApprox ? ' · position approchée' : '') + '</small></span></div>';
+      }).join('');
+      var zo = $('bo-ordre'), url = D.techOrdreVenteUrl ? D.techOrdreVenteUrl(x.slug) : null;
+      var sig = url ? x.slug + '|' + x.restant : '';
+      zo.hidden = !sig;
+      if (sig !== ordrePeint) { ordrePeint = sig; zo.innerHTML = sig ? D.ordreVenteBlocHTML({ url: url, ref: x.reference || x.slug, entite: 'un bon ' + x.marchand + ', utilisable uniquement chez elle' }) : ''; }
+      var mob = D.techRevendeursMobiles ? D.techRevendeursMobiles(x.marchandId) : [], zm = $('bo-mobile');
+      zm.hidden = !mob.length;
+      zm.innerHTML = mob.length ? esc(mob.length + ' ' + D.terme('nomade', mob.length > 1 ? 'pluriel' : 'nom') + ' vend' + (mob.length > 1 ? 'ent' : '') + ' aussi les bons ' + x.marchand + ' en venant jusqu’à toi. ') + '<a class="bo-lien" href="../tech/07-lien.html?l=' + encodeURIComponent(x.slug) + '">Demander une rencontre depuis la page du bon proposé →</a>' : '';
+    }
+
+    function rendre() {
+      var x = SLUG ? D.techLien(SLUG) : null;
+      $('bo-garde').hidden = !!x; $('bo-corps').hidden = !x;
+      if (!x) { $('bo-garde-txt').textContent = SLUG ? 'Référence « ' + SLUG + ' » : le lien est peut-être incomplet. Demande-le à nouveau à la marque — on ne le reconstitue pas.' : 'Aucune référence dans le lien : ouvre celui que la marque t’a envoyé.'; return; }
+      rendreTete(x);
+      var ferme = rendreEtat(x);
+      rendreBons(x, ferme);
+      $('bo-form').hidden = ferme;
+      $('bo-ranger-aide').textContent = 'On contrôle le code chez ' + x.marchand + ' : un bon d’une autre marque ne s’utilise pas ici — c’est un réseau limité. On ne range que le code.';
+    }
+
+    /* UTILISER — PEC_BONS.utiliser : vérifier, puis techLienUtiliserBon sous le compte du porteur. Le message dit ce
+       qui a été pris, ce qu'il reste sur le bon, et si la commande est couverte. Plusieurs bons, l'un après l'autre. */
+    $('bo-bons').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-utiliser]'); if (!b) return;
+      var x = D.techLien(SLUG); if (!x) { rendre(); return; }
+      var r = B.utiliser(SLUG, b.getAttribute('data-utiliser'));
+      if (!r.ok) { message($('bo-msg'), 'ko', r.motif); return; }
+      message($('bo-msg'), 'ok', '✓ ' + D.eur(r.pris) + ' pris sur ton bon ' + x.marchand + (r.soldeBon > 0 ? ' — il te reste ' + D.eur(r.soldeBon) + ' dessus' : ' — il est utilisé en totalité') + '. '
+        + (r.reste > 0 ? 'Il manque encore ' + D.eur(r.reste) + ' : utilise un autre bon, ou achète-en un.' : 'Ta commande est couverte : ' + x.marchand + ' en est prévenue.'));
+      rendre();
+    });
+
+    /* RANGER — le code remis au comptoir (?code=, ou saisi) : même contrôle que sur la liste (PEC_BONS.ajouter) */
+    $('bo-code').addEventListener('input', function () { this.value = B.formater(this.value); message($('bo-ranger-err'), 'ko', ''); message($('bo-ranger-ok'), 'ok', ''); });
+    function ranger(code) {
+      var r = B.ajouter(code);
+      if (!r.ok) { message($('bo-ranger-ok'), 'ok', ''); message($('bo-ranger-err'), 'ko', r.motif + (r.manque ? ' Tout se passe dans Compte.' : '')); message($('bo-msg'), 'ko', r.motif + (r.manque ? ' Tout se passe dans Compte.' : '')); if (r.champ === 'code') $('bo-code').focus(); return false; }
+      message($('bo-ranger-err'), 'ko', '');
+      var x = D.techLien(SLUG) || {};
+      message($('bo-ranger-ok'), 'ok', '✓ Bon ' + r.bon.emetteur + ' rangé' + (r.bon.solde != null ? ' — ' + D.eur(r.bon.solde) + ' dessus' : '') + (r.bon.marchandId === x.marchandId ? '. Il est prêt : utilise-le ci-dessus.' : '. Il s’utilise chez ' + r.bon.emetteur + ', pas ici.'));
+      $('bo-code').value = '';
+      rendre();
+      return true;
+    }
+    $('bo-form').addEventListener('submit', function (e) { e.preventDefault(); ranger($('bo-code').value); });
+
+    rendre();
+    // le code remis par le comptoir arrive dans l'adresse : pré-rempli, et rangé tout de suite s'il ne l'est pas déjà
+    if (CODE0 && !$('bo-form').hidden) { $('bo-code').value = CODE0; if (!B.estRange(CODE0)) ranger(CODE0); }
+    window.addEventListener('pec-bus', rendre);    // un usage, une annulation par la marque, un rangement ailleurs : la page suit
+    window.addEventListener('storage', rendre);
+  })();
+</script>
+</body>
+</html>

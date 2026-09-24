@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Compte</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- le coffre : l'identité vérifiée se lit sur le dossier du client (clientIdentiteVerifiee) -->
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script><!-- la décision de la hotline sur un dossier de vérification (PEC_BUS.verifications) se LIT ; la suppression se journalise ; (24/09, soir) la demande de rappel part par lui -->
+<script src="../assets/payencash-bons.js"></script>
+<!-- LE COMPTE DU PORTEUR (fondatrice 23/09 : « app utilisateur, avec KYC : dépasse 250 euros de bons en espèces, 500 si CB » ;
+     puis « ce sont LES BONS DES MARQUES, utilisables uniquement chez la marque émettrice ; PayEnCash est secondaire »).
+     (23/09, nuit) L'APP EST AUTONOME : le compte se crée (00-inscription) et s'ouvre (06-connexion) ici même — cette page
+     est celle où il se GÈRE, par le protocole unique des comptes (03/09). Rien de recopié, tout est LU sur le compte
+     (compteParIdentifiant depuis le client actif) :
+     · LE PROFIL — prénom, nom (le data-layer n'en garde que l'initiale : « Prénom N. »), e-mail, mobile (l'identifiant de
+       connexion). Prénom et nom se rectifient (RGPD art. 16) par compteProfilMaj, et le geste se trace ; l'e-mail et le
+       mobile, confirmés par code, ne se changent pas ici : aucune fonction du data-layer ne remet un canal « à confirmer ».
+     · LES CANAUX VÉRIFIÉS — compte.verifs.sms / .email, la seule vérité ; un canal encore à confirmer se confirme ici, avec
+       le code que le data-layer attend (compteCodes, affiché comme code de démo → compteVerifier).
+     · LE MOT DE PASSE — compteMotDePasseChanger : l'ancien est exigé ; un compte de démonstration voit le sien rappelé.
+     · LA PRÉVENTION DE LA FRAUDE (vérification d'identité) : le besoin est DÉRIVÉ (PEC_BONS.kyc) — la somme des bons rangés
+       achetés en espèces au comptoir sur la fenêtre glissante contre le palier espèces, la même chose par carte ; paliers de
+       kycPorteurRef(), aucun chiffre ici. (24/09, soir) C'est NOTRE politique de prévention de la fraude — jamais présentée
+       comme une obligation légale : PayEnCash n'y est pas assujettie, et une erreur coûte plus qu'une absence d'information.
+       Le dépôt des pièces n'a pas encore de parcours dans cette app : on le DIT, on n'invente pas un lien.
+     · LES DOCUMENTS ACCEPTÉS (portée `bons` : CGU de l'app, conditions des bons de marque, confidentialité), lus dans le
+       lecteur jusqu'au bout puis reconnus « lu et accepté », versionnés et horodatés sous la clé du porteur.
+     · LES CONSENTEMENTS — un interrupteur (communications), et la trace prouvable de chaque acte (consentements()).
+     · ÊTRE RAPPELÉ (24/09, soir — fondatrice : « organise ça, la hotline gère ») — la demande part par le bus vers la file
+       de la hotline, avec le compte, le mobile et le sujet ; une demande encore à faire se relit et s'affiche.
+     · SE DÉCONNECTER = la déconnexion de partout (compteDeconnecter + clientActifSet(null)) ; SUPPRIMER (RGPD art. 17) =
+       compteSupprimer + la liste des bons rangés purgée (PEC_BONS.purger) + session fermée.
+     ══ (24/09, soir — fondatrice : « je consulte et le design n'a pas été repris ») DEUX COLONNES SUR BUREAU ══
+     À gauche ce qui est à toi (identité, mot de passe, consentements, sortie) ; à droite ce qui te protège (prévention de la
+     fraude, documents, la hotline). Sur téléphone, une seule colonne et l'ordre d'avant : les deux colonnes s'y fondent
+     (display:contents) et chaque carte reprend sa place par `order`. -->
+<style>
+  .pec-device{position:relative}   /* le lecteur (.lect) se pose dans le cadre, pas dans la page */
+  .cp-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
+  h1.cp-h1{margin:12px 0 0;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink)}
+  .cp-sous{display:none}   /* la promesse de l'en-tête n'existe que sur bureau */
+  .cp-carte{padding:14px 16px}
+  .cp-liste{padding:0;overflow:hidden}
+  .cp-id{display:flex;align-items:center;gap:11px}
+  .cp-ini{flex:none;display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:999px;background:var(--color-mint);color:var(--color-primary-dark);font-size:15px;font-weight:800}
+  .cp-id .n{min-width:0;flex:1}
+  .cp-id .n b{display:block;font-size:14.5px;color:var(--color-ink)}
+  .cp-id .n small{display:block;margin-top:2px;font-size:11.5px;color:var(--color-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cp-kvs{margin-top:10px}
+  .cp-t{font-size:13.5px;font-weight:800;color:var(--color-ink)}
+  .cp-s{margin:3px 0 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  .cp-s-8{margin-top:8px}
+  .cp-s-amber{color:var(--color-amber-text)}
+  .cp-kv{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
+  .cp-kv span{color:var(--color-muted)}
+  .cp-kv b{min-width:0;text-align:right;color:var(--color-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .cp-kv .pec-pill{flex:none;font-size:9.5px;padding:3px 8px}
+  .cp-liens{display:flex;gap:14px;flex-wrap:wrap;margin-top:8px}
+  .cp-lien{display:inline-flex;align-items:center;gap:5px;border:none;background:none;padding:0;font:inherit;font-size:12px;font-weight:800;color:var(--color-primary-dark);cursor:pointer;text-decoration:none}
+  .cp-lien .pec-ico{font-size:14px}
+  .cp-fac{font-weight:600;color:var(--color-muted-2)}
+  .cp-pan{margin-top:10px;border-top:1px solid var(--color-sep);padding-top:10px}
+  .cp-pan .pec-input-label{margin-top:10px}
+  .cp-pan .pec-input-label:first-child{margin-top:0}
+  .cp-aide{margin:5px 0 0;font-size:11px;line-height:1.5;color:var(--color-muted)}
+  .cp-aide b{font-family:var(--font-mono);letter-spacing:.08em;color:var(--color-primary-dark)}
+  .cp-deux{display:flex;gap:8px;margin-top:10px}
+  .cp-deux .pec-cta{flex:1}
+  .cp-deux .pec-btn-secondary{flex:none;padding:0 14px}
+  .cp-code{font-family:var(--font-mono);text-align:center;font-size:20px;letter-spacing:.35em;font-weight:800}
+  .cp-mdp-zone{padding:0 16px 14px}
+  .cp-mdp-zone .pec-input-label{margin-top:10px}
+  .cp-mdp-zone .pec-cta{margin-top:10px}
+  .cp-kyc-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .cp-kyc-h .g{display:flex;align-items:center;gap:10px;min-width:0}
+  .cp-kyc-h .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .cp-kyc-h .ic .pec-ico{font-size:17px}
+  .cp-kyc-h .pec-pill{flex:none;margin-top:4px}
+  .cp-jauge{margin-top:10px}
+  .cp-jauge .l{display:flex;justify-content:space-between;font-size:10.5px;font-weight:700;color:var(--color-muted)}
+  .cp-jauge .l b{color:var(--color-ink);font-variant-numeric:tabular-nums}
+  .cp-jauge .bar{height:8px;border-radius:999px;background:var(--color-segment);overflow:hidden;margin-top:5px}
+  .cp-jauge .bar i{display:block;width:0;height:100%;border-radius:999px;background:var(--color-primary);transition:width .3s}
+  .cp-jauge .bar i.plein{background:var(--color-amber)}
+  .cp-src{margin:8px 0 0;font-size:10px;line-height:1.5;color:var(--color-muted-2)}
+  .cp-docs-l{margin-top:4px}
+  .cp-doc{padding:11px 0;border-top:1px solid var(--color-sep)}
+  .cp-doc:first-child{border-top:0}
+  .cp-doc .h{display:flex;align-items:flex-start;gap:10px}
+  .cp-doc .t{min-width:0;flex:1}
+  .cp-doc .t b{display:block;font-size:12.5px;color:var(--color-ink)}
+  .cp-doc .t small{display:block;margin-top:2px;font-size:10.5px;line-height:1.5;color:var(--color-muted)}
+  .cp-doc .pec-pill{flex:none;font-size:9.5px;padding:3px 8px;margin-top:2px}
+  .cp-doc-act{display:flex;gap:8px;margin-top:8px}
+  .cp-doc-act a,.cp-doc-act button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:38px;border:1px solid var(--color-sep);border-radius:11px;background:var(--color-surface);padding:6px 10px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);text-decoration:none;cursor:pointer}
+  .cp-doc-act button{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+  .cp-doc-act button[disabled]{background:var(--color-segment);border-color:var(--color-segment);color:var(--color-muted-2);cursor:default}
+  .cp-doc-act button.lire{background:var(--color-surface);border-color:var(--color-sep);color:var(--color-primary-dark)}
+  .cp-msg{margin-top:9px;border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5;font-weight:700}
+  .cp-msg.ko{background:var(--color-danger-well);color:var(--color-danger)}
+  .cp-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .cp-sw{display:flex;align-items:center;gap:12px;padding-top:10px}
+  .cp-sw .t{min-width:0;flex:1}
+  .cp-sw .t b{display:block;font-size:12.5px;color:var(--color-ink)}
+  .cp-sw .t small{display:block;margin-top:2px;font-size:10.5px;line-height:1.5;color:var(--color-muted)}
+  .cp-trace{margin:10px 0 0;padding:0;list-style:none;font-size:10.5px;line-height:1.5;color:var(--color-muted)}
+  .cp-trace li{padding:6px 0;border-top:1px solid var(--color-sep)}
+  .cp-trace li b{color:var(--color-ink);font-weight:700}
+  .cp-trace li .r{color:var(--color-amber-text)}
+  .cp-note{margin:0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  .cp-version{margin:0 0 6px;text-align:center;font-size:11px;font-weight:600;color:var(--color-muted-2)}
+  .cp-sup{padding:10px 16px 14px;border-top:1px solid var(--color-sep);font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  /* LA CARTE « ÊTRE RAPPELÉ » (24/09, soir) — le même dessin que sur la liste des bons (.hl-*) : une porte sobre vers la hotline */
+  .hl-h{display:flex;align-items:flex-start;gap:10px}
+  .hl-h .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .hl-h .ic .pec-ico{font-size:17px}
+  .hl-h .t{min-width:0;flex:1}
+  .hl-h .t b{display:block;font-size:13.5px;color:var(--color-ink)}
+  .hl-h .t small{display:block;margin-top:2px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .hl-att{margin-top:10px;border-radius:12px;background:var(--color-amber-well);color:var(--color-amber-text);padding:9px 11px;font-size:11.5px;line-height:1.5;font-weight:700}
+  .hl-ouvrir{margin-top:10px;font-weight:800}
+  .hl-form{margin-top:10px;border-top:1px solid var(--color-sep);padding-top:10px}
+  .hl-act{display:flex;gap:8px;margin-top:10px}
+  .hl-act .pec-cta{flex:1}
+  .hl-act .pec-btn-secondary{flex:none;padding:0 14px}
+  /* LE LECTEUR — un document lu ICI, au format de l'app, refermé sur la page (même principe que l'inscription) */
+  .lect{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--color-bg)}
+  .lect .h{flex:none;display:flex;align-items:center;gap:6px;padding:10px 12px 8px;background:var(--color-surface);box-shadow:var(--shadow-card)}
+  .lect .h .retour{display:inline-flex;align-items:center;gap:2px;border:none;background:none;padding:6px 8px 6px 2px;font:inherit;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+  .lect .h .retour svg{width:18px;height:18px}
+  .lect .h .titre{min-width:0;flex:1;font-size:13px;font-weight:800;line-height:1.25;color:var(--color-ink)}
+  .lect .h .v{font-size:10px;font-weight:700;color:var(--color-muted);white-space:nowrap}
+  .lect .jauge{flex:none;height:4px;background:var(--color-sep)}
+  .lect .jauge i{display:block;height:100%;width:0;background:var(--color-primary);transition:width .15s}
+  .lect .c{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 24px;font-size:13px;line-height:1.6;color:var(--color-ink)}
+  .lect .c h1{font-size:18px;line-height:1.25;margin:0 0 6px}
+  .lect .c h2{font-size:14px;margin:18px 0 6px;color:var(--color-primary-dark)}
+  .lect .c h3{font-size:13px;margin:14px 0 5px}
+  .lect .c p,.lect .c li{margin:6px 0}
+  .lect .c ul,.lect .c ol{padding-left:18px}
+  .lect .c table{display:block;overflow-x:auto;width:100%;border-collapse:collapse;font-size:11.5px}
+  .lect .c th,.lect .c td{border:1px solid var(--color-sep);padding:5px 7px;text-align:left;vertical-align:top}
+  .lect .c .note,.lect .c .warn{border-radius:10px;background:var(--color-mint);padding:9px 11px;font-size:12px;margin:8px 0}
+  .lect .c .warn{background:var(--color-amber-well);color:var(--color-amber-text)}
+  .lect .c .toc,.lect .c .toolbar,.lect .c .brand,.lect .c header,.lect .c .foot{display:none}
+  .lect .c a{color:var(--color-primary-dark);font-weight:700}
+  .lect .c img{max-width:100%;height:auto}
+  .lect .c .fin{margin:22px 0 4px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--color-muted-2)}
+  .lect .f{flex:none;padding:10px 16px 14px;background:var(--color-surface);box-shadow:0 -2px 8px rgba(15,42,36,.06)}
+  .lect .f .pec-cta{display:block;width:100%}
+  .lect .f .s{margin:6px 0 0;font-size:10.5px;line-height:1.5;color:var(--color-muted);text-align:center}
+  /* SUR TÉLÉPHONE ET TABLETTE, une colonne, l'ordre d'avant : les deux colonnes se fondent, chaque carte reprend sa place */
+  @media (max-width:1023.98px){
+    #cp-page{padding:14px 18px 8px}
+    .cp-col{display:contents}
+    .cp-profil{order:1} .cp-mdp{order:2} .cp-kyc{order:3} .cp-docs{order:4} .cp-consent{order:5} .cp-hotline{order:6} .cp-sortie{order:7}
+  }
+  /* ══ (24/09, soir) LE BUREAU : deux colonnes, le lecteur à côté de la navigation, l'échelle des briques de la page ══ */
+  @media (min-width:1024px){
+    h1.cp-h1{margin:0;font-size:30px;letter-spacing:-0.8px}
+    .cp-sous{display:block}
+    .cp-col{display:flex;flex-direction:column;gap:18px}
+    .cp-carte{padding:22px 24px}
+    .cp-ini{width:56px;height:56px;font-size:19px}
+    .cp-id .n b{font-size:18px} .cp-id .n small{font-size:13px}
+    .cp-t{font-size:16px}
+    .cp-s{font-size:13.5px;margin-top:5px}
+    .cp-kv{padding:12px 0;font-size:14.5px}
+    .cp-kv .pec-pill{font-size:12px;padding:5px 12px}
+    .cp-lien{font-size:13.5px}
+    .cp-aide{font-size:13px}
+    .cp-code{font-size:24px}
+    .cp-mdp-zone{padding:0 24px 20px}
+    .cp-deux .pec-cta{flex:none}
+    .cp-jauge .l{font-size:12.5px}
+    .cp-jauge .bar{height:10px}
+    .cp-src{font-size:12px}
+    .cp-doc{padding:14px 0}
+    .cp-doc .t b{font-size:15px} .cp-doc .t small{font-size:12.5px}
+    .cp-doc .pec-pill{font-size:12px;padding:5px 12px}
+    .cp-doc-act{gap:10px;margin-top:12px}
+    .cp-doc-act a,.cp-doc-act button{flex:none;min-height:42px;padding:8px 18px;font-size:13px}
+    .cp-msg{font-size:13.5px;padding:12px 14px}
+    .cp-sw .t b{font-size:15px} .cp-sw .t small{font-size:13px}
+    .cp-trace{font-size:12.5px}
+    .cp-trace li{padding:8px 0}
+    .cp-sup{padding:14px 24px 20px;font-size:13.5px}
+    .cp-note{font-size:12.5px;max-width:80ch}
+    .cp-version{text-align:left;font-size:12px}
+    .hl-h .t b{font-size:16px} .hl-h .t small{font-size:13.5px}
+    .hl-att{font-size:13.5px;padding:12px 14px}
+    .hl-act .pec-cta{flex:none}
+    .lect{position:fixed;left:var(--pec-nav-l,236px)}
+    .lect .h{padding:14px 40px 12px}
+    .lect .h .titre{font-size:16px} .lect .h .v{font-size:12px}
+    .lect .c{padding:28px 40px 40px;font-size:15px}
+    .lect .c > *{max-width:820px;margin-left:auto;margin-right:auto}
+    .lect .c h1{font-size:24px} .lect .c h2{font-size:18px} .lect .c h3{font-size:15.5px}
+    .lect .f{padding:14px 40px 18px}
+    .lect .f .pec-cta{width:fit-content;min-width:320px;margin:0 auto}
+    .lect .f .s{font-size:12.5px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll" id="cp-page">
+
+    <!-- LA MARQUE (socle : marqueAppliquer) — le P générique, le nom de l'app, le slogan lu dans le référentiel.
+         (24/09, soir) pec-entete-app : sur bureau, la colonne de navigation la porte déjà — cet en-tête s'efface. -->
+    <header class="cp-hdr pec-entete-app">
+      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+    </header>
+    <div class="pec-page-tete">
+      <div class="tx"><h1 class="cp-h1">Compte</h1><p class="sous cp-sous">Ton identité, ton mot de passe, tes documents acceptés — et la hotline à portée de main.</p></div>
+    </div>
+
+    <div class="pec-cols pec-cols--2">
+    <!-- ══ À GAUCHE SUR BUREAU : ce qui est à toi ══ -->
+    <div class="cp-col">
+
+    <!-- ① LE PROFIL — lu sur le compte, tel quel ; la rectification passe par le data-layer -->
+    <div class="pec-card cp-carte cp-profil">
+      <div class="cp-id">
+        <span class="cp-ini" id="cp-ini">—</span>
+        <span class="n"><b id="cp-nom">—</b><small id="cp-contact">—</small></span>
+      </div>
+      <div class="cp-kvs">
+        <div class="cp-kv"><span>Mobile — ton identifiant</span><b id="cp-mobile">—</b><span class="pec-pill" id="cp-sms-pill">—</span></div>
+        <div class="cp-kv"><span>E-mail</span><b id="cp-email">—</b><span class="pec-pill" id="cp-mail-pill">—</span></div>
+      </div>
+      <div class="cp-liens">
+        <button type="button" class="cp-lien tap pec-tap-confort" id="cp-modifier" aria-expanded="false" aria-controls="cp-edit"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-edit"/></svg>Modifier mon prénom ou mon nom</button>
+        <button type="button" class="cp-lien tap" id="cp-verif-ouvrir" hidden aria-expanded="false" aria-controls="cp-verif"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg><span id="cp-verif-ouvrir-txt">Confirmer un canal</span></button>
+      </div>
+      <div class="cp-msg ok" id="cp-fait" role="status" hidden></div>
+      <p class="cp-s cp-s-8">Tes bons de marque sont rangés sous ce compte et te suivent d’un appareil à l’autre ; c’est lui qui porte chaque usage d’un bon chez sa marque. Ton mobile — ton identifiant — et ton e-mail, confirmés par code, ne se modifient pas ici.</p>
+
+      <!-- MODIFIER (RGPD art. 16) — prénom, nom → compteProfilMaj ; le geste se trace (consentir) -->
+      <div class="cp-pan" id="cp-edit" hidden>
+        <label class="pec-input-label" for="cp-prenom">Prénom</label>
+        <input class="pec-input" id="cp-prenom" type="text" autocomplete="given-name">
+        <!-- le data-layer ne garde du nom que son initiale (« Prénom N. ») : on ne pré-remplit rien, et le champ vide laisse le nom tel quel -->
+        <label class="pec-input-label" for="cp-nomfam">Nom <span class="cp-fac">— seulement pour le changer, comme sur ta pièce d’identité</span></label>
+        <input class="pec-input" id="cp-nomfam" type="text" autocomplete="family-name" placeholder="Laisser vide pour ne pas changer">
+        <div class="cp-msg ko" id="cp-edit-msg" role="alert" hidden></div>
+        <div class="cp-deux"><button type="button" class="pec-cta pec-cta--tight tap" id="cp-enregistrer">Enregistrer</button><button type="button" class="pec-btn-secondary tap" id="cp-annuler">Annuler</button></div>
+      </div>
+
+      <!-- CONFIRMER UN CANAL encore à vérifier — le code attendu par le data-layer (compteCodes), affiché comme code de démo -->
+      <div class="cp-pan" id="cp-verif" hidden>
+        <div class="cp-t" id="cp-verif-titre">—</div>
+        <p class="cp-aide" id="cp-verif-txt">—</p>
+        <label class="pec-input-label" for="cp-verif-code">Code reçu</label>
+        <input class="pec-input cp-code" id="cp-verif-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="______">
+        <div class="cp-msg ko" id="cp-verif-msg" role="alert" hidden></div>
+        <div class="cp-deux"><button type="button" class="pec-cta pec-cta--tight tap" id="cp-verif-go">Confirmer</button><button type="button" class="pec-btn-secondary tap" id="cp-verif-annuler">Plus tard</button></div>
+      </div>
+    </div>
+
+    <!-- ② LE MOT DE PASSE — l'ancien est exigé (compteMotDePasseChanger) -->
+    <div class="pec-card cp-liste cp-mdp">
+      <button class="pec-row tap" type="button" id="cp-mdp-ouvrir" aria-expanded="false" aria-controls="cp-mdp-zone">
+        <span class="pec-tile"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-lock"/></svg></span>
+        <span class="pec-row-text"><span class="t">Mot de passe</span><span class="s">C’est lui qui te connecte — le SMS ne sert qu’à vérifier ton numéro.</span></span>
+        <svg class="pec-ico pec-row-go" viewBox="0 0 24 24"><use href="#i-chevron-down"/></svg>
+      </button>
+      <div class="cp-mdp-zone" id="cp-mdp-zone" hidden>
+        <p class="cp-aide" id="cp-mdp-sub">—</p>
+        <label class="pec-input-label" for="cp-mdp-ancien">Mot de passe actuel</label>
+        <input class="pec-input" id="cp-mdp-ancien" type="password" autocomplete="current-password" placeholder="••••••••••">
+        <label class="pec-input-label" for="cp-mdp-nouveau">Nouveau mot de passe</label>
+        <input class="pec-input" id="cp-mdp-nouveau" type="password" autocomplete="new-password" placeholder="••••••••••">
+        <div class="cp-msg" id="cp-mdp-msg" role="status" hidden></div>
+        <button type="button" class="pec-cta pec-cta--tight tap" id="cp-mdp-go">Changer mon mot de passe</button>
+      </div>
+    </div>
+
+    <!-- ⑤ LES CONSENTEMENTS — un interrupteur, et la trace de chaque acte (RGPD art. 7 : prouvable, retirable) -->
+    <div class="pec-card cp-carte cp-consent">
+      <div class="cp-t">Consentements</div>
+      <div class="cp-sw">
+        <span class="t"><b>Communications</b><small>Recevoir les nouveautés des marques du réseau et de PayEnCash (e-mail). Rien n’est envoyé sans ton accord, et tu le retires ici.</small></span>
+        <button type="button" class="pec-switch tap" id="cp-sw-com" role="switch" aria-checked="false" aria-label="Communications"></button>
+      </div>
+      <ul class="cp-trace" id="cp-consents"></ul>
+    </div>
+
+    <!-- ⑦ SE DÉCONNECTER · SUPPRIMER MON COMPTE (RGPD art. 17) -->
+    <div class="pec-card cp-liste cp-sortie">
+      <button class="pec-row tap" type="button" id="cp-deconnecter">
+        <span class="pec-tile"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-log-out"/></svg></span>
+        <span class="pec-row-text"><span class="t">Se déconnecter</span><span class="s">Tes bons restent rangés sous ton compte : tu les retrouveras à la prochaine connexion.</span></span>
+      </button>
+      <button class="pec-row pec-row--danger tap" type="button" id="cp-supprimer" aria-expanded="false" aria-controls="cp-sup-panel">
+        <span class="pec-tile pec-tile--danger"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-trash"/></svg></span>
+        <span class="pec-row-text"><span class="t">Supprimer mon compte</span><span class="s" id="cp-sup-sub">Compte fermé, liste des bons effacée de l’app — tes bons, eux, valent toujours avec leur ticket.</span></span>
+      </button>
+      <div class="cp-sup" id="cp-sup-panel" hidden>
+        <div id="cp-sup-info">—</div>
+        <div class="cp-deux"><button type="button" class="pec-cta pec-cta--tight tap" id="cp-sup-confirmer">Confirmer la suppression</button><button type="button" class="pec-btn-secondary tap" id="cp-sup-annuler">Annuler</button></div>
+      </div>
+    </div>
+
+    </div>
+    <!-- ══ À DROITE SUR BUREAU : ce qui te protège ══ -->
+    <div class="cp-col">
+
+    <!-- ③ LA PRÉVENTION DE LA FRAUDE — besoin dérivé, paliers du référentiel ; aucun parcours de dépôt ici, et on le dit -->
+    <div class="pec-card cp-carte cp-kyc">
+      <div class="cp-kyc-h">
+        <div class="g">
+          <span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg></span>
+          <span class="cp-t">Vérification d’identité</span>
+        </div>
+        <span class="pec-pill" id="kyc-pill">—</span>
+      </div>
+      <p class="cp-s" id="kyc-txt">—</p>
+      <div class="cp-jauge">
+        <div class="l"><span>Bons achetés en espèces</span><span><b id="kyc-esp">0 €</b> / <span id="kyc-esp-max">—</span></span></div>
+        <div class="bar"><i id="kyc-esp-bar"></i></div>
+      </div>
+      <div class="cp-jauge">
+        <div class="l"><span>Bons achetés par carte</span><span><b id="kyc-cb">0 €</b> / <span id="kyc-cb-max">—</span></span></div>
+        <div class="bar"><i id="kyc-cb-bar"></i></div>
+      </div>
+      <p class="cp-s cp-s-8" id="kyc-fenetre">—</p>
+      <p class="cp-s cp-s-amber" id="kyc-sans" hidden>—</p>
+      <p class="cp-src" id="kyc-src">—</p>
+    </div>
+
+    <!-- ④ LES DOCUMENTS — chacun se LIT dans le lecteur (data-doc-voir), la lecture se note quand le texte a été défilé
+         jusqu'au bout, puis il se reconnaît « lu et accepté » (data-doc-ok, fermé tant que la version en vigueur n'a pas
+         été lue). État lu dans le data-layer (documentsEtat) : À lire · À accepter · À jour · Nouvelle version à relire.
+         Sans tout ça, l'app ne range aucun bon (peutRanger). -->
+    <div class="pec-card cp-carte cp-docs">
+      <div class="cp-t">Documents</div>
+      <p class="cp-s">Chaque document se lit ici, dans l’app, jusqu’au bout, puis se reconnaît « lu et accepté » — la version et la date sont enregistrées. Une nouvelle version se relit et se réaccepte. Tant que ce n’est pas fait, l’app ne range aucun bon.</p>
+      <div class="cp-docs-l" id="cp-docs"></div>
+      <div class="cp-msg ko" id="cp-docs-err" role="alert" hidden></div>
+      <div class="cp-msg ok" id="cp-docs-ok" role="status" hidden></div>
+    </div>
+
+    <!-- ⑥ ÊTRE RAPPELÉ (24/09, soir — fondatrice : « organise ça, la hotline gère ») : le sujet est facultatif, la demande part
+         par le bus vers la file de la hotline avec le compte et le mobile ; une demande encore à faire s'affiche à la place du bouton. -->
+    <div class="pec-card cp-carte cp-hotline" id="cp-rappel-carte">
+      <div class="hl-h">
+        <span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-headset"/></svg></span>
+        <span class="t"><b>Être rappelé par PayEnCash</b><small>Une question sur ton compte, un bon qui pose problème : la hotline te rappelle sur ton mobile.</small></span>
+      </div>
+      <div class="hl-att" id="cp-rappel-attente" role="status" hidden></div>
+      <button type="button" class="pec-btn-secondary tap hl-ouvrir" id="cp-rappel-ouvrir" aria-expanded="false" aria-controls="cp-rappel-form">Être rappelé par PayEnCash</button>
+      <div class="hl-form" id="cp-rappel-form" hidden>
+        <label class="pec-input-label" for="cp-rappel-sujet">À quel sujet ? <span class="cp-fac">— facultatif</span></label>
+        <input class="pec-input" id="cp-rappel-sujet" type="text" maxlength="140" autocomplete="off" placeholder="Ton compte, un bon, ce qui s’est passé…">
+        <div class="hl-act"><button type="button" class="pec-cta pec-cta--tight tap" id="cp-rappel-go">Demander un rappel</button><button type="button" class="pec-btn-secondary tap" id="cp-rappel-annuler">Annuler</button></div>
+      </div>
+      <div class="cp-msg ok" id="cp-rappel-ok" role="status" hidden></div>
+      <div class="cp-msg ko" id="cp-rappel-err" role="alert" hidden></div>
+    </div>
+
+    </div>
+    </div><!-- /pec-cols -->
+
+    <p class="cp-note">Cette app range les codes des bons d’achat des marques du réseau : chacun s’utilise uniquement chez la marque qui l’a émis, et PayEnCash l’a vendu à travers son réseau. Elle ne détient aucune valeur, n’ouvre aucun compte de paiement et ne fait circuler aucun fonds.</p>
+    <p class="cp-version" id="cp-version"></p>
+
+    <div style="height:10px"></div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="04-compte.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
+
+  <!-- LE LECTEUR : un document lu SANS quitter la page — il se referme sur elle ; son pied porte l'acceptation -->
+  <div class="lect" id="cp-lecteur" hidden role="dialog" aria-modal="true" aria-labelledby="cp-lect-titre">
+    <div class="h">
+      <button type="button" class="retour tap" id="cp-lect-fermer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg>Retour</button>
+      <div class="titre" id="cp-lect-titre">—</div>
+      <span class="v" id="cp-lect-version"></span>
+    </div>
+    <div class="jauge" aria-hidden="true"><i id="cp-lect-jauge"></i></div>
+    <div class="c" id="cp-lect-corps"></div>
+    <div class="f" id="cp-lect-pied" hidden></div>
+  </div>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, B = window.PEC_BONS; if (!D || !B) return;
+    if (window.PEC_HORS_SESSION) return;   // la garde a remplacé la page par son invitation
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function message(el, txt, ok) { el.hidden = !txt; el.textContent = txt || ''; if (ok != null) el.className = 'cp-msg ' + (ok ? 'ok' : 'ko'); }
+    function pct(v, max) { return max > 0 ? Math.min(100, Math.round(v / max * 100)) : 0; }
+    function heure(iso) { return iso ? new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : ''; }   // la preuve garde les secondes, l'écran non
+    var MIN_MDP = +((((D.ref || {}).connexion || {}).motDePasseMin) || 0);
+    var LONG_CODE = +((((D.ref || {}).otp || {}).longueur) || 0);
+    if (LONG_CODE) $('cp-verif-code').maxLength = LONG_CODE;
+    $('cp-version').textContent = D.version ? 'PayEnCash Mes bons · version ' + D.version : '';
+
+    /* LE COMPTE — la seule vérité du protocole, retrouvé par son RATTACHEMENT au client actif (refId), jamais par le mobile.
+       (23/09, nuit — constaté en le faisant) Quand le data-layer reconstruit ses clients, le compte de démonstration (cl01,
+       bâti sur le profil courant) reprend le mobile du client connecté : une recherche par mobile rendait CE compte-là, et
+       « Modifier » a réécrit la démo au lieu du compte de la personne — « Supprimer » l'aurait supprimée. Par le
+       rattachement, au pire on ne trouve rien, et l'écran le dit. */
+    function client() { return D.clientCourant ? D.clientCourant() : null; }
+    function compte() {
+      var id = D.clientActifGet ? D.clientActifGet() : null; if (!id || !D.comptesTous) return null;
+      return D.comptesTous('client').filter(function (c) { return c.refId === id; })[0] || null;
+    }
+    /* RECHARGER APRÈS UN GESTE QUI RECONSTRUIT LES CLIENTS (compteProfilMaj, compteVerifier) : jusqu'au chargement suivant,
+       le vrai compte disparaît de comptesTous (voir ci-dessus) et plus aucun geste ne le retrouve. Recharger remet le
+       data-layer d'aplomb ; l'adresse garde de quoi dire ce qui vient d'être fait (#fait=…), effacé dès qu'il est lu. */
+    var FAIT = { profil: '✓ Prénom et nom enregistrés sur ton compte.', sms: '✓ Mobile confirmé.', email: '✓ E-mail confirmé.' };
+    function recharger(fait) { try { history.replaceState(null, '', location.pathname + location.search + '#fait=' + fait); } catch (e) {} location.reload(); }
+    (function () {
+      var f = (location.hash.match(/fait=([a-z]+)/) || [])[1];
+      if (!f || !FAIT[f]) return;
+      message($('cp-fait'), FAIT[f], true);
+      try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+    })();
+
+    /* ① LE PROFIL ET LES CANAUX — lus sur le compte (profil.nom = « Prénom N. », identifiant = mobile, verifs) */
+    var CANAUX = { sms: { lbl: 'ton mobile', pill: 'cp-sms-pill' }, email: { lbl: 'ton e-mail', pill: 'cp-mail-pill' } };
+    function rendreIdentite() {
+      var c = compte(), cl = client(), p = (c && c.profil) || {};
+      // un compte créé sans nom porte « Prénom . » (data-layer) : le point seul ne s'affiche pas
+      var nom = String(p.nom || (cl ? (cl.nomComplet || cl.prenom || '') : '')).replace(/\s+\.+$/, '').trim();
+      $('cp-nom').textContent = nom || 'Ton compte';
+      $('cp-ini').textContent = nom ? nom.split(/\s+/).map(function (x) { return x.charAt(0); }).join('').slice(0, 2).toUpperCase() : '—';
+      $('cp-contact').textContent = c ? 'Compte ' + c.id + ' · ' + ((D.STATUTS_COMPTE || {})[c.statut] || c.statut) : 'compte non retrouvé sur cet appareil';
+      var mobile = c ? String(c.identifiant) : (cl ? (cl.telComplet || cl.tel || '') : '');
+      $('cp-mobile').textContent = mobile ? mobile.replace(/(\d{2})(?=\d)/g, '$1 ') : '—';
+      $('cp-email').textContent = p.email || (cl && cl.email) || '—';
+      var aConfirmer = [];
+      Object.keys(CANAUX).forEach(function (k) {
+        var ok = c ? !!(c.verifs && c.verifs[k]) : (k === 'sms' ? !!(D.smsVerifie && D.smsVerifie()) : !!(D.mailVerifie && D.mailVerifie()));
+        var pill = $(CANAUX[k].pill); pill.className = 'pec-pill ' + (ok ? 'pec-pill--done' : 'pec-pill--wait'); pill.textContent = ok ? 'Vérifié ✓' : 'À confirmer';
+        if (!ok && c) aConfirmer.push(k);
+      });
+      var b = $('cp-verif-ouvrir'); b.hidden = !aConfirmer.length;
+      $('cp-verif-ouvrir-txt').textContent = aConfirmer.length ? 'Confirmer ' + aConfirmer.map(function (k) { return CANAUX[k].lbl; }).join(' et ') : '';
+      b.setAttribute('data-canaux', aConfirmer.join(','));
+    }
+    // MODIFIER — les champs se pré-remplissent depuis le compte ; l'enregistrement passe par compteProfilMaj, puis se trace
+    $('cp-modifier').addEventListener('click', function () {
+      var z = $('cp-edit'); z.hidden = !z.hidden; this.setAttribute('aria-expanded', String(!z.hidden));
+      if (z.hidden) return;
+      var c = compte(), cl = client(), p = (c && c.profil) || {};
+      $('cp-prenom').value = p.prenom || (cl && cl.prenom) || ''; $('cp-nomfam').value = '';
+      message($('cp-edit-msg'), '', false); $('cp-verif').hidden = true; $('cp-prenom').focus();
+    });
+    $('cp-annuler').addEventListener('click', function () { $('cp-edit').hidden = true; $('cp-modifier').setAttribute('aria-expanded', 'false'); });
+    $('cp-enregistrer').addEventListener('click', function () {
+      var c = compte(); if (!c || !D.compteProfilMaj) { message($('cp-edit-msg'), 'Compte non retrouvé : reconnecte-toi.', false); return; }
+      var prenom = $('cp-prenom').value.trim(), nom = $('cp-nomfam').value.trim();
+      var NOM_OK = /^[A-Za-zÀ-ÖØ-öø-ÿ]{2,}(?:[ '\-][A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+      if (!NOM_OK.test(prenom)) { message($('cp-edit-msg'), 'Prénom : deux lettres minimum.', false); $('cp-prenom').focus(); return; }
+      if (nom && !NOM_OK.test(nom)) { message($('cp-edit-msg'), 'Nom : deux lettres minimum — tel qu’il figure sur ta pièce d’identité (ou laisse vide).', false); $('cp-nomfam').focus(); return; }
+      var patch = { prenom: prenom }; if (nom) patch.nom = nom;   // un nom vide ne change rien : le data-layer n'en garde que l'initiale
+      var r = D.compteProfilMaj(c.id, patch);
+      if (!r) { message($('cp-edit-msg'), 'Rien n’a été enregistré : compte inconnu.', false); return; }
+      if (D.consentir) D.consentir('modification-profil', 'Prénom et nom du compte modifiés');
+      recharger('profil');
+    });
+    // CONFIRMER UN CANAL — compteCodes donne le code que compteVerifier attend ; en maquette il s'affiche, rien n'est envoyé
+    var canalEnCours = null;
+    $('cp-verif-ouvrir').addEventListener('click', function () {
+      var c = compte(); if (!c || !D.compteCodes) return;
+      var canaux = (this.getAttribute('data-canaux') || '').split(',').filter(Boolean);
+      canalEnCours = canaux[0] || null; if (!canalEnCours) return;
+      var codes = D.compteCodes(c);
+      $('cp-verif-titre').textContent = 'Confirmer ' + CANAUX[canalEnCours].lbl;
+      $('cp-verif-txt').innerHTML = 'Un code part ' + (canalEnCours === 'sms' ? 'par SMS au ' + esc(String(c.identifiant).replace(/(\d{2})(?=\d)/g, '$1 ')) : 'par e-mail à ' + esc((c.profil && c.profil.email) || '')) + '. Maquette — rien n’est envoyé : code de démo <b>' + esc(codes[canalEnCours] || '—') + '</b>.';
+      $('cp-verif-code').value = ''; message($('cp-verif-msg'), '', false);
+      $('cp-edit').hidden = true; $('cp-verif').hidden = false; this.setAttribute('aria-expanded', 'true'); $('cp-verif-code').focus();
+    });
+    $('cp-verif-annuler').addEventListener('click', function () { $('cp-verif').hidden = true; $('cp-verif-ouvrir').setAttribute('aria-expanded', 'false'); });
+    $('cp-verif-code').addEventListener('input', function () { this.value = this.value.replace(/\D/g, ''); if (LONG_CODE) this.value = this.value.slice(0, LONG_CODE); message($('cp-verif-msg'), '', false); });
+    $('cp-verif-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('cp-verif-go').click(); } });
+    $('cp-verif-go').addEventListener('click', function () {
+      var c = compte(); if (!c || !canalEnCours || !D.compteVerifier) return;
+      var r = D.compteVerifier(c.id, canalEnCours, $('cp-verif-code').value.trim());
+      if (!r.ok) { message($('cp-verif-msg'), r.motif || 'Code incorrect.', false); $('cp-verif-code').select(); return; }
+      recharger(canalEnCours);
+    });
+
+    /* ② LE MOT DE PASSE — l'ancien est exigé ; un compte de démonstration n'en a jamais choisi : le sien se rappelle */
+    $('cp-mdp-ouvrir').addEventListener('click', function () {
+      var z = $('cp-mdp-zone'); z.hidden = !z.hidden; this.setAttribute('aria-expanded', String(!z.hidden));
+      if (z.hidden) return;
+      var c = compte();
+      $('cp-mdp-sub').innerHTML = (MIN_MDP ? MIN_MDP + ' caractères minimum. ' : '') + (c && !c.motdepasse && D.compteMdpAttendu ? 'Ce compte de démonstration n’en a jamais choisi — le sien est <b>' + esc(D.compteMdpAttendu(c) || '') + '</b>.' : 'Toi seul·e le connais.');
+      message($('cp-mdp-msg'), '', true); $('cp-mdp-ancien').focus();
+    });
+    $('cp-mdp-go').addEventListener('click', function () {
+      var c = compte(); if (!c || !D.compteMotDePasseChanger) { message($('cp-mdp-msg'), 'Compte non retrouvé : reconnecte-toi.', false); return; }
+      var r = D.compteMotDePasseChanger(c.id, $('cp-mdp-ancien').value, $('cp-mdp-nouveau').value);
+      if (!r.ok) { message($('cp-mdp-msg'), r.motif || 'Changement refusé.', false); return; }
+      $('cp-mdp-ancien').value = ''; $('cp-mdp-nouveau').value = '';
+      message($('cp-mdp-msg'), '✓ Mot de passe changé — c’est lui qui te connecte désormais.', true);
+    });
+
+    /* ③ LA PRÉVENTION DE LA FRAUDE — tout vient de PEC_BONS.kyc() : paliers, cumuls, besoin, état du dossier. Aucun parcours
+       de dépôt dans cette version : on le dit, on n'invente pas un lien. (24/09, soir) Les paliers sont NOTRE politique de
+       prévention de la fraude — jamais une obligation légale de PayEnCash, qui n'y est pas assujettie. */
+    function rendreKyc() {
+      var k = B.kyc(), P = k.paliers, pill = $('kyc-pill'), txt = $('kyc-txt');
+      $('kyc-esp').textContent = D.eur(k.cumulEspeces); $('kyc-esp-max').textContent = D.eur(P.especesEur);
+      $('kyc-cb').textContent = D.eur(k.cumulCarte); $('kyc-cb-max').textContent = D.eur(P.carteEur);
+      $('kyc-esp-bar').style.width = pct(k.cumulEspeces, P.especesEur) + '%'; $('kyc-esp-bar').className = k.depasseEspeces ? 'plein' : '';
+      $('kyc-cb-bar').style.width = pct(k.cumulCarte, P.carteEur) + '%'; $('kyc-cb-bar').className = k.depasseCarte ? 'plein' : '';
+      $('kyc-fenetre').textContent = 'Sur ' + P.fenetreJours + ' jours glissants, comptés à la date d’achat des bons rangés ici. Au-delà de ' + D.eur(P.especesEur) + ' de bons achetés en espèces, ou de ' + D.eur(P.carteEur) + ' par carte, on vérifie ton identité : c’est notre politique de prévention de la fraude, pas la limite d’un compte.';
+      $('kyc-sans').hidden = !k.sansMoyen;
+      $('kyc-sans').textContent = k.sansMoyen ? k.sansMoyen + ' bon' + (k.sansMoyen > 1 ? 's' : '') + ' rangé' + (k.sansMoyen > 1 ? 's' : '') + ' dont le moyen d’achat n’est pas connu : ' + (k.sansMoyen > 1 ? 'ils ne comptent' : 'il ne compte') + ' pas — on n’invente pas comment tu as acheté ton bon.' : '';
+      $('kyc-src').textContent = P.source || '';
+      var quoi = k.depasseEspeces && k.depasseCarte ? 'des bons achetés en espèces et par carte' : k.depasseEspeces ? 'des bons achetés en espèces' : 'des bons achetés par carte';
+      if (k.verifie) {
+        pill.className = 'pec-pill pec-pill--done'; pill.textContent = 'Vérifiée ✓';
+        txt.textContent = 'Ton identité est vérifiée' + (k.dossier ? ' (dossier ' + k.dossier.id + ')' : '') + '. Aucun palier de prévention de la fraude de cette app ne s’applique plus à tes bons — restent les règles de chaque marque.';
+      } else if (k.dossier && (k.dossier.statut === 'a_controler' || k.dossier.statut === 'transmise_pvid')) {
+        pill.className = 'pec-pill pec-pill--wait'; pill.textContent = 'En contrôle';
+        txt.textContent = 'Ton dossier ' + k.dossier.id + ' est en contrôle : notre équipe décide et te prévient. Rien d’autre à faire.';
+      } else if (k.requis) {
+        pill.className = 'pec-pill pec-pill--wait'; pill.textContent = 'Requise';
+        txt.textContent = 'Vérification d’identité requise : tes bons rangés dépassent le palier ' + quoi + ' de notre politique de prévention de la fraude. Le dépôt de ta pièce d’identité n’est pas encore ouvert dans cette version de l’app : tes bons restent tels quels, avec leur ticket, et rien de plus ne se range en attendant.'
+          + (k.dossier && k.dossier.statut === 'a_refaire' ? ' Ton dernier dossier est à refaire' + (k.dossier.motif ? ' (' + k.dossier.motif + ')' : '') + '.' : k.dossier && k.dossier.statut === 'refusee' ? ' Ton dernier dossier a été refusé' + (k.dossier.motif ? ' (' + k.dossier.motif + ')' : '') + '.' : '');
+      } else {
+        pill.className = 'pec-pill pec-pill--live'; pill.textContent = 'Rien à faire';
+        txt.textContent = 'Tu es sous les paliers de notre politique de prévention de la fraude : rien à faire pour l’instant.';
+      }
+    }
+
+    /* ④ LES DOCUMENTS — l'état de chaque document est LU (documentsEtat) : consulté ? accepté ? dans quelle version ? */
+    function rendreDocs() {
+      var docs = B.documents();
+      if (!docs.length) { $('cp-docs').innerHTML = '<div class="cp-s">Aucun document à accepter pour l’instant.</div>'; return; }
+      $('cp-docs').innerHTML = docs.map(function (d) {
+        /* (24/09, nuit) une politique de confidentialité se lit, elle ne s'accepte pas : les mots viennent de documentMots */
+        var pill = d.aJour ? ['À jour', 'pec-pill--done'] : d.aRelire ? ['Nouvelle version à relire', 'pec-pill--wait'] : d.peutAccepter ? [d.information ? 'À confirmer' : 'À accepter', 'pec-pill--wait'] : ['À lire', 'pec-pill--off'];
+        var etat = ['version ' + d.version];
+        if (d.consulteLe) etat.push('consulté le ' + heure(d.consulteLe));
+        if (d.accepteLe) etat.push((d.information ? 'lu le ' : 'accepté le ') + heure(d.accepteLe));
+        if (d.aRelire) etat.push(d.information ? 'une version précédente avait été lue : celle-ci se relit' : 'une version précédente avait été acceptée : celle-ci se relit');
+        return '<div class="cp-doc" data-doc="' + esc(d.cle) + '"><div class="h"><span class="t"><b>' + esc(d.titre) + '</b><small>' + esc(etat.join(' · ')) + '</small></span>' +
+          '<span class="pec-pill ' + pill[1] + '">' + pill[0] + '</span></div>' +
+          '<div class="cp-doc-act"><button type="button" class="lire tap" data-doc-voir="' + esc(d.cle) + '"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:14px"><use href="#i-file"/></svg>' + (d.consulteLe ? 'Relire' : 'Lire') + '</button>' +
+          (d.aJour ? '' : '<button type="button" class="tap" data-doc-ok="' + esc(d.cle) + '"' + (d.peutAccepter ? '' : ' disabled title="Lis d’abord le document"') + '>' + d.bouton + '</button>') + '</div></div>';
+      }).join('');
+    }
+    /* ④bis LE LECTEUR — on charge le texte en vigueur (son adresse vient du référentiel), on garde son corps
+       (`.sheet .body`), on laisse tomber sa mise en page de bureau — l'app a la sienne.
+       (fondatrice, 23/09 soir : « il défile et signe le document ») OUVRIR N'EST PAS LIRE : la consultation se NOTE
+       (clé, version, horodatage) quand le texte a été DÉFILÉ JUSQU'AU BOUT (lecteurFin, au `scroll` ; un texte plus
+       court que l'écran compte comme lu dès l'affichage), et c'est elle qui ouvre « J'ai lu et j'accepte » — dans le
+       pied du lecteur comme sur la ligne. Une ligne « — fin du document — » marque le bout, la jauge dit où l'on en est.
+       Si le chargement échoue (page ouverte en fichier local), le document s'affiche tel quel dans un cadre — on ne laisse
+       pas un écran vide — et, faute de pouvoir observer son défilement, l'affichage vaut lecture. */
+    var lecteurCle = null, lecteurLu = false, lecteurCharge = false;
+    function jauge() {
+      var c = $('cp-lect-corps'), max = c.scrollHeight - c.clientHeight;
+      $('cp-lect-jauge').style.width = (max > 0 ? Math.min(100, Math.round(c.scrollTop / max * 100)) : 100) + '%';
+    }
+    function lecteurFin() {
+      var c = $('cp-lect-corps');
+      /* (23/09, nuit) la fin ne se mesure que sur un texte POSÉ : fermer vide le corps, et ce défilement-là est signalé à l'image suivante — sous charge, après l'ouverture du document suivant */
+      if (!lecteurCle || !lecteurCharge || !c.clientHeight) return;
+      jauge();
+      if (lecteurLu) return;
+      if (c.scrollTop + c.clientHeight < c.scrollHeight - 24) return;
+      lecteurLu = true;
+      var rc = B.consulter(lecteurCle);
+      if (!rc.ok) { message($('cp-docs-ok'), ''); message($('cp-docs-err'), rc.motif); return; }
+      message($('cp-docs-err'), ''); rendreDocs(); lecteurPied();
+    }
+    function lecteurOuvrir(d) {
+      lecteurCle = d.cle; lecteurLu = false; lecteurCharge = false;
+      $('cp-lect-titre').textContent = d.titre; $('cp-lect-version').textContent = 'v. ' + d.version;
+      var corps = $('cp-lect-corps'); corps.innerHTML = '<p style="color:var(--color-muted)">Chargement du document…</p>';
+      $('cp-lect-jauge').style.width = '0%';
+      $('cp-lecteur').hidden = false; lecteurPied();
+      var cadre = function () { corps.innerHTML = ''; lecteurCharge = true; var f = document.createElement('iframe'); f.src = d.url; f.title = d.titre; f.style.cssText = 'width:100%;height:100%;min-height:60vh;border:0;background:#fff'; corps.appendChild(f); corps.scrollTop = 0; setTimeout(function () { lecteurLu = false; corps.scrollTop = corps.scrollHeight; lecteurFin(); }, 0); };
+      try {
+        fetch(d.url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).then(function (html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var titre = doc.querySelector('header h1, h1');
+          // un <br> dans le titre du document est un espace, pas une soudure (« d'utilisationde l'application »)
+          if (titre) [].forEach.call(titre.querySelectorAll('br'), function (br) { br.replaceWith(' '); });
+          var body = doc.querySelector('.sheet .body') || doc.querySelector('main') || doc.querySelector('article') || doc.body;
+          if (!body) { cadre(); return; }
+          ['script', 'style', 'link', '.toolbar', 'nav', 'header', '.toc'].forEach(function (sel) { [].forEach.call(body.querySelectorAll(sel), function (n) { n.remove(); }); });
+          [].forEach.call(body.querySelectorAll('a[href]'), function (n) { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener'); });
+          corps.innerHTML = (titre ? '<h1>' + esc(titre.textContent.replace(/\s+/g, ' ').trim()) + '</h1>' : '') + body.innerHTML
+            + '<p class="fin">— fin du document —</p>';
+          corps.scrollTop = 0; lecteurCharge = true;
+          setTimeout(lecteurFin, 0);   // un texte plus court que l'écran est déjà au bout
+        }).catch(cadre);
+      } catch (e0) { cadre(); }
+    }
+    $('cp-lect-corps').addEventListener('scroll', lecteurFin, { passive: true });
+    /* LE PIED DU LECTEUR SUIT L'ÉTAT RÉEL DU DOCUMENT (documentsEtat) : il se repeint quand l'acceptation est posée. */
+    function lecteurPied() {
+      var p = $('cp-lect-pied'), d = lecteurCle ? B.documents().filter(function (x) { return x.cle === lecteurCle; })[0] : null;
+      p.hidden = !d; if (!d) return;
+      p.innerHTML = d.aJour
+        ? '<button type="button" class="pec-cta tap" id="cp-lect-retour">' + (d.information ? 'Lu le ' : 'Lu et accepté le ') + esc(heure(d.accepteLe)) + ' — revenir</button>'
+        : '<button type="button" class="pec-cta tap" data-doc-ok="' + esc(d.cle) + '"' + (d.peutAccepter ? '' : ' disabled') + '>' + d.bouton + ' (version ' + esc(d.version) + ')</button>'
+          + '<p class="s">' + (d.peutAccepter ? (d.information ? 'Ta lecture est gardée' : 'Ton acceptation garde le document') + ', avec sa version, la date et ton identifiant.' : 'Fais défiler le texte jusqu’au bout : c’est là que tu ' + (d.information ? 'confirmes ta lecture.' : 'acceptes.')) + '</p>';
+    }
+    function lecteurFermer() { var z = $('cp-lecteur'); if (!z.hidden) { z.hidden = true; lecteurCle = null; lecteurCharge = false; $('cp-lect-corps').innerHTML = ''; } }
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lecteurFermer(); });
+
+    document.addEventListener('click', function (e) {
+      var t = e.target; if (!t.closest) return;
+      if (t.closest('#cp-lect-fermer') || t.closest('#cp-lect-retour')) { lecteurFermer(); return; }
+      var voir = t.closest('[data-doc-voir]'), ok = t.closest('[data-doc-ok]');
+      if (voir) {
+        var d = B.documents().filter(function (x) { return x.cle === voir.getAttribute('data-doc-voir'); })[0]; if (!d) return;
+        lecteurOuvrir(d);   // ouvrir n'est pas lire : la consultation se note au bout du texte (lecteurFin)
+        return;
+      }
+      if (ok) {
+        if (ok.disabled) return;
+        var r = B.accepter(ok.getAttribute('data-doc-ok'));
+        if (!r.ok) { message($('cp-docs-ok'), ''); message($('cp-docs-err'), r.motif); return; }
+        message($('cp-docs-err'), ''); message($('cp-docs-ok'), r.deja ? 'Ce document est déjà accepté dans sa version en vigueur.' : '✓ « ' + r.document.titre + ' » accepté — version ' + r.document.version + ', ' + heure(r.document.accepteLe) + '.');
+        rendreDocs(); lecteurPied();
+      }
+    });
+
+    /* ⑤ LES CONSENTEMENTS — l'interrupteur relit le compte connecté (consentementActif) ; chaque acte s'écrit avec son
+       texte et sa date (consentir / retirerConsentement), et la liste en dessous est cette trace, telle quelle. */
+    function rendreConsentements() {
+      var sw = $('cp-sw-com'); sw.setAttribute('aria-checked', String(!!(D.consentementActif && D.consentementActif('communications'))));
+      var l = (D.consentements ? D.consentements() : []).slice().sort(function (a, b) { return String(b.at).localeCompare(String(a.at)); }).slice(0, 8);
+      $('cp-consents').innerHTML = l.length
+        ? l.map(function (x) { return '<li><b>' + esc(x.texte || x.type) + '</b> — ' + esc(heure(x.at)) + (x.retire ? ' · <span class="r">retiré le ' + esc(heure(x.retire)) + '</span>' : '') + '</li>'; }).join('')
+        : '<li>Aucun consentement enregistré sur ce compte pour l’instant.</li>';
+    }
+    $('cp-sw-com').addEventListener('click', function () {
+      if (!D.consentir || !D.retirerConsentement) return;
+      if (this.getAttribute('aria-checked') === 'true') D.retirerConsentement('communications');
+      else D.consentir('communications', 'Recevoir les nouveautés des marques du réseau et de PayEnCash (e-mail)');
+      rendreConsentements();
+    });
+
+    /* ⑥ ÊTRE RAPPELÉ (24/09, soir — fondatrice : « organise ça, la hotline gère ») — la demande porte le compte du porteur
+       (clientId), son mobile (l'identifiant du compte) et le sujet ; la référence est celle du compte. Le délai est relu sur
+       la demande (quand, dérivé de ref.hotline.rappelDelaiMin) — jamais écrit ici. Une demande encore à faire se relit dans
+       PEC_BUS.appels() : le bouton s'efface tant qu'elle attend. */
+    function rappelEnAttente() {
+      var id = B.porteurId(); if (!id || !window.PEC_BUS || !PEC_BUS.appels) return null;
+      return PEC_BUS.appels().filter(function (a) { return a.type === 'rappel' && a.clientId === id && a.statut !== 'fait'; })[0] || null;
+    }
+    function rendreRappel() {
+      var a = rappelEnAttente(), z = $('cp-rappel-attente');
+      z.hidden = !a; $('cp-rappel-ouvrir').hidden = !!a;
+      if (!a) return;
+      $('cp-rappel-form').hidden = true;
+      z.textContent = 'Demande ' + a.id + ' enregistrée le ' + D.dateHeure(a.at) + ' — la hotline te rappelle ' + (a.quand || 'dès que possible') + (a.motif ? ' · « ' + a.motif + ' »' : '') + '.';
+    }
+    $('cp-rappel-ouvrir').addEventListener('click', function () {
+      var f = $('cp-rappel-form'); f.hidden = !f.hidden; this.setAttribute('aria-expanded', String(!f.hidden));
+      message($('cp-rappel-ok'), ''); message($('cp-rappel-err'), '');
+      if (!f.hidden) $('cp-rappel-sujet').focus();
+    });
+    $('cp-rappel-annuler').addEventListener('click', function () { $('cp-rappel-form').hidden = true; $('cp-rappel-ouvrir').setAttribute('aria-expanded', 'false'); });
+    $('cp-rappel-go').addEventListener('click', function () {
+      var id = B.porteurId(), c = compte(), cl = client(), p = (c && c.profil) || {};
+      if (!id || !window.PEC_BUS || !PEC_BUS.demanderAppel) { message($('cp-rappel-ok'), ''); message($('cp-rappel-err'), 'Connecte-toi à ton compte pour demander un rappel : la hotline rappelle un porteur, pas un appareil.'); return; }
+      var sujet = $('cp-rappel-sujet').value.trim();
+      var nom = String(p.nom || (cl ? (cl.nomComplet || cl.prenom || '') : '')).replace(/\s+\.+$/, '').trim();
+      var a = PEC_BUS.demanderAppel({ type: 'rappel', canal: 'app', ref: c ? c.id : id, client: nom, clientId: id,
+        tel: c ? String(c.identifiant) : (cl ? (cl.telComplet || cl.tel || '') : ''), motif: sujet || 'Demande depuis l’app Mes bons', par: id });
+      if (!a || !a.id) { message($('cp-rappel-ok'), ''); message($('cp-rappel-err'), 'La demande n’a PAS été enregistrée — libère de la place sur cet appareil et recommence.'); return; }
+      $('cp-rappel-sujet').value = ''; $('cp-rappel-form').hidden = true; $('cp-rappel-ouvrir').setAttribute('aria-expanded', 'false');
+      message($('cp-rappel-err'), ''); message($('cp-rappel-ok'), 'Demande enregistrée : la hotline te rappelle ' + (a.quand || 'dès que possible') + '.');
+      rendreRappel();
+    });
+
+    /* ⑦ SE DÉCONNECTER — la déconnexion de partout (compte + client actif), puis la page publique de l'app */
+    $('cp-deconnecter').addEventListener('click', function () {
+      if (D.compteDeconnecter) D.compteDeconnecter();
+      if (D.clientActifSet) D.clientActifSet(null);
+      location.href = '03-rechercher.html';
+    });
+    /* SUPPRIMER (RGPD art. 17) — information → confirmation → consentement tracé, journal du bus, compteSupprimer (compte
+       « supprimé », fiche client retirée, session purgée), la liste des bons rangés effacée de l'app, plus aucune session.
+       Les bons eux-mêmes ne sont pas touchés : ils valent chez leur marque, avec leur ticket. */
+    $('cp-supprimer').addEventListener('click', function () {
+      var p = $('cp-sup-panel'); p.hidden = !p.hidden; this.setAttribute('aria-expanded', String(!p.hidden));
+      if (p.hidden) return;
+      var R = (D.ref && D.ref.rgpd) || {};
+      $('cp-sup-info').innerHTML = 'Ton compte est <b>fermé</b>, ta fiche retirée, et la liste de tes bons rangés est effacée de l’app. Tes acceptations de documents et tes consentements sont conservés comme preuves' + (R.reponseJours ? ' (réponse à toute demande sous ' + R.reponseJours + ' jours)' : '') + '. Tes bons de marque, eux, restent valables chez leur marque avec leur ticket.';
+      p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    $('cp-sup-annuler').addEventListener('click', function () { $('cp-sup-panel').hidden = true; $('cp-supprimer').setAttribute('aria-expanded', 'false'); });
+    $('cp-sup-confirmer').addEventListener('click', function () {
+      var c = compte(), cl = client();
+      if (D.consentir) D.consentir('suppression-compte', 'Demande de suppression du compte — informations lues et acceptées');
+      try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter('suppression_compte', (c && c.id) || (cl && cl.id) || '—', { par: 'client', espace: 'client', nom: (c && c.profil && c.profil.nom) || (cl && cl.nomComplet) || '' }); } catch (e) {}
+      B.purger();   // la liste rangée part avec le compte — avant de fermer la session, la clé se calcule sur lui
+      var ok = (c && D.compteSupprimer) ? D.compteSupprimer(c.id) : false;
+      if (D.compteDeconnecter) D.compteDeconnecter();
+      if (D.clientActifSet) D.clientActifSet(null);
+      var t = $('cp-supprimer').querySelector('.pec-row-text .t');
+      if (t) t.textContent = ok ? '✓ Compte supprimé' : '✓ Session fermée, liste effacée';
+      $('cp-sup-sub').textContent = ok ? 'À bientôt — retour à la recherche.' : 'Le compte n’a pas été retrouvé sur cet appareil : la session est fermée et la liste effacée.';
+      $('cp-sup-panel').hidden = true; $('cp-supprimer').disabled = true;
+      setTimeout(function () { location.href = '03-rechercher.html'; }, 1500);
+    });
+
+    function rendre() { rendreIdentite(); rendreKyc(); rendreDocs(); rendreConsentements(); rendreRappel(); }
+    rendre();
+    window.addEventListener('pec-bus', rendre);     // la décision de la hotline, un bon rangé ailleurs, un rappel passé : l'écran suit
+    window.addEventListener('storage', rendre);
+    window.addEventListener('focus', rendre);
+  })();
+</script>
+</body>
+</html>

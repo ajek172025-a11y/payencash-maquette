@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Prélèvements &amp; paiements</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09, soir) le coffre : les fixtures du banc y montent une marque (signature du contrat-cadre = KYC lu au coffre) -->
+<!--
+  PAYENCASH SOLUTION — PRÉLÈVEMENTS & RÈGLEMENTS (22/09, décisions fondatrice).
+  C'EST L'ÉCRAN OÙ L'ARGENT DE LA SECONDE LIGNE SE FAIT, et il ne fait rien d'autre :
+    ① L'ARRÊTÉ. Les bons vendus sont groupés par OFFRE DE LA MARQUE : tous les jours pour « 24 heures », tous les
+       7 jours pour « 7 jours ouvrés », tous les 10 pour « 10 jours ». La fenêtre court d'un passage de l'heure
+       d'arrêté au suivant (20:00 par défaut, réglable en Configuration). Ce qui rend un arrêté DÛ n'est pas une
+       date écrite quelque part : c'est la dernière remise déposée pour cette offre.
+    ② LA REMISE. Un fichier pain.008 par arrêté, une ligne par point de vente (ses bons + ses pénalités), déposé
+       dans les minutes qui suivent. Sans ICS, aucun fichier : la banque le délivre, personne ne l'invente.
+    ③ LE RETOUR. Le fichier que la banque rend (pain.002, ou un relevé en colonnes) s'importe ICI : payés, impayés
+       avec leur motif, pénalité créée, point suspendu. Rien n'est deviné — une référence inconnue ressort.
+    ④ LE PAIEMENT DES MARQUES. Virement instantané depuis notre banque, à l'échéance de leur offre, et jamais sans
+       RIB. L'écran dit, en face de chaque paiement, si le prélèvement qui le couvre est déjà encaissé : en offre
+       « 24 heures » il ne l'est pas, et c'est exactement le risque que borne le plafond d'encours.
+  ZÉRO DUR : aucun taux, aucun délai, aucun coût n'est écrit dans cette page. Tout vient de techRef() (réglages de
+  Configuration) et des tables du data-layer. Zéro seed : rien n'existe avant le premier geste d'un point de vente.
+  Miroir SQL : tech_sales, tech_dd_files, tech_direct_debits, tech_sepa_mandates, tech_payouts, tech_penalties.
+-->
+<style>
+  .z-arrete{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-bottom:14px}
+  .z-arrete .c{border-radius:12px;background:var(--color-card);border:1px solid var(--color-sep);padding:13px 15px}
+  .z-arrete .c.du{border-color:var(--color-ink);box-shadow:var(--shadow-card)}
+  .z-arrete .n{font-size:13px;font-weight:800;color:var(--color-ink)}
+  .z-arrete .v{font-size:22px;font-weight:800;color:var(--color-ink);margin-top:4px}
+  .z-arrete .s{font-size:11.5px;line-height:1.5;color:var(--color-muted);margin-top:3px}
+  .fichier{border-radius:10px;background:var(--color-bg);border:1px solid var(--color-sep);padding:10px 11px;margin-top:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;line-height:1.5;color:var(--color-ink);white-space:pre;overflow:auto;max-height:260px}
+  .sp-appel{display:flex;flex-direction:column;gap:6px;min-width:220px}
+  .sp-appel .pec-input{font-size:12px;padding:7px 9px}
+  .msg{border-radius:10px;padding:9px 12px;margin:0 0 10px;font-weight:700;font-size:12.5px}
+  .msg.ok{background:#E8F5EE;border:1px solid #A8D8BE;color:#1B5E36}
+  .msg.ko{background:#FDECEA;border:1px solid #F0B4AC;color:#8E2A1E}
+  textarea.retour{width:100%;min-height:110px;border-radius:10px;border:1px solid var(--color-sep);padding:9px 11px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.5;resize:vertical}
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `tech_sales`, `tech_dd_files`, `tech_direct_debits`, `tech_sepa_mandates`,
+     `tech_payouts`, `tech_penalties`, `tech_subscriptions`, `audit_log` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Prélèvements &amp; paiements des marques</h1>
+        <p class="sub">Nous achetons les bons des marques et nous les revendons à notre réseau. Ici : on arrête, on prélève les commerces, on lit le retour de la banque, on paie les marques.</p>
+        <p class="sub" style="font-size:11px;color:var(--color-muted)" id="sp-regles">—</p>
+      </div>
+      <div class="pec-topbar-actions" style="display:flex;gap:8px;align-items:center">
+        <button class="pec-btn pec-btn--sm tap" id="sp-abo">Facturer les abonnements du mois (carte)</button>
+      </div>
+    </div>
+
+    <div id="sp-msg" hidden class="msg"></div>
+
+    <!-- ① CE QUI EST DÛ, OFFRE PAR OFFRE -->
+    <p class="pec-section-label" style="margin:0 0 6px">L’arrêté du jour</p>
+    <div class="z-arrete" id="sp-arretes"></div>
+
+    <!-- ② LES REMISES -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Remises de prélèvements <span class="pec-pill" id="sp-rem-n">—</span></h2>
+          <p class="s" id="sp-rem-s">—</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Remise</th><th>Offre</th><th>Arrêté</th><th class="num">Lignes</th><th class="num">Montant</th><th>Échéance</th><th>État</th><th></th></tr></thead>
+          <tbody id="sp-rem-rows" data-fpage="10"></tbody>
+        </table>
+        <div class="meta" id="sp-rem-vide" hidden style="padding:10px 0">Aucune remise : elles naissent d’un arrêté, jamais d’ici.</div>
+      </div>
+    </div>
+
+    <!-- LE DÉTAIL D'UNE REMISE : le fichier, le dépôt, le retour -->
+    <div class="pec-panel" id="sp-detail" hidden style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2 id="sp-d-titre">—</h2><p class="s" id="sp-d-sub">—</p></div>
+        <div style="display:flex;gap:8px"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" id="sp-d-fermer">Fermer</button></div>
+      </div>
+      <div class="pec-panel-body">
+        <div id="sp-d-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"></div>
+        <table class="pec-table">
+          <thead><tr><th>Débiteur</th><th>Mandat</th><th class="num">Montant</th><th>Séquence</th><th>État</th><th>Motif banque</th><th></th></tr></thead>
+          <tbody id="sp-d-lignes"></tbody>
+        </table>
+        <div id="sp-d-fichier-z" hidden>
+          <p class="pec-section-label" style="margin:14px 0 4px">Le fichier à déposer</p>
+          <div class="fichier" id="sp-d-fichier">—</div>
+        </div>
+        <div id="sp-d-retour-z" hidden>
+          <p class="pec-section-label" style="margin:14px 0 4px">Le retour de la banque</p>
+          <p class="meta" style="margin:0 0 6px" id="sp-d-retour-aide">—</p>
+          <textarea class="retour" id="sp-d-retour" placeholder="Colle ici le fichier rendu par la banque"></textarea>
+          <button class="pec-btn pec-btn--sm tap" id="sp-d-retour-go" style="margin-top:8px">Importer le retour</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ③bis LES COMMISSIONNAIRES QUI PAIENT D'AVANCE (23/09, arbitrage fondatrice : « prélèvement SEPA pour
+         tabac etc., et avance pour micro ») : ils n'entrent dans aucune remise et ne peuvent pas être impayés.
+         Ce que le manager fait ici, et nulle part ailleurs : CONSTATER l'arrivée d'un versement d'avance —
+         jamais crédité sur une intention — et restituer une garantie à la fin d'un contrat. -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Commissionnaires nomades — avances <span class="pec-pill" id="sp-av-n">—</span></h2>
+          <p class="s" id="sp-av-s">—</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Commissionnaire</th><th>Garantie</th><th class="num">Avance disponible</th><th class="num">Bons vendus</th><th>Versement d’avance constaté</th><th></th></tr></thead>
+          <tbody id="sp-av-rows" data-fpage="10"></tbody>
+        </table>
+        <div class="meta" id="sp-av-vide" hidden style="padding:10px 0">Aucun commissionnaire nomade inscrit : son avance naît à sa première garantie.</div>
+      </div>
+    </div>
+
+    <!-- ④ LES MARQUES À PAYER -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Marques à payer <span class="pec-pill" id="sp-vir-n">—</span></h2>
+          <p class="s">Virement instantané depuis notre banque, à l’échéance de l’offre choisie par la marque. Rien ne part sans RIB déposé.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Marque</th><th>Offre</th><th class="num">Bons</th><th class="num">À payer</th><th>Échéance</th><th>Prélèvements</th><th>RIB</th><th></th></tr></thead>
+          <tbody id="sp-vir-rows" data-fpage="10"></tbody>
+        </table>
+        <div class="meta" id="sp-vir-vide" hidden style="padding:10px 0">Rien à payer : tout ce qui est arrêté a été viré.</div>
+      </div>
+    </div>
+
+    <!-- LES VIREMENTS DÉJÀ PARTIS -->
+    <div class="pec-panel">
+      <div class="pec-panel-head"><div><h2>Virements émis <span class="pec-pill" id="sp-hist-n">—</span></h2><p class="s" id="sp-hist-s">—</p></div></div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Virement</th><th>Marque</th><th class="num">Montant</th><th class="num">Bons</th><th>Compte</th><th>Émis le</th></tr></thead>
+          <tbody id="sp-hist-rows" data-fpage="10"></tbody>
+        </table>
+        <div class="meta" id="sp-hist-vide" hidden style="padding:10px 0">Aucun virement émis.</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, $ = function (i) { return document.getElementById(i); };
+  if (!D || !D.techRef) return;
+  var esc = function (v) { return D.esc(v); };
+  var acteur = function () { return (window.PEC_MGR && PEC_MGR.acteur && PEC_MGR.acteur()) || 'manager'; };
+  var ouverte = null;   // la remise dépliée
+
+  function dire(txt, ok) {
+    var z = $('sp-msg'); z.hidden = !txt; z.className = 'msg ' + (ok ? 'ok' : 'ko'); z.textContent = txt || '';
+  }
+
+  /* ══ ① L'ARRÊTÉ, OFFRE PAR OFFRE — entièrement dérivé : ce qui attend, ce qui est en retard, et si l'arrêté
+     est DÛ. Le bouton ne s'active que quand il l'est : préparer une remise hors cadence, c'est doubler un débit. ══ */
+  function peindreArretes() {
+    var R = D.techRef(), P = R.paiement;
+    $('sp-regles').innerHTML = 'Arrêté à <b>' + esc(P.arreteHeure) + '</b> · fichier déposé sous <b>' + esc(String(P.depotMinutes)) + ' min</b> · '
+      + 'échéance à <b>' + esc(String(P.remiseJoursOuvresAvant)) + ' jour ouvré</b> · prélèvement <b>' + esc(D.eur(P.coutPrelevement)) + '</b> · '
+      + 'virement <b>' + esc(D.eur(P.coutVirement)) + '</b> · pénalité impayé <b>' + esc(D.eur(P.penaliteImpaye)) + '</b> · '
+      + 'représentation <b>' + esc(D.eur(P.coutRepresentation)) + '</b> · plafond d’encours <b>' + esc(D.eur(P.encoursMaxPoint)) + '</b> — '
+      + '<a href="10-configuration.html">réglages</a>, banque ' + esc(P.banque) + ' (' + esc(P.canal) + ').';
+
+    var pret = D.prelevementPreparation();
+    $('sp-arretes').innerHTML = D.techArretesDus().map(function (a) {
+      var bloque = !a.du || !a.ventes.length || !pret.pret;
+      return '<div class="c' + (a.du ? ' du' : '') + '">'
+        + '<div class="n">' + esc(a.mode.libelle) + ' <span class="pec-pill ' + (a.du ? 'pec-pill--wait' : 'pec-pill--off') + '">' + (a.du ? 'arrêté dû' : 'pas encore dû') + '</span></div>'
+        + '<div class="v">' + esc(D.eur(a.total)) + '</div>'
+        + '<div class="s">' + PEC_DATA.nb(a.ventes.length, 'bon') + ' à prélever chez ' + PEC_DATA.nb(a.points.length, 'point')
+        + (a.enRetard ? ' · <b>' + a.enRetard + ' en retard d’un arrêté</b>' : '')
+        + '<br>Fenêtre du ' + esc(D.dateHeure(a.debut)) + ' au ' + esc(D.dateHeure(a.fin))
+        + ' · cadence ' + PEC_DATA.nb(a.mode.cadenceJours, 'jour')
+        + (a.precedente ? ' · précédente ' + esc(a.precedente) : ' · aucune remise encore')
+        + (a.enCours ? '<br><b>' + PEC_DATA.nb(a.enCours, 'bon vendu', 'bons vendus') + ' depuis</b> (' + esc(D.eur(a.enCoursTotal)) + ') : ils partiront à l’arrêté du ' + esc(D.dateHeure(a.prochaineFin)) + '.' : '')
+        + '</div>'
+        + '<button class="pec-btn pec-btn--sm tap" data-preparer="' + esc(a.mode.id) + '" style="margin-top:9px"' + (bloque ? ' disabled' : '') + '>Préparer la remise</button>'
+        + (!pret.pret ? '<div class="s" style="color:#8E2A1E;margin-top:5px">Préparation incomplète : ' + esc(pret.manquants.join(', ')) + ' — <a href="10-configuration.html">Configuration</a></div>' : '')
+        + '</div>';
+    }).join('');
+  }
+
+  /* ══ ② LES REMISES ══ */
+  function peindreRemises() {
+    var l = D.techRemises({}), P = D.techRef().paiement;
+    $('sp-rem-n').textContent = l.length;
+    $('sp-rem-s').textContent = 'Un fichier ' + P.formatRemise + ' par arrêté, déposé sur ' + P.canal + '. Le retour de la banque (' + P.formatRetour + ') se lit ici.';
+    $('sp-rem-vide').hidden = !!l.length;
+    $('sp-rem-rows').innerHTML = l.map(function (x) {
+      var retenues = (x.lignes || []).filter(function (li) { return li.statut !== 'ecartee'; });
+      var impayees = (x.lignes || []).filter(function (li) { return li.statut === 'impaye'; }).length;
+      return '<tr><td><b>' + esc(x.reference) + '</b></td>'
+        + '<td>' + esc(x.modeLbl) + '</td>'
+        + '<td>' + esc(x.fin ? D.dateHeure(x.fin) : '—') + '</td>'
+        + '<td class="num">' + retenues.length + ((x.lignes || []).length > retenues.length ? ' <span class="pec-pill pec-pill--off">' + PEC_DATA.nb((x.lignes || []).length - retenues.length, 'écartée') + '</span>' : '') + '</td>'
+        + '<td class="num">' + esc(D.eur(x.total)) + '</td>'
+        + '<td>' + esc(x.echeance ? D.dateCourte(x.echeance) : '—') + '</td>'
+        + '<td><span class="pec-pill ' + esc(D.techRemiseStatutPill(x.statut)) + '">' + esc(D.techRemiseStatutLbl(x.statut)) + '</span>'
+        + (impayees ? ' <span class="pec-pill pec-pill--off">' + PEC_DATA.nb(impayees, 'impayé') + '</span>' : '')
+        + (x.deposeLe && x.depotDansLesTemps === false ? ' <span class="pec-pill pec-pill--wait">dépôt hors délai</span>' : '') + '</td>'
+        + '<td><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-voir="' + esc(x.reference) + '">Ouvrir</button></td></tr>';
+    }).join('');
+  }
+
+  /* LE DÉTAIL — le fichier, le dépôt, le retour, la représentation d'un impayé. */
+  function peindreDetail() {
+    var z = $('sp-detail');
+    if (!ouverte) { z.hidden = true; return; }
+    var x = D.techRemise(ouverte);
+    if (!x) { ouverte = null; z.hidden = true; return; }
+    z.hidden = false;
+    var P = D.techRef().paiement;
+    $('sp-d-titre').textContent = x.reference + ' · ' + x.modeLbl;
+    $('sp-d-sub').textContent = 'Préparée le ' + D.dateHeure(x.at)
+      + (x.fin ? ' · arrêté du ' + D.dateHeure(x.fin) : '')
+      + ' · ' + D.eur(x.total) + ' · coût bancaire ' + D.eur(x.cout)
+      + (x.deposeLe ? ' · déposée le ' + D.dateHeure(x.deposeLe) + (x.depotDansLesTemps ? ' (dans les ' + P.depotMinutes + ' min)' : ' — HORS DÉLAI') : ' · à déposer avant ' + D.dateHeure(x.depotAvant))
+      + (x.echeance ? ' · échéance ' + D.dateCourte(x.echeance) : '');
+
+    var act = [];
+    if (!x.deposeLe) {
+      act.push('<button class="pec-btn pec-btn--sm tap" data-fichier="' + esc(x.reference) + '">Voir le fichier</button>');
+      act.push('<button class="pec-btn pec-btn--sm tap" data-deposer="' + esc(x.reference) + '">Déposer à ' + esc(P.banque) + '</button>');
+    } else {
+      act.push('<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-fichier="' + esc(x.reference) + '">Revoir le fichier déposé</button>');
+    }
+    $('sp-d-actions').innerHTML = act.join('');
+    $('sp-d-retour-z').hidden = !x.deposeLe;
+    $('sp-d-retour-aide').textContent = 'Attendu : le ' + P.formatRetour + ' rendu par la banque, ou un relevé « référence ; statut ; motif » par ligne. '
+      + 'Les références de cette remise : ' + (x.lignes || []).filter(function (li) { return li.statut !== 'ecartee'; }).map(function (li) { return x.reference + '/' + li.debiteurId; }).join(' · ');
+
+    $('sp-d-lignes').innerHTML = (x.lignes || []).map(function (li) {
+      var det = [];
+      if (li.ventes && li.ventes.length) det.push(PEC_DATA.nb(li.ventes.length, 'bon'));
+      if (li.penalites && li.penalites.length) det.push(PEC_DATA.nb(li.penalites.length, 'pénalité'));
+      if (li.abonnements && li.abonnements.length) det.push('abonnement ' + esc(li.periode || ''));
+      return '<tr><td><b>' + esc(li.debiteur) + '</b><br><span class="meta">' + esc(li.debiteurId) + ' · ' + det.join(' · ') + '</span></td>'
+        + '<td>' + (li.rum ? esc(li.rum) + '<br><span class="meta">' + esc(li.iban || '') + ' · ' + esc(li.typeMandat || '') + '</span>' : '<span class="meta">aucun mandat</span>') + '</td>'
+        + '<td class="num">' + esc(D.eur(li.montant)) + '</td>'
+        + '<td>' + esc(li.sequence || '—') + '</td>'
+        + '<td><span class="pec-pill ' + esc(D.techLigneStatutPill(li.statut)) + '">' + esc(D.techLigneStatutLbl(li.statut)) + '</span></td>'
+        + '<td>' + (li.motifBanque ? '<b>' + esc(li.motifBanque) + '</b><br><span class="meta">' + esc(li.motifBanqueLbl || '') + '</span>' : (li.motif ? '<span class="meta">' + esc(li.motif) + '</span>' : '—')) + '</td>'
+        /* (24/09, fondatrice) L'IMPAYÉ SE TRAITE EN TROIS TEMPS : le point est déjà suspendu ; le manager APPELLE le commerce et note
+           l'appel ; la représentation n'est proposée qu'une fois l'appel noté (D.techRepresenter la refuse sinon). */
+        + '<td>' + (li.statut === 'impaye' && !li.represente
+          ? (li.appel
+            ? '<span class="meta">appel noté le ' + esc(D.dateCourte(li.appel.at)) + ' par ' + esc(li.appel.par || '') + ' — « ' + esc(li.appel.compteRendu) + ' »</span><br>'
+              + '<button class="pec-btn pec-btn--sm tap" data-representer="' + esc(li.debiteurId) + '">Représenter</button>'
+            : '<div class="sp-appel"><input class="pec-input" data-appel-cr="' + esc(li.debiteurId) + '" placeholder="Ce que le commerce a dit (compte rendu d’appel)">'
+              + '<button class="pec-btn pec-btn--sm tap" data-appel="' + esc(li.debiteurId) + '">Noter l’appel</button></div>')
+          : li.represente ? '<span class="meta">représentée le ' + esc(D.dateCourte(li.represente)) + '</span>' : '') + '</td></tr>';
+    }).join('');
+  }
+
+  /* ══ ④ LES MARQUES À PAYER ══ */
+  function peindreVirements() {
+    var dus = D.techReglementsDus(), P = D.techRef().paiement;
+    $('sp-vir-n').textContent = dus.length;
+    $('sp-vir-vide').hidden = !!dus.length;
+    $('sp-vir-rows').innerHTML = dus.map(function (g) {
+      var couvert = g.couvert;
+      return '<tr><td><b>' + esc(g.marchand) + '</b><br><span class="meta">' + esc(g.marchandId) + '</span></td>'
+        /* (23/09, soir) LA REMISE EST CELLE QUE LES VENTES PORTENT, pas l'offre du jour : une marque qui a changé d'offre a des
+           échéances à des taux différents, et chaque ligne est une échéance. */
+        + '<td>' + esc(g.mode.libelle) + '<br><span class="meta">remise ' + esc(String(g.remisePct != null ? g.remisePct : g.mode.remisePct).replace('.', ',')) + ' %' + (g.remiseMixte ? ' (taux mêlés)' : '') + '</span></td>'
+        + '<td class="num">' + g.ventes.length + '</td>'
+        + '<td class="num"><b>' + esc(D.eur(g.montant)) + '</b></td>'
+        + '<td>' + esc(D.dateHeure(g.echeance)) + (g.echu ? ' <span class="pec-pill pec-pill--wait">échu</span>' : '') + '</td>'
+        + '<td>' + (couvert ? '<span class="pec-pill pec-pill--done">encaissés</span>'
+          : '<span class="pec-pill pec-pill--wait">' + g.attente + ' en cours</span>' + (g.impayes ? ' <span class="pec-pill pec-pill--off">' + PEC_DATA.nb(g.impayes, 'impayé') + '</span>' : '')) + '</td>'
+        + '<td>' + (g.rib ? '<span class="meta">' + esc(g.rib.ibanMasque || D.ibanMasque(g.rib.iban)) + '</span>' : '<span class="pec-pill pec-pill--off">aucun RIB</span>') + '</td>'
+        + '<td>' + (g.rib ? '<button class="pec-btn pec-btn--sm tap" data-virer="' + esc(g.marchandId) + '" data-echeance="' + esc(String(g.echeance)) + '"' + (g.echu ? '' : ' disabled title="l’échéance n’est pas atteinte"') + '>Virer ' + esc(D.eur(g.montant)) + '</button>' : '<span class="meta">à demander à la marque</span>') + '</td></tr>';
+    }).join('');
+    void P;
+
+    var virs = D.techReglements({});
+    $('sp-hist-n').textContent = virs.length;
+    $('sp-hist-s').textContent = virs.length
+      ? D.eur(virs.reduce(function (a, v) { return a + v.montant; }, 0)) + ' virés · ' + D.eur(virs.reduce(function (a, v) { return a + (v.cout || 0); }, 0)) + ' de frais bancaires'
+      : 'Aucun virement pour l’instant.';
+    $('sp-hist-vide').hidden = !!virs.length;
+    $('sp-hist-rows').innerHTML = virs.map(function (v) {
+      return '<tr><td><b>' + esc(v.reference) + '</b>' + (v.couvert ? '' : '<br><span class="meta">émis avant encaissement du prélèvement</span>') + '</td>'
+        + '<td>' + esc(v.marchand) + '<br><span class="meta">' + esc(v.modeLbl) + '</span></td>'
+        + '<td class="num">' + esc(D.eur(v.montant)) + '</td>'
+        + '<td class="num">' + v.ventes.length + '</td>'
+        + '<td><span class="meta">' + esc(v.iban) + ' · ' + esc(v.bic) + '</span></td>'
+        + '<td>' + esc(D.dateHeure(v.at)) + '</td></tr>';
+    }).join('');
+  }
+
+  /* ══ (23/09) LES COMPTES D'AVANCE — le solde se DÉRIVE des mouvements, il n'est stocké nulle part. Le manager
+     constate un virement reçu (avec sa référence, qui rattache l'argent au compte) ou restitue une garantie. ══ */
+  function peindreAvances() {
+    var A = D.techRef().avance;
+    var l = D.techRevendeursGet().filter(function (r) { return D.techPaieParAvance(r); });
+    $('sp-av-n').textContent = l.length;
+    $('sp-av-vide').hidden = !!l.length;
+    var totSolde = 0, totGar = 0;
+    var lignes = l.map(function (r) {
+      var et = D.avanceSolde('revendeur', r.id), tot = D.techVentesTotaux({ revendeurId: r.id });
+      totSolde += et.solde; totGar += et.garantie;
+      return '<tr><td><b>' + esc(r.raisonSociale) + '</b><br><span class="meta">' + esc(r.id) + (r.ville ? ' · ' + esc(r.ville) : '') + ' · ' + esc(D.techStatutLbl(r.statut)) + '</span></td>'
+        + '<td>' + (et.garantieVersee
+            ? '<span class="pec-pill pec-pill--done">' + esc(D.eur(et.garantie)) + '</span>'
+            : '<span class="pec-pill pec-pill--wait">à verser · ' + esc(D.eur(et.garantieDue)) + '</span>') + '</td>'
+        + '<td class="num"' + (et.bas ? ' style="color:#8E2A1E;font-weight:800"' : '') + '>' + esc(D.eur(et.solde)) + (et.bas ? '<br><span class="meta">sous le seuil d’alerte</span>' : '') + '</td>'
+        + '<td class="num">' + tot.ventes + '<br><span class="meta">' + esc(D.eur(tot.valeur)) + '</span></td>'
+        + '<td><span style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+        + '<input class="pec-search" data-av-m="' + esc(r.id) + '" inputmode="decimal" placeholder="montant" style="width:92px;text-align:right">'
+        + '<input class="pec-search" data-av-r="' + esc(r.id) + '" placeholder="réf. du virement" style="width:130px">'
+        + '<button class="pec-btn pec-btn--sm tap" data-av-go="' + esc(r.id) + '">Constater</button></span></td>'
+        + '<td>' + (et.garantie > 0 ? '<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-av-rest="' + esc(r.id) + '">Restituer la garantie</button>' : '') + '</td></tr>';
+    }).join('');
+    $('sp-av-rows').innerHTML = lignes;
+    $('sp-av-s').textContent = 'Ils achètent leurs bons d’avance : aucune remise, aucun impayé possible. '
+      + D.eur(totSolde) + ' d’avances disponibles · ' + D.eur(totGar) + ' de garanties détenues'
+      + (A.garantie > 0 ? ' · garantie de ' + D.eur(A.garantie) + ' par commissionnaire, restituable' : '') + '.';
+  }
+
+  function peindre() { peindreArretes(); peindreRemises(); peindreDetail(); peindreAvances(); peindreVirements(); }
+
+  /* ══ LES GESTES — un par porte de la couche de données, et le refus s'affiche tel quel ══ */
+  document.addEventListener('click', function (e) {
+    var t = e.target, el = t.closest && t.closest('[data-preparer],[data-voir],[data-fichier],[data-deposer],[data-appel],[data-representer],[data-virer],[data-av-go],[data-av-rest],#sp-d-fermer,#sp-d-retour-go,#sp-abo');
+    if (!el) return;
+
+    if (el.hasAttribute('data-av-go')) {
+      var id = el.getAttribute('data-av-go'), rv = D.techRevendeur(id);
+      var mt = document.querySelector('[data-av-m="' + id + '"]'), rf = document.querySelector('[data-av-r="' + id + '"]');
+      var rc = D.avanceRecharger('revendeur', id, mt ? mt.value : '', { reference: rf ? rf.value : '', par: acteur(), acteur: rv ? rv.raisonSociale : null });
+      if (!rc.ok) { dire(rc.motif, false); return; }
+      dire('✓ Versement d’avance constaté : ' + (rv ? rv.raisonSociale : id) + ' dispose de ' + D.eur(rc.etat.solde) + '.', true);
+      peindre(); return;
+    }
+    if (el.hasAttribute('data-av-rest')) {
+      var id2 = el.getAttribute('data-av-rest'), rv2 = D.techRevendeur(id2);
+      if (el.getAttribute('data-arme') !== '1') { el.setAttribute('data-arme', '1'); el.textContent = 'Confirmer la restitution'; return; }
+      var rs = D.avanceGarantieRestituer('revendeur', id2, { motif: 'restitution décidée par le manager', par: acteur(), acteur: rv2 ? rv2.raisonSociale : null });
+      if (!rs.ok) { dire(rs.motif, false); return; }
+      dire('✓ Garantie de ' + D.eur(rs.montant) + ' restituée à ' + (rv2 ? rv2.raisonSociale : id2) + ' — elle n’est jamais une sanction.', true);
+      peindre(); return;
+    }
+
+    if (el.hasAttribute('data-preparer')) {
+      var r = D.techRemisePreparer({ modeId: el.getAttribute('data-preparer'), par: acteur() });
+      if (!r.ok) { dire(r.motif, false); return; }
+      ouverte = r.remise.reference;
+      dire('✓ ' + r.remise.reference + ' préparée : ' + PEC_DATA.nb(r.remise.lignes.filter(function (l) { return l.statut !== 'ecartee'; }).length, 'ligne')
+        + ', ' + D.eur(r.remise.total) + '. À déposer avant ' + D.dateHeure(r.remise.depotAvant) + '.'
+        + (r.ecartees.length ? ' ' + PEC_DATA.nb(r.ecartees.length, 'débiteur écarté', 'débiteurs écartés') + ' faute de mandat.' : ''), true);
+      peindre(); return;
+    }
+    if (el.hasAttribute('data-voir')) { ouverte = el.getAttribute('data-voir'); dire('', true); peindre(); $('sp-detail').scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+    if (el.id === 'sp-d-fermer') { ouverte = null; peindre(); return; }
+    if (el.hasAttribute('data-fichier')) {
+      var f = D.techRemiseFichier(el.getAttribute('data-fichier'));
+      if (!f.ok) { dire(f.motif, false); return; }
+      $('sp-d-fichier-z').hidden = false; $('sp-d-fichier').textContent = f.contenu;
+      dire('Fichier ' + f.nom + ' — ' + PEC_DATA.nb(f.lignes, 'ligne') + ', ' + D.eur(f.total) + ', échéance le ' + D.dateCourte(f.echeance), true);
+      return;
+    }
+    if (el.hasAttribute('data-deposer')) {
+      var d = D.techRemiseDeposer(el.getAttribute('data-deposer'), acteur());
+      if (!d.ok) { dire(d.motif, false); return; }
+      dire('✓ Remise déposée' + (d.dansLesTemps ? ' dans les temps' : ' HORS DÉLAI — c’est écrit au journal')
+        + '. Échéance le ' + D.dateCourte(d.remise.echeance) + ' : les fonds sont crédités à cette date.', d.dansLesTemps);
+      peindre(); return;
+    }
+    if (el.id === 'sp-d-retour-go') {
+      var ret = D.techRetourImporter(ouverte, $('sp-d-retour').value, acteur());
+      if (!ret.ok) { dire(ret.motif, false); return; }
+      dire('✓ Retour importé : ' + PEC_DATA.nb(ret.payees, 'payé') + ', ' + PEC_DATA.nb(ret.impayees, 'impayé')
+        + (ret.penalites.length ? ', ' + PEC_DATA.nb(ret.penalites.length, 'pénalité créée', 'pénalités créées') : '')
+        + (ret.suspendus.length ? ', ' + PEC_DATA.nb(ret.suspendus.length, 'point suspendu', 'points suspendus') : '')
+        + (ret.inconnues.length ? ' · ' + PEC_DATA.nb(ret.inconnues.length, 'référence INCONNUE', 'références INCONNUES') + ' : ' + ret.inconnues.join(', ') : '')
+        + (ret.enAttente ? ' · ' + PEC_DATA.nb(ret.enAttente, 'ligne') + ' encore sans retour' : ''), ret.impayees === 0 && !ret.inconnues.length);
+      $('sp-d-retour').value = '';
+      peindre(); return;
+    }
+    if (el.hasAttribute('data-appel')) {
+      var crEl = document.querySelector('[data-appel-cr="' + el.getAttribute('data-appel') + '"]');
+      var ap = D.techImpayeAppelNoter(ouverte, el.getAttribute('data-appel'), { compteRendu: crEl ? crEl.value : '', par: acteur() });
+      if (!ap.ok) { dire(ap.motif, false); if (crEl) crEl.focus(); return; }
+      dire('✓ Appel noté. La représentation est maintenant possible : elle repartira au prochain arrêté, frais à la charge du point.', true);
+      peindre(); return;
+    }
+    if (el.hasAttribute('data-representer')) {
+      var rp = D.techRepresenter(ouverte, el.getAttribute('data-representer'), acteur());
+      if (!rp.ok) { dire(rp.motif, false); return; }
+      dire('✓ ' + PEC_DATA.nb(rp.ventes, 'vente remise', 'ventes remises') + ' « à prélever »' + (rp.penalitesReprises ? ' avec ' + PEC_DATA.nb(rp.penalitesReprises, 'pénalité') : '') + ' : ' + (rp.ventes + (rp.penalitesReprises || 0) > 1 ? 'elles repartiront' : 'elle repartira') + ' au prochain arrêté. Frais de représentation à la charge du point.', true);
+      peindre(); return;
+    }
+    if (el.hasAttribute('data-virer')) {
+      var v = D.techReglementEmettre(el.getAttribute('data-virer'), { par: acteur(), echeance: el.getAttribute('data-echeance') ? +el.getAttribute('data-echeance') : null });
+      if (!v.ok) { dire(v.motif, false); return; }
+      dire('✓ ' + v.reglement.reference + ' — ' + D.eur(v.reglement.montant) + ' virés à ' + v.reglement.marchand
+        + ' (instantané, ' + v.reglement.banque + ', coût ' + D.eur(v.reglement.cout) + ')'
+        + (v.reglement.couvert ? '.' : ' — ATTENTION : le prélèvement qui le couvre n’est pas encore encaissé.'), v.reglement.couvert);
+      peindre(); return;
+    }
+    if (el.id === 'sp-abo') {
+      /* (24/09) L'ABONNEMENT SE RÈGLE PAR CARTE : la tâche du 1er émet la facture de chaque marque abonnée (Odoo) et la débite
+         sur sa carte (Stripe) ; un débit refusé se dit avec son motif — la marque est prévenue par e-mail. */
+      var a = D.techAbonnementsFacturer({ par: acteur() });
+      if (!a.ok) { dire(a.motif, false); return; }
+      dire('✓ Abonnements de ' + a.periode + ' : ' + PEC_DATA.nb(a.factures.length, 'facture émise', 'factures émises') + ', ' + PEC_DATA.nb(a.debitees.length, 'débitée') + ' par carte' + (a.echecs.length ? ', ' + a.echecs.length + ' refus (' + a.echecs.map(function (e) { return (D.techMarchand(e.marchandId) || {}).raisonSociale + ' : ' + e.motif; }).join(' · ') + ')' : '') + '.', true);
+      peindre(); return;
+    }
+  });
+
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

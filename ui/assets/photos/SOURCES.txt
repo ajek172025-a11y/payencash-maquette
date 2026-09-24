@@ -1,0 +1,8 @@
+Photos — sources et licences.
+
+photo-boutique.jpg — Unsplash photo-1441986300917-64674bd600d8 (portant de boutique, sans marque reconnaissable) — licence Unsplash
+                     (usage libre, y compris commercial). La seule photo de la vitrine (index.html, en-tête).
+
+Règle maintenue : jamais le logo d'une marque qui ne nous a rien signé, jamais le visage d'une personne réelle sans
+contrat d'image. Les photos d'articles des marques sont déposées par elles depuis leur espace (Outils) : elles ne vivent
+pas dans ce dossier.

@@ -1,0 +1,596 @@
+/* =============================================================================
+   PayEnCash — Kit UI v2, complément ESPACE MANAGER (desktop)
+   -----------------------------------------------------------------------------
+   Chargé APRÈS `payencash-v2.css`, dont il réutilise TOUS les tokens : il n'en
+   redéclare aucun. Le manager reste une interface **desktop** — barre latérale
+   fixe, tableaux denses, plusieurs colonnes — mais il parle enfin la même langue
+   visuelle que les apps clientes et les espaces pro.
+
+   Ce qui change par rapport à l'existant (`manager/src/styles/theme.css`) :
+   la palette v1 vert sapin / cuivre / crème et le couple Archivo+Inter laissent
+   place au mint #10a06a, à l'encre #0f2a24 et à Hanken Grotesk. La profondeur
+   vient des ombres, jamais d'une bordure — sauf le filet de séparation entre
+   rangées d'un tableau, seule exception de la charte.
+
+   PALETTE STRICTE, identique au reste du produit : pas de bleu ; l'ambre est
+   réservé à l'urgence et aux écarts à traiter ; le rouge à la suppression ;
+   l'or aux étoiles de notation.
+   ============================================================================= */
+
+/* ===== Coque applicative ===== */
+.pec-admin {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  min-height: 100vh;
+  background: var(--color-bg);
+}
+
+.pec-aside {
+  /* `position: sticky` sur une colonne de grille plus haute que la fenêtre laisse,
+     sur certains navigateurs, une image fantôme pendant le repaint — la barre
+     semble dessinée deux fois. `fixed` supprime la classe de bug ; la colonne de
+     grille sert alors uniquement de gouttière. */
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 248px;
+  height: 100vh;
+  overflow-y: auto;
+  padding: 22px 0;
+  background: var(--color-ink);
+  color: rgba(255, 255, 255, 0.72);
+}
+.pec-aside-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px 18px;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.pec-aside-group {
+  padding: 16px 20px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.34);
+}
+.pec-aside a {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 20px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.72);
+  transition: background 0.15s, color 0.15s;
+}
+.pec-aside a .pec-ico {
+  font-size: 16px;
+}
+.pec-aside a:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+.pec-aside a[aria-current='page'] {
+  background: rgba(63, 217, 155, 0.14);
+  color: #fff;
+}
+/* Pastille de non-lues — ambre : c'est ce qui appelle une action. */
+.pec-aside-badge {
+  margin-left: auto;
+  min-width: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--color-amber);
+  color: var(--color-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 18px;
+  text-align: center;
+}
+
+.pec-aside-foot {
+  margin-top: 22px;
+  padding: 16px 20px 0;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.4);
+}
+.pec-aside-logout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 8px 0;
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.62);
+}
+.pec-aside-logout:hover {
+  color: #fff;
+}
+.pec-aside-logout .pec-ico {
+  width: 15px;
+  height: 15px;
+}
+
+/* ===== Zone de travail ===== */
+.pec-main {
+  min-width: 0;
+  padding: 26px 32px 48px;
+  /* La barre laterale etant en position fixed, la colonne de grille ne suffit
+     pas a reserver la place : on la compense explicitement. */
+  grid-column: 2;
+}
+.pec-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.pec-topbar h1 {
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--color-ink);
+}
+.pec-topbar .sub {
+  margin-top: 3px;
+  font-size: 13.5px;
+  color: var(--color-muted);
+}
+.pec-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ===== Grilles ===== */
+.pec-grid {
+  display: grid;
+  gap: 16px;
+}
+.pec-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.pec-grid--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.pec-grid--4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 1180px) {
+  .pec-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pec-grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* ===== Indicateur chiffré ===== */
+.pec-kpi {
+  padding: 18px 20px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.pec-kpi .lbl {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--color-muted-2);
+}
+.pec-kpi .lbl .pec-ico {
+  font-size: 14px;
+  color: var(--color-mint-ink);
+}
+.pec-kpi .val {
+  margin-top: 6px;
+  font-size: 27px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-ink);
+}
+.pec-kpi .val .u {
+  margin-left: 3px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+.pec-kpi .hint {
+  margin-top: 5px;
+  font-size: 12px;
+  color: var(--color-muted);
+}
+/* Indicateur qui appelle une action : liseré ambre, jamais rouge. */
+.pec-kpi--alert {
+  box-shadow: var(--shadow-card), inset 3px 0 0 var(--color-amber);
+}
+
+/* ===== Panneau de contenu ===== */
+.pec-panel {
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+.pec-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+}
+.pec-panel-head h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+.pec-panel-head .s {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--color-muted);
+}
+.pec-panel-body {
+  padding: 0 20px 20px;
+}
+
+/* ===== Tableau de données ===== */
+.pec-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.pec-table th {
+  padding: 9px 12px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-muted-2);
+  background: var(--color-card);
+}
+.pec-table th:first-child { border-radius: 10px 0 0 10px; }
+.pec-table th:last-child { border-radius: 0 10px 10px 0; }
+.pec-table td {
+  padding: 12px;
+  vertical-align: middle;
+  color: var(--color-ink);
+  /* Seule bordure tolérée par la charte : le filet entre rangées. */
+  border-bottom: 1px solid var(--color-sep);
+}
+.pec-table tbody tr:last-child td { border-bottom: 0; }
+.pec-table tbody tr:hover td { background: var(--color-card); }
+.pec-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  /* Un montant coupé entre le nombre et le symbole se lit mal et fausse
+     l'alignement de la colonne. */
+  white-space: nowrap;
+}
+.pec-table .ref {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+.pec-table .who {
+  font-weight: 700;
+}
+.pec-table .meta {
+  font-size: 11.5px;
+  color: var(--color-muted);
+}
+
+/* ===== Liste de cartes =====
+   L'écran « Centre d'appels » n'est PAS un tableau :
+   chaque ligne porte sa propre barre d'actions, qu'un tableau dense escamote.
+   Le séparateur interne passe par `.pec-sep` (fond 1px, `border: 0`) : la charte
+   ne tolère de bordure qu'entre rangées de tableau. */
+.pec-list {
+  display: grid;
+  gap: 10px;
+}
+.pec-listcard-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+.pec-listcard-head .ref {
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.pec-listcard-head .who {
+  color: var(--color-muted);
+}
+.pec-listcard-head .amt {
+  margin-left: auto;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+.pec-listcard-head .meta {
+  font-size: 12.5px;
+  color: var(--color-muted);
+}
+.pec-listcard-head .go {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.pec-listcard-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.pec-listcard-actions .note {
+  font-size: 11.5px;
+  color: var(--color-muted);
+}
+.pec-listcard .pec-sep {
+  margin-top: 12px;
+}
+
+/* ===== Bandeau de contrôles hors panneau =====
+   Un champ de saisie est « creusé » (`--color-bg`) : il n'a donc de relief que POSÉ
+   SUR UNE SURFACE. Placé directement sur le fond de page — lui aussi `--color-bg` —
+   il disparaît purement et simplement. Tout filtre ou sélecteur qui ne vit pas dans
+   un `.pec-panel` passe donc par ce bandeau. */
+.pec-controlbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.pec-controlbar label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--color-muted);
+}
+
+/* ===== Filtres ===== */
+.pec-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 0 20px 14px;
+}
+.pec-search {
+  flex: 1;
+  min-width: 200px;
+  height: 40px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: var(--radius-field);
+  background: var(--color-bg);
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+  color: var(--color-ink);
+}
+.pec-search:focus {
+  outline: none;
+  box-shadow: var(--shadow-selected);
+}
+
+/* ===== Actions ===== */
+/* (19/09, soir) UN BOUTON NE SE LAISSE PLUS ÉCRASER. Dans un en-tête de panneau, « Voir les bons d'achat »
+   était réduit à 66 px par son voisin : le libellé se cassait sur quatre lignes et débordait des 40 px de
+   hauteur du bouton. Un contrôle garde la largeur de son texte, et le texte ne se coupe pas. */
+.pec-btn {
+  display: inline-flex;
+  flex: none;
+  white-space: nowrap;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: var(--radius-field);
+  background: var(--color-primary);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 700;
+  box-shadow: var(--shadow-cta-tight);
+}
+.pec-btn--ghost {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-secondary);
+}
+.pec-btn--sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+/* Rouge = suppression / révocation UNIQUEMENT. */
+.pec-btn--danger {
+  background: var(--color-danger-well);
+  color: var(--color-danger);
+  box-shadow: none;
+}
+
+/* ===== Poches de trésorerie ===== */
+.pec-pocket {
+  position: relative;
+  padding: 18px 20px;
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+}
+.pec-pocket .step {
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--color-mint-soft);
+}
+.pec-pocket h3 {
+  margin-top: 2px;
+  font-size: 13.5px;
+  font-weight: 800;
+  color: var(--color-ink);
+}
+.pec-pocket .val {
+  margin-top: 8px;
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  color: var(--color-ink);
+}
+.pec-pocket .s {
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--color-muted);
+}
+/* Poche qui porte un écart à traiter — même liseré ambre que `.pec-kpi--alert`,
+   pour qu'un écart se reconnaisse à l'identique partout dans le manager. */
+.pec-pocket--gap {
+  box-shadow: var(--shadow-card), inset 3px 0 0 var(--color-amber);
+}
+.pec-pocket--gap .step {
+  color: var(--color-amber-text);
+}
+
+/* La seule poche dans laquelle on peut puiser pour payer. */
+.pec-pocket--payable {
+  background: var(--color-ink);
+}
+.pec-pocket--payable .step { color: var(--color-mint-soft); }
+.pec-pocket--payable h3 { color: #fff; }
+.pec-pocket--payable .val { color: var(--color-bright); }
+.pec-pocket--payable .s { color: rgba(255, 255, 255, 0.6); }
+
+/* ===== Ligne de réglage ===== */
+/* Filet entre réglages par ombre interne, jamais par `border-bottom` : la charte ne
+   tolère la bordure qu'entre rangées de tableau. Effet visuel identique, et la boîte
+   ne gagne pas un pixel de hauteur. */
+.pec-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  padding: 15px 0;
+  box-shadow: inset 0 -1px 0 var(--color-sep);
+}
+.pec-setting:last-child { box-shadow: none; }
+.pec-setting .t {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.pec-setting .s {
+  margin-top: 2px;
+  font-size: 12.5px;
+  color: var(--color-muted);
+}
+/* (19/09, soir) UN BLOC DE CONTRÔLES LARGE N'ÉTRANGLE PLUS SON LIBELLÉ. Avec `flex-shrink: 0` et une ligne qui
+   ne se replie pas, un réglage portant deux champs + leurs unités + le bouton prenait toute la largeur qu'il
+   voulait et laissait à la colonne de gauche trois caractères de large — « Frais du prestataire » était
+   illisible depuis le 18/09. C'est LA LIGNE qui se replie maintenant : le libellé garde au moins 300 px, et le
+   bloc de contrôles descend d'un cran, aligné à droite, SANS jamais couper ses propres champs en deux. */
+.pec-setting > :first-child { flex: 1 1 240px; min-width: 0; }   /* 240 px : au-dessus, des lignes qui tenaient se repliaient pour rien */
+.pec-setting-control {
+  flex: 0 1 auto;
+  min-width: 180px;
+  max-width: 100%;            /* (24/09, nuit) quatre champs + unités + « Enregistrer » dépassaient de 270 px à 1280 px :
+                                 le bloc se replie sur lui-même quand il est plus large que la ligne, jamais au-delà */
+  flex-wrap: wrap;
+  margin-left: auto;          /* seul sur sa ligne après un repli, il reste à droite (space-between le collait à gauche) */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+/* ===== (24/09, nuit) UNE LIGNE DE TABLEAU QUI TIENT À L'ÉCRAN — l'identité d'un acteur (nom, identifiants, lieu, contact) se
+   range dans UNE cellule qui se replie, et ses actions s'empilent au lieu de s'aligner sur 300 px ===== */
+.pec-table-defile { max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.pec-cellule-identite { min-width: 200px; max-width: 300px; white-space: normal; }
+.pec-cellule-identite .meta { margin-top: 2px; overflow-wrap: anywhere; }
+.pec-actions-pile { display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-width: 124px; }
+.pec-actions-pile .pec-btn { justify-content: center; }
+
+/* ===== Encart d'avertissement ===== */
+.pec-notice {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--radius-card);
+  background: var(--color-amber-well);
+  color: var(--color-amber-text);
+  font-size: 13px;
+  line-height: 1.55;
+}
+.pec-notice .pec-ico {
+  flex-shrink: 0;
+  font-size: 17px;
+  margin-top: 1px;
+}
+.pec-notice b { color: var(--color-amber-text); }
+.pec-notice--info {
+  background: var(--color-mint);
+  color: var(--color-primary-dark);
+}
+.pec-notice--info b { color: var(--color-primary-dark); }
+
+/* ===== (24/09) LE BACK-OFFICE SUR UN TÉLÉPHONE — fondatrice : « toutes les apps en mode desktop, et responsive pour
+   iPhone ». En dessous de 900 px, la colonne de navigation devient un tiroir (payencash-coque.js pose la barre du haut et
+   son bouton « menu ») ; le contenu prend toute la largeur ; les grilles se replient ; un tableau trop large défile dans
+   sa propre bande au lieu d'élargir la page. ===== */
+.pec-coque-barre,
+.pec-coque-voile { display: none; }
+@media (max-width: 899.98px) {
+  .pec-admin { display: block; min-height: 100dvh; }
+  /* (24/09, nuit) FERMÉ, LE TIROIR EST VRAIMENT HORS D'ATTEINTE : poussé hors de l'écran, il restait « visible » pour le
+     clavier (Tab entrait dans des liens invisibles) et pour les lecteurs d'écran. `visibility` bascule APRÈS la glissade. */
+  .pec-aside {
+    z-index: 70; width: min(86vw, 300px);
+    transform: translateX(-102%); visibility: hidden; transition: transform 0.22s ease, visibility 0s linear 0.22s;
+    box-shadow: 0 0 40px rgba(15, 42, 36, 0.28);
+  }
+  .pec-admin.pec-menu-ouvert .pec-aside { transform: none; visibility: visible; transition: transform 0.22s ease, visibility 0s; }
+  .pec-coque-voile { display: block; position: fixed; inset: 0; z-index: 65; background: rgba(15, 42, 36, 0.45); }
+  .pec-coque-barre {
+    display: flex; position: sticky; top: 0; z-index: 60;
+    align-items: center; gap: 10px; min-height: 56px; padding: 8px 12px; box-sizing: border-box;
+    background: var(--color-ink); color: #fff;
+  }
+  .pec-coque-barre button {
+    flex: none; display: inline-flex; align-items: center; justify-content: center;
+    width: 42px; height: 42px; border: 0; border-radius: 12px;
+    background: rgba(255, 255, 255, 0.1); color: #fff; cursor: pointer;
+  }
+  .pec-coque-barre button:focus-visible { outline: 2px solid var(--color-bright); outline-offset: 2px; }
+  .pec-coque-barre .t { min-width: 0; font-size: 15px; font-weight: 800; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pec-main { grid-column: auto; padding: 18px 14px 44px; }
+  .pec-topbar { flex-direction: column; align-items: stretch; gap: 12px; margin-bottom: 18px; }
+  .pec-topbar h1 { font-size: 21px; }
+  .pec-topbar-actions { flex-wrap: wrap; }
+  .pec-topbar-actions > * { max-width: 100%; }
+  /* (24/09, nuit — audit de mise en page à 390 px) un en-tête de panneau pose son titre ET ses contrôles sur une ligne : sur
+     un téléphone, les contrôles passent dessous ; un bloc de réglage (champs, unités, « Enregistrer ») se replie au lieu de
+     pousser la page de 700 px vers la droite. */
+  .pec-panel-head { flex-wrap: wrap; }
+  .pec-panel-head > * { min-width: 0; max-width: 100%; }
+  .pec-setting-control { flex: 1 1 100%; min-width: 0; flex-wrap: wrap; justify-content: flex-start; margin-left: 0; }
+  .pec-grid--2, .pec-grid--3 { grid-template-columns: minmax(0, 1fr); }
+  .pec-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pec-main table { display: block; max-width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .pec-main img, .pec-main canvas, .pec-main svg { max-width: 100%; }
+}
+@media (max-width: 899.98px) and (prefers-reduced-motion: reduce) {
+  .pec-aside { transition: none; }
+}

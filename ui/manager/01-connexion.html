@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Connexion</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  CONNEXION MANAGER — route `/login`.
+  Identifiant + mot de passe (`manager_users`), session JWT. Le rôle est vérifié
+  par un guard GLOBAL côté backend : aucun endpoint manager n'est joignable sans
+  lui, ce qui évite d'en oublier un au cas par cas.
+  (03/09 — protocole unique de compte)
+   - connexion : PEC_DATA.compteConnecter('manager', id, mdp) — comptes de démo
+     (emilie.r, super.mars) et comptes invités puis activés passent par la MÊME
+     fonction ; le statut est contrôlé (invité non activé, suspendu) et le motif
+     affiché ; journal bus `connexion`.
+   - `?invit=<id>` : ACTIVATION d'une invitation (manager ou hotline) créée par
+     19-invitation / 17-comptes-manager / 40-comptes — la personne crée son mot
+     de passe (règle ref.invitations.motDePasseMin) →
+     PEC_DATA.compteActiverInvitation(id, mdp) → connexion immédiate.
+-->
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-ink)">
+
+<div style="width:100%;max-width:380px;padding:32px;border-radius:var(--radius-card);background:var(--color-surface);box-shadow:var(--shadow-frame)">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:19px;font-weight:800;color:var(--color-ink)"><span data-pec-marque="manager"></span><!-- (21/09) le P générique et le nom écrit --></div>
+  <p style="margin-bottom:24px;font-size:13.5px;color:var(--color-muted)" id="cx-sub">Espace manager — accès réservé.</p>
+
+  <form id="cx-form">
+    <div class="pec-card" style="margin-bottom:16px">
+      <div style="margin-bottom:14px">
+        <label class="pec-input-label" for="ident">Identifiant</label>
+        <input class="pec-input" id="ident" type="text" autocomplete="username" placeholder="prenom.n">
+      </div>
+      <div>
+        <label class="pec-input-label" for="mdp">Mot de passe</label>
+        <input class="pec-input" id="mdp" type="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+    </div>
+    <p id="cx-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="cx-err-txt"></span></p>
+    <button class="pec-btn tap" type="submit" style="width:100%">Se connecter</button>
+    <!-- (03/09) plus d'identifiants pré-remplis : le trousseau de démo vit dans
+         « Accès & comptes démo » (31) — jamais un mot de passe posé dans un écran. -->
+    <p id="cx-demo" style="margin:10px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)">Compte de démo : voir <b>Accès &amp; comptes démo</b> (écran 31).</p>
+  </form>
+
+  <!-- ACTIVATION D'UNE INVITATION (?invit=<id>) — hors session : l'invité n'a pas
+       encore de mot de passe. E-mail et rôle viennent de l'invitation, non modifiables. -->
+  <form id="act-form" hidden>
+    <div class="pec-card" style="margin-bottom:16px">
+      <div class="pec-setting" style="padding-top:0">
+        <div><div class="t">Compte invité</div><div class="s">Défini par l’invitation</div></div>
+        <div class="pec-setting-control"><span class="ref" id="act-nom" style="font-size:12.5px">—</span></div>
+      </div>
+      <div class="pec-setting">
+        <div><div class="t">Identifiant</div><div class="s" id="act-invite-par">—</div></div>
+        <div class="pec-setting-control"><span class="ref" id="act-ident" style="font-family:var(--font-mono);font-size:12.5px">—</span></div>
+      </div>
+      <div class="pec-setting">
+        <div><div class="t">Rôle</div><div class="s">Défini par l’invitation</div></div>
+        <div class="pec-setting-control"><span class="pec-pill pec-pill--off" id="act-role">—</span></div>
+      </div>
+    </div>
+    <div class="pec-card" style="margin-bottom:16px">
+      <div style="margin-bottom:14px">
+        <label class="pec-input-label" for="act-mdp">Choisissez votre mot de passe</label>
+        <input class="pec-input" id="act-mdp" type="password" autocomplete="new-password" placeholder="Mot de passe">
+        <p id="act-aide" style="margin:6px 0 0;font-size:11.5px;color:var(--color-muted-2)">—</p>
+      </div>
+      <div>
+        <label class="pec-input-label" for="act-mdp2">Confirmez</label>
+        <input class="pec-input" id="act-mdp2" type="password" autocomplete="new-password" placeholder="Confirmez le mot de passe">
+      </div>
+    </div>
+    <p id="act-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="act-err-txt"></span></p>
+    <button class="pec-btn tap" type="submit" style="width:100%" id="act-go">Activer mon compte et me connecter</button>
+    <p style="margin:10px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)"><a href="01-connexion.html">J’ai déjà un compte — me connecter</a></p>
+  </form>
+
+  <script>
+    (function () {
+      var D = window.PEC_DATA;
+      var CIBLE = { manager: '02-tableau-de-bord.html', hotline: '../hotline/01-pilotage.html' };
+      // la société qui édite le back-office se lit au référentiel (ref.societe), jamais écrite ici
+      if (D && D.societeLigne && D.societeLigne()) document.getElementById('cx-sub').textContent = 'Espace manager — accès réservé. ' + D.societeLigne() + '.';
+      function err(id, txt) { var p = document.getElementById(id); p.hidden = !txt; document.getElementById(id + '-txt').textContent = txt || ''; }
+      function dateFr(ts) { var d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+      // CONNEXION RÉELLE (protocole unique 03/09) : compteConnecter('manager', …) — statut contrôlé, motif affiché
+      document.getElementById('cx-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var r = D.compteConnecter('manager', document.getElementById('ident').value, document.getElementById('mdp').value);
+        if (!r.ok) {
+          var st = r.compte && r.compte.statut;
+          /* (fondatrice 06/09 « j'arrive pas à me connecter sur manager ») UN COMPTE INVITÉ ÉTAIT UNE
+             IMPASSE : on renvoyait vers « le lien d'activation reçu » alors que la maquette n'envoie
+             AUCUN e-mail — le lien n'existait nulle part. L'activation se fait donc ici, sur l'écran,
+             comme les codes de démo ailleurs : si l'invitation est encore valable, le bouton l'ouvre. */
+          if (st === 'invite') {
+            var exp = r.compte.inviteExpireAt, perime = exp && Date.now() > exp;
+            err('cx-err', perime
+              ? 'Invitation expirée le ' + dateFr(exp) + ' — demande une nouvelle invitation à la direction.'
+              : 'Ce compte a été créé mais n’est pas encore activé : choisis ton mot de passe pour l’ouvrir.');
+            var z = document.getElementById('cx-err');
+            if (!perime && z && !z.querySelector('#cx-activer')) {
+              var a = document.createElement('a');
+              a.id = 'cx-activer'; a.className = 'pec-btn tap';
+              a.href = '01-connexion.html?invit=' + encodeURIComponent(r.compte.id);
+              a.textContent = 'Activer mon compte';
+              a.style.cssText = 'display:block;text-align:center;margin-top:9px;text-decoration:none';
+              z.appendChild(a);
+            }
+            return;
+          }
+          err('cx-err', st === 'suspendu' ? 'Compte suspendu — contacte la direction.' : r.motif + (/identifiant|mot de passe/i.test(r.motif) ? ' — vérifie tes identifiants.' : ''));
+          return;
+        }
+        window.location = CIBLE.manager;
+      });
+
+      // ACTIVATION D'INVITATION : ?invit=<id du compte invité>
+      var invit = new URLSearchParams(location.search).get('invit');
+      if (!invit) return;
+      var c = D.compte ? D.compte(invit) : null;
+      document.getElementById('cx-form').hidden = true;
+      var f = document.getElementById('act-form'); f.hidden = false;
+      var min = (D.ref && D.ref.invitations && D.ref.invitations.motDePasseMin) || null;
+      if (min) { document.getElementById('act-mdp').minLength = min; document.getElementById('act-mdp2').minLength = min; document.getElementById('act-aide').textContent = min + ' caractères minimum (règle commune des accès PayEnCash). Vous seul·e le connaîtrez.'; }
+      if (!c || (c.espace !== 'manager' && c.espace !== 'hotline')) {
+        document.getElementById('cx-sub').textContent = 'Activation d’un accès manager / hotline.';
+        err('act-err', 'Lien invalide ou expiré — demandez une nouvelle invitation.');
+        document.getElementById('act-go').disabled = true;
+        return;
+      }
+      var p = c.profil || {};
+      document.getElementById('cx-sub').textContent = 'Activation de votre accès ' + ((D.ESPACES_COMPTE[c.espace] || {}).label || c.espace) + '.';
+      document.getElementById('act-nom').textContent = p.nom || c.identifiant;
+      document.getElementById('act-ident').textContent = c.identifiant;
+      document.getElementById('act-invite-par').textContent = (c.invitePar ? 'Invité·e par ' + c.invitePar : '') + (c.inviteExpireAt ? ' · lien valable jusqu’au ' + dateFr(c.inviteExpireAt) : '');
+      document.getElementById('act-role').textContent = p.role || ((D.ESPACES_COMPTE[c.espace] || {}).label || c.espace);
+      if (c.statut !== 'invite') { err('act-err', c.statut === 'actif' ? 'Invitation déjà utilisée — connectez-vous avec votre identifiant.' : 'Invitation indisponible (' + ((D.STATUTS_COMPTE || {})[c.statut] || c.statut) + ').'); document.getElementById('act-go').disabled = true; }
+      else if (c.inviteExpireAt && Date.now() > c.inviteExpireAt) { err('act-err', 'Invitation expirée — demandez une nouvelle invitation.'); document.getElementById('act-go').disabled = true; }
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var m1 = document.getElementById('act-mdp').value, m2 = document.getElementById('act-mdp2').value;
+        if (m1 !== m2) { err('act-err', 'Les deux mots de passe ne correspondent pas.'); return; }
+        var r = D.compteActiverInvitation(c.id, m1);
+        if (!r.ok) { err('act-err', r.motif); return; }
+        var cx = D.compteConnecter(c.espace, c.identifiant, m1);
+        if (!cx.ok) { err('act-err', cx.motif); return; }
+        window.location = CIBLE[c.espace] || CIBLE.manager;
+      });
+    })();
+  </script>
+
+  <div class="pec-notice pec-notice--info" style="margin-top:22px">
+    <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+    <div>Toute action de gestion — validation d'une marque, activation d'un commerce du réseau, remise de prélèvements, paiement d'une marque, modification d'un réglage — est <b>journalisée</b> avec son auteur.</div>
+  </div>
+</div>
+
+</body>
+</html>

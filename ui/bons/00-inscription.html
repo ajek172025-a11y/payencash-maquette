@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Créer mon compte</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : une porte ne se ferme pas derrière sa propre garde -->
+<script src="../assets/payencash-bus.js"></script><!-- le journal : compte créé, codes confirmés, connexion — le manager les voit arriver -->
+<script src="../assets/payencash-bons.js"></script><!-- (24/09) le socle de l'app : sa barre de navigation -->
+<!-- CRÉER SON COMPTE (23/09, nuit — l'app « Mes bons » devient autonome : elle crée elle-même le compte de son porteur).
+     POURQUOI un compte : un bon de MARQUE s'utilise depuis cette app, sous le compte
+     de son porteur — c'est ce qui rend chaque usage retraçable (fondatrice 23/09 : « l'app est obligatoire »).
+     LE PROTOCOLE UNIQUE DES COMPTES (03/09), trois étapes, chacune par le data-layer :
+       ① le formulaire → compteCreer('client', {prenom, nom, tel, email, motdepasse}) → compte « à vérifier » (pec-comptes,
+          journal compte_cree), déjà relié à SA fiche client (refId) ; la lecture des CGU, faite ICI dans le lecteur (le
+          texte défilé jusqu'au bout), et l'acceptation sont posées à cet instant sous la clé du porteur (documentConsulter
+          + acceptationsPoser, portée `bons`) — une trace a besoin d'un sujet, et le sujet naît à la création.
+       ② le code SMS et le code e-mail → compteVerifier(id, canal, code) ×2 → compte « actif » (journal compte_verifie).
+          Le SEUL point non réel : l'envoi. Les codes attendus sont ceux que compteCreer renvoie (codes.sms / codes.email),
+          AFFICHÉS dans un encadré « maquette » — rien n'est deviné, rien n'est écrit ici.
+       ③ compteConnecter('client', mobile, mot de passe) → session + client actif → retour là où l'on allait : le bon
+          proposé par une marque (?o=<slug> → 05-offre) ou la liste des bons.
+     LE MOBILE EST L'IDENTIFIANT (ESPACES_COMPTE.client.identifiant). Le formulaire demandé tient en quatre champs
+     (prénom, e-mail, mobile, mot de passe) : le NOM est donc facultatif. Donné, il sert à l'identité (une vérification
+     d'identité se fait sur le nom de la pièce) et au « Prénom N. » que le data-layer dérive ; absent, le data-layer
+     garde « Prénom . », et les écrans n'affichent pas ce point seul. La règle du mot de passe
+     (ref.connexion.motDePasseMin), la longueur des codes (ref.otp.longueur), les documents (ref.documents.bons) viennent
+     du référentiel : zéro valeur écrite ici. -->
+<style>
+  .bi-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
+  h1.bi-h1{margin:14px 0 0;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink)}
+  .bi-sub{margin:4px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
+  .bi-steps{display:flex;align-items:center;gap:6px;margin-top:12px}
+  .bi-steps span{flex:1;height:4px;border-radius:999px;background:var(--color-sep)}
+  .bi-steps span.on{background:var(--color-primary)}
+  .bi-etat{margin-top:6px;font-size:11px;font-weight:700;color:var(--color-primary-dark)}
+  .bi-note{margin:10px 0 0;border-radius:12px;background:var(--color-bg);padding:9px 11px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .bi-note a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .bi-offre{padding:12px 14px;border:1.5px solid var(--color-mint)}
+  .bi-offre b{display:block;font-size:14px;color:var(--color-ink)}
+  .bi-offre p{margin:4px 0 0;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .bi-card{padding:14px 16px}
+  .bi-card .pec-input-label{margin-top:12px}
+  .bi-card .pec-input-label:first-child{margin-top:0}
+  .pec-input-label .obl::after{content:' *';color:var(--color-danger);font-weight:800}
+  .pec-input-label .p{font-weight:600;color:var(--color-muted-2)}
+  .bi-e{display:none;margin-top:5px;font-size:11px;font-weight:700;line-height:1.4;color:var(--color-danger)}
+  .bi-e.on{display:block}
+  .pec-input.ko{box-shadow:0 0 0 1.5px var(--color-danger) inset}
+  .bi-mdp{position:relative}
+  .bi-mdp .pec-input{padding-right:70px}
+  .bi-mdp .voir{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font:inherit;font-size:11px;font-weight:800;color:var(--color-primary-dark);cursor:pointer;padding:4px}
+  .bi-aide{margin:5px 0 0;font-size:11px;line-height:1.5;color:var(--color-muted)}
+  .bi-cgu{margin-top:14px;border:1.5px solid var(--color-sep);border-radius:14px;padding:12px 13px;background:var(--color-surface)}
+  .bi-cgu.ko{border-color:var(--color-danger)}
+  .bi-cgu .lire{display:inline-flex;align-items:center;gap:6px;border:none;background:none;padding:0;font:inherit;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer;text-align:left}
+  .bi-cgu label{display:flex;align-items:flex-start;gap:10px;margin-top:10px;font-size:11.5px;line-height:1.55;color:var(--color-ink);cursor:pointer}
+  .bi-cgu input{flex:none;width:19px;height:19px;margin-top:1px;accent-color:var(--color-primary)}
+  .bi-cgu input:disabled + span{color:var(--color-muted-2)}
+  .bi-cgu .aide{margin:8px 0 0;font-size:10.5px;line-height:1.5;color:var(--color-muted-2)}
+  .bi-cgu .aide.lu{color:var(--color-primary-dark);font-weight:700}
+  .bi-msg{margin-top:10px;border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5;font-weight:700}
+  .bi-msg.ko{background:var(--color-danger-well);color:var(--color-danger)}
+  .bi-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .bi-lien{margin:10px 0 0;text-align:center;font-size:11px;color:var(--color-muted-2)}
+  .bi-lien a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .bi-t{font-size:14px;font-weight:800;color:var(--color-ink)}
+  .bi-s{margin:3px 0 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  .bi-demo{margin-top:10px;border:1.5px dashed var(--color-primary);border-radius:12px;background:var(--color-mint);padding:9px 11px;font-size:11px;line-height:1.6;color:var(--color-mint-ink)}
+  .bi-demo b{font-family:var(--font-mono);font-size:15px;letter-spacing:.2em;color:var(--color-primary-dark)}
+  .bi-canal{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px}
+  .bi-canal .pec-input-label{margin:0}
+  .bi-canal .pec-pill{flex:none;font-size:9.5px;padding:3px 8px}
+  .bi-code{font-family:var(--font-mono);text-align:center;font-size:20px;letter-spacing:.35em;font-weight:800}
+  .bi-fin{text-align:center;padding:8px 0 0}
+  .bi-fin .ico{display:inline-flex;align-items:center;justify-content:center;width:64px;height:64px;border-radius:999px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .bi-fin .t{font-size:20px;font-weight:800;color:var(--color-ink);margin-top:12px}
+  .bi-fin .s{font-size:12.5px;line-height:1.5;color:var(--color-muted);margin-top:5px}
+  /* LE LECTEUR — le même que Compte : le document lu ICI, au format de l'app, refermé sur la page */
+  .lect{position:absolute;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--color-bg)}
+  .lect .h{flex:none;display:flex;align-items:center;gap:6px;padding:10px 12px 8px;background:var(--color-surface);box-shadow:var(--shadow-card)}
+  .lect .h .retour{display:inline-flex;align-items:center;gap:2px;border:none;background:none;padding:6px 8px 6px 2px;font:inherit;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+  .lect .h .retour svg{width:18px;height:18px}
+  .lect .h .titre{min-width:0;flex:1;font-size:13px;font-weight:800;line-height:1.25;color:var(--color-ink)}
+  .lect .h .v{font-size:10px;font-weight:700;color:var(--color-muted);white-space:nowrap}
+  .lect .jauge{flex:none;height:4px;background:var(--color-sep)}
+  .lect .jauge i{display:block;height:100%;width:0;background:var(--color-primary);transition:width .15s}
+  .lect .c{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 24px;font-size:13px;line-height:1.6;color:var(--color-ink)}
+  .lect .c h1{font-size:18px;line-height:1.25;margin:0 0 6px}
+  .lect .c h2{font-size:14px;margin:18px 0 6px;color:var(--color-primary-dark)}
+  .lect .c h3{font-size:13px;margin:14px 0 5px}
+  .lect .c p,.lect .c li{margin:6px 0}
+  .lect .c ul,.lect .c ol{padding-left:18px}
+  .lect .c table{display:block;overflow-x:auto;width:100%;border-collapse:collapse;font-size:11.5px}
+  .lect .c th,.lect .c td{border:1px solid var(--color-sep);padding:5px 7px;text-align:left;vertical-align:top}
+  .lect .c .note,.lect .c .warn{border-radius:10px;background:var(--color-mint);padding:9px 11px;font-size:12px;margin:8px 0}
+  .lect .c .warn{background:var(--color-amber-well);color:var(--color-amber-text)}
+  .lect .c .toc,.lect .c .toolbar,.lect .c .brand,.lect .c header,.lect .c .foot{display:none}
+  .lect .c a{color:var(--color-primary-dark);font-weight:700}
+  .lect .c img{max-width:100%;height:auto}
+  .lect .c iframe{width:100%;height:100%;min-height:60vh;border:0;background:#fff}
+  .lect .c .fin{margin:22px 0 4px;text-align:center;font-size:11px;font-weight:800;letter-spacing:.08em;color:var(--color-muted-2)}
+  .lect .f{flex:none;padding:10px 16px 14px;background:var(--color-surface);box-shadow:0 -2px 8px rgba(15,42,36,.06)}
+  .lect .f .pec-cta{display:block;width:100%}
+  .lect .f .s{margin:6px 0 0;font-size:10.5px;line-height:1.5;color:var(--color-muted);text-align:center}
+  /* (24/09, soir) la marge du corps est celle du téléphone et de la tablette ; sur bureau, la feuille partagée donne la sienne */
+  @media (max-width:1023.98px){ #bi-page{padding:14px 18px 8px} }
+  /* ══ (24/09, soir) L'ÉCHELLE DE BUREAU — un formulaire lu à 60 cm, dans la colonne étroite (pec-etroit) ══ */
+  @media (min-width:1024px){
+    h1.bi-h1{margin-top:0;font-size:30px;line-height:1.15}
+    .bi-sub{font-size:15px;margin-top:8px;max-width:62ch}
+    .bi-steps{margin-top:18px;gap:8px} .bi-steps span{height:5px}
+    .bi-etat{font-size:13px;margin-top:8px}
+    .bi-note{font-size:14px;padding:12px 14px}
+    .bi-offre{padding:18px 20px} .bi-offre b{font-size:17px} .bi-offre p{font-size:14px}
+    .bi-card{padding:24px 26px}
+    .bi-card .pec-input-label{margin-top:16px}
+    .bi-e{font-size:13px} .bi-aide{font-size:13px}
+    .bi-mdp .voir{font-size:13px}
+    .bi-cgu{padding:16px 18px} .bi-cgu .lire{font-size:14.5px} .bi-cgu label{font-size:14px} .bi-cgu .aide{font-size:12.5px}
+    .bi-msg{font-size:13.5px;padding:12px 14px}
+    .bi-lien{font-size:13.5px}
+    .bi-t{font-size:17px} .bi-s{font-size:14px}
+    .bi-demo{font-size:13px;padding:12px 14px} .bi-demo b{font-size:17px}
+    .bi-canal .pec-pill{font-size:12px;padding:4px 10px}
+    .bi-code{font-size:24px}
+    .bi-fin .ico{width:76px;height:76px} .bi-fin .t{font-size:26px} .bi-fin .s{font-size:15px}
+    /* le lecteur couvre le contenu, pas la colonne de navigation ; le texte y est posé dans une colonne de lecture */
+    .lect{position:fixed;left:var(--pec-nav-l, 0)}
+    .lect .h{padding:14px max(24px, calc((100% - 760px) / 2)) 12px}
+    .lect .h .retour{font-size:14px} .lect .h .titre{font-size:16px} .lect .h .v{font-size:12px}
+    .lect .c{padding:28px max(24px, calc((100% - 760px) / 2)) 40px;font-size:15px;line-height:1.65}
+    .lect .c h1{font-size:26px} .lect .c h2{font-size:18px} .lect .c h3{font-size:15.5px}
+    .lect .c table{font-size:13px}
+    .lect .f{padding:14px max(24px, calc((100% - 760px) / 2)) 18px}
+    .lect .f .pec-cta{display:flex;width:auto;margin-left:auto} .lect .f .s{font-size:12.5px;text-align:right}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device pec-etroit" style="position:relative">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll" id="bi-page">
+
+    <!-- LA MARQUE (socle : marqueAppliquer) — le P générique, le nom de l'app, le slogan lu dans le référentiel -->
+    <!-- (24/09, soir) pec-entete-app : sur bureau, la colonne de navigation porte déjà la marque — cet en-tête s'efface -->
+    <header class="bi-hdr pec-entete-app">
+      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+    </header>
+
+    <h1 class="bi-h1">Créer mon compte</h1>
+    <p class="bi-sub">Ton compte, c’est ton <b style="color:var(--color-ink)">mobile</b> et un <b style="color:var(--color-ink)">mot de passe</b>. Il range tes bons de marque et porte chaque usage chez la marque.</p>
+
+    <div class="bi-steps" aria-hidden="true"><span id="bi-step1" class="on"></span><span id="bi-step2"></span><span id="bi-step3"></span></div>
+    <div class="bi-etat" id="bi-etat">Étape 1 sur 3 — tes informations</div>
+
+    <!-- déjà connecté : on le dit, on ne bloque pas (un second compte reste possible avec un autre mobile) -->
+    <div class="bi-note" id="bi-deja" hidden>Tu es déjà connecté·e en tant que <b id="bi-deja-nom" style="color:var(--color-ink)">—</b>. <a id="bi-deja-go" href="01-mes-bons.html">Continuer ›</a></div>
+
+    <!-- UN BON PROPOSÉ PAR UNE MARQUE (?o=<slug>) — celui qui arrive du lien partagé sait ce qui l'attend après le compte -->
+    <div class="pec-card bi-offre" id="bi-offre" hidden>
+      <b id="bi-offre-titre">—</b>
+      <p id="bi-offre-txt">—</p>
+    </div>
+
+    <!-- ═══ ÉTAPE 1 — le formulaire ═══ -->
+    <!-- les trois étapes se montrent par l'attribut `hidden` : c'est lui que la garde et le banc lisent pour savoir ce qui est à l'écran -->
+    <form id="bi-form" class="pec-card bi-card" novalidate autocomplete="on">
+      <label class="pec-input-label" for="bi-prenom"><span class="obl">Prénom</span></label>
+      <input class="pec-input" id="bi-prenom" type="text" autocomplete="given-name" aria-describedby="bi-e-prenom"><div class="bi-e" id="bi-e-prenom" role="alert"></div>
+
+      <label class="pec-input-label" for="bi-nom">Nom <span class="p">— facultatif, comme sur ta pièce d’identité</span></label>
+      <input class="pec-input" id="bi-nom" type="text" autocomplete="family-name" aria-describedby="bi-e-nom"><div class="bi-e" id="bi-e-nom" role="alert"></div>
+
+      <label class="pec-input-label" for="bi-email"><span class="obl">E-mail</span></label>
+      <input class="pec-input" id="bi-email" type="email" autocomplete="email" placeholder="prenom.nom@exemple.fr" aria-describedby="bi-e-email"><div class="bi-e" id="bi-e-email" role="alert"></div>
+
+      <label class="pec-input-label" for="bi-mobile"><span class="obl">Mobile</span> <span class="p">— ton identifiant de connexion</span></label>
+      <input class="pec-input" id="bi-mobile" type="tel" inputmode="numeric" autocomplete="tel-national" maxlength="14" placeholder="06 12 34 56 78" aria-describedby="bi-e-mobile"><div class="bi-e" id="bi-e-mobile" role="alert"></div>
+
+      <label class="pec-input-label" for="bi-mdp"><span class="obl">Mot de passe</span></label>
+      <span class="bi-mdp" style="display:block"><input class="pec-input" id="bi-mdp" type="password" autocomplete="new-password" placeholder="••••••••••" aria-describedby="bi-mdp-aide"><button type="button" class="voir" id="bi-mdp-voir" aria-label="Afficher le mot de passe">Afficher</button></span>
+      <p class="bi-aide" id="bi-mdp-aide">—</p>
+
+      <!-- LES CGU SE LISENT AVANT DE S'ACCEPTER (fondatrice 23/09 : « il défile et signe ») : le document en vigueur vient
+           du référentiel (clé, version, adresse), il s'ouvre dans le lecteur, et c'est la FIN du texte qui ouvre la case. -->
+      <div class="bi-cgu" id="bi-cgu-bloc">
+        <button type="button" class="lire tap" id="bi-cgu-lire"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:15px"><use href="#i-file"/></svg><span id="bi-cgu-lire-txt">Lire les conditions ›</span></button>
+        <label for="bi-cgu-ok"><input type="checkbox" id="bi-cgu-ok" disabled><span id="bi-cgu-txt">J’ai lu et j’accepte les conditions.</span></label>
+        <p class="aide" id="bi-cgu-aide">Ouvre le texte et fais-le défiler jusqu’au bout : c’est là que la case s’ouvre.</p>
+        <p class="aide" id="bi-docs-suite" hidden>—</p>
+      </div>
+
+      <div class="bi-msg ko" id="bi-err" role="alert" hidden></div>
+      <button type="submit" id="bi-go" class="pec-cta tap" style="margin-top:14px">Créer mon compte</button>
+      <p class="bi-lien">Déjà un compte ? <a id="bi-connexion" href="06-connexion.html">Je me connecte</a></p>
+    </form>
+
+    <!-- ═══ ÉTAPE 2 — les deux codes ═══ -->
+    <div id="bi-etape2" hidden>
+      <div class="pec-card bi-card">
+        <div class="bi-t">Confirme ton mobile et ton e-mail</div>
+        <p class="bi-s">Un code part par SMS au <b id="bi-cible-sms" style="color:var(--color-ink)">—</b> et un autre par e-mail à <b id="bi-cible-mail" style="color:var(--color-ink)">—</b>. Saisis les deux.</p>
+        <div class="bi-demo" id="bi-demo">Maquette — rien n’est envoyé. Codes attendus : SMS <b id="bi-demo-sms">—</b> · e-mail <b id="bi-demo-mail">—</b></div>
+
+        <div class="bi-canal"><label class="pec-input-label" for="bi-code-sms">Code SMS</label><span class="pec-pill pec-pill--wait" id="bi-sms-etat">À confirmer</span></div>
+        <input class="pec-input bi-code" id="bi-code-sms" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="______" aria-label="Code SMS">
+
+        <div class="bi-canal"><label class="pec-input-label" for="bi-code-mail">Code e-mail</label><span class="pec-pill pec-pill--wait" id="bi-mail-etat">À confirmer</span></div>
+        <input class="pec-input bi-code" id="bi-code-mail" type="text" inputmode="numeric" placeholder="______" aria-label="Code e-mail">
+
+        <div class="bi-msg ko" id="bi-verif-err" role="alert" hidden></div>
+        <button type="button" id="bi-verif-go" class="pec-cta tap" style="margin-top:14px">Valider les codes</button>
+        <p class="bi-lien">Compte <b id="bi-compte-id" style="color:var(--color-ink)">—</b> · <span id="bi-compte-statut">—</span></p>
+        <p class="bi-lien" style="margin-top:6px">Tu peux finir plus tard : <a href="06-connexion.html">connecte-toi</a>, les codes t’attendent dans Compte.</p>
+      </div>
+    </div>
+
+    <!-- ═══ ÉTAPE 3 — créé, connecté ═══ -->
+    <div id="bi-ok" class="bi-fin" role="status" hidden>
+      <span class="ico"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:32px"><use href="#i-check"/></svg></span>
+      <div class="t">Compte créé ✓</div>
+      <div class="s" id="bi-ok-txt">—</div>
+      <a class="pec-cta tap" id="bi-ok-go" href="01-mes-bons.html" style="margin-top:18px">Continuer</a>
+    </div>
+
+    <div style="height:10px"></div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="00-inscription.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
+
+  <!-- LE LECTEUR : les CGU lues SANS quitter la page ; la jauge dit où l'on en est, la fin ouvre la case -->
+  <div class="lect" id="bi-lecteur" hidden role="dialog" aria-modal="true" aria-labelledby="bi-lect-titre">
+    <div class="h">
+      <button type="button" class="retour tap" id="bi-lect-fermer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg>Retour</button>
+      <div class="titre" id="bi-lect-titre">—</div>
+      <span class="v" id="bi-lect-version"></span>
+    </div>
+    <div class="jauge" aria-hidden="true"><i id="bi-lect-jauge"></i></div>
+    <div class="c" id="bi-lect-corps"></div>
+    <div class="f" id="bi-lect-pied"></div>
+  </div>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.compteCreer) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function message(el, txt) { el.hidden = !txt; el.textContent = txt || ''; }
+    var Q = new URLSearchParams(location.search);
+    var SLUG = Q.get('o') || '';
+    // où l'on va une fois le compte créé : le bon proposé par la marque (?o=), sinon la liste des bons
+    var CIBLE = SLUG ? '05-offre.html?o=' + encodeURIComponent(SLUG) : '01-mes-bons.html';
+    $('bi-ok-go').href = CIBLE; $('bi-deja-go').href = CIBLE;
+    $('bi-connexion').href = '06-connexion.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
+
+    /* LES RÈGLES VIENNENT DU RÉFÉRENTIEL : longueur du mot de passe (celle que compteCreer exige d'un client), longueur
+       des codes, documents du porteur (portée `bons`). Sans règle connue, c'est le data-layer qui tranche au refus. */
+    var REF = D.ref || {};
+    var MIN_MDP = +(((REF.connexion || {}).motDePasseMin) || 0);
+    var LONG_CODE = +(((REF.otp || {}).longueur) || 0);
+    var DOCS = ((REF.documents || {}).bons) || [];
+    var CGU = DOCS.filter(function (d) { return /cgu/.test(d.cle); })[0] || DOCS[0] || null;
+    var AUTRES = DOCS.filter(function (d) { return !CGU || d.cle !== CGU.cle; });
+    $('bi-mdp-aide').textContent = (MIN_MDP ? MIN_MDP + ' caractères minimum. ' : '') + 'C’est lui qui te connecte ensuite — le SMS ne sert qu’à vérifier ton numéro, une fois.';
+    if (LONG_CODE) { $('bi-code-sms').maxLength = LONG_CODE; $('bi-code-mail').maxLength = LONG_CODE; }
+    $('bi-cgu-lire-txt').textContent = CGU ? 'Lire les ' + CGU.titre + ' (version ' + CGU.version + ') ›' : 'Aucun document à lire';
+    $('bi-cgu-txt').textContent = CGU ? 'J’ai lu et j’accepte les ' + CGU.titre + ' (version ' + CGU.version + ').' : 'Aucun document en vigueur pour l’app.';
+    if (!CGU) { $('bi-cgu-lire').hidden = true; $('bi-cgu-aide').hidden = true; }
+    if (AUTRES.length) { $('bi-docs-suite').hidden = false; $('bi-docs-suite').textContent = 'Avant de ranger un premier bon, tu liras et accepteras aussi, dans Compte : ' + AUTRES.map(function (d) { return d.titre; }).join(' · ') + '.'; }
+
+    // déjà connecté·e (session client ou client actif) — informatif, ne bloque pas
+    (function () {
+      var c = (D.clientConnecte && D.clientConnecte() && D.clientCourant) ? D.clientCourant() : null;
+      if (!c) return;
+      // un compte créé sans nom porte « Prénom . » : le point seul ne s'affiche pas
+      $('bi-deja-nom').textContent = String(c.nomComplet || c.prenom || '').replace(/\s+\.+$/, '').trim() || c.telComplet || 'toi';
+      $('bi-deja').hidden = false;
+    })();
+    // le bon proposé se NOMME (techLien) : un slug inconnu ne peint rien, il n'invente pas une offre
+    (function () {
+      var x = (SLUG && D.techLien) ? D.techLien(SLUG) : null; if (!x) return;
+      $('bi-offre-titre').textContent = x.marchand + ' te propose un bon d’achat de ' + D.eur(x.montant);
+      $('bi-offre-txt').textContent = 'Il s’utilise uniquement chez ' + x.marchand + ', depuis cette app, avec ton compte. Crée-le : tu retrouves ensuite ce bon proposé, tes bons ' + x.marchand + ', et où en acheter un.';
+      $('bi-offre').hidden = false;
+    })();
+
+    /* ══ LE LECTEUR — le texte en vigueur, chargé depuis son adresse du référentiel ; on garde son corps (.sheet .body),
+       on laisse tomber sa mise en page de bureau. OUVRIR N'EST PAS LIRE : la fin du texte défilé (lecteurFin, au scroll —
+       un texte plus court que l'écran compte comme lu dès l'affichage) ouvre la case « J'ai lu et j'accepte » ; la
+       consultation et l'acceptation sont ensuite posées sous la clé du porteur, à la création du compte. Si le chargement
+       échoue (page ouverte en fichier local), le document s'affiche tel quel dans un cadre — faute de pouvoir observer
+       son défilement, l'affichage vaut lecture. */
+    var lu = false, lecteurCharge = false;
+    function jauge() {
+      var c = $('bi-lect-corps'), max = c.scrollHeight - c.clientHeight;
+      $('bi-lect-jauge').style.width = (max > 0 ? Math.min(100, Math.round(c.scrollTop / max * 100)) : 100) + '%';
+    }
+    function lecteurPied() {
+      $('bi-lect-pied').innerHTML = lu
+        ? '<button type="button" class="pec-cta tap" id="bi-lect-retour">Lu jusqu’au bout — revenir à l’inscription</button>'
+        : '<p class="s">Fais défiler le texte jusqu’au bout : c’est la lecture qui compte, pas l’ouverture.</p>';
+    }
+    function lecteurFin() {
+      var c = $('bi-lect-corps');
+      /* la fin ne se mesure que sur un texte POSÉ : fermer vide le corps, et ce défilement-là est signalé à l'image suivante */
+      if (!lecteurCharge || !c.clientHeight) return;
+      jauge();
+      if (lu) return;
+      if (c.scrollTop + c.clientHeight < c.scrollHeight - 24) return;
+      lu = true;
+      $('bi-cgu-ok').disabled = false;
+      $('bi-cgu-aide').textContent = '✓ Lu jusqu’au bout — tu peux accepter.'; $('bi-cgu-aide').classList.add('lu');
+      lecteurPied();
+    }
+    function lecteurOuvrir() {
+      if (!CGU) return;
+      var corps = $('bi-lect-corps');
+      $('bi-lect-titre').textContent = CGU.titre; $('bi-lect-version').textContent = 'v. ' + CGU.version;
+      corps.innerHTML = '<p style="color:var(--color-muted)">Chargement du document…</p>'; lecteurCharge = false;
+      $('bi-lect-jauge').style.width = '0%';
+      lecteurPied();
+      $('bi-lecteur').hidden = false;
+      var cadre = function () { corps.innerHTML = ''; lecteurCharge = true; var f = document.createElement('iframe'); f.src = CGU.url; f.title = CGU.titre; corps.appendChild(f); setTimeout(function () { corps.scrollTop = corps.scrollHeight; lecteurFin(); }, 300); };
+      try {
+        fetch(CGU.url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).then(function (html) {
+          var doc = new DOMParser().parseFromString(html, 'text/html');
+          var titre = doc.querySelector('header h1, h1');
+          // un <br> dans le titre du document est un espace, pas une soudure
+          if (titre) [].forEach.call(titre.querySelectorAll('br'), function (br) { br.replaceWith(' '); });
+          var body = doc.querySelector('.sheet .body') || doc.querySelector('main') || doc.querySelector('article') || doc.body;
+          if (!body) { cadre(); return; }
+          ['script', 'style', 'link', '.toolbar', 'nav', 'header', '.toc'].forEach(function (sel) { [].forEach.call(body.querySelectorAll(sel), function (n) { n.remove(); }); });
+          [].forEach.call(body.querySelectorAll('a[href]'), function (n) { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener'); });
+          corps.innerHTML = (titre ? '<h1>' + esc(titre.textContent.replace(/\s+/g, ' ').trim()) + '</h1>' : '') + body.innerHTML + '<p class="fin">— fin du document —</p>';
+          corps.scrollTop = 0; lecteurCharge = true;
+          setTimeout(lecteurFin, 0);   // un texte plus court que l'écran est déjà au bout
+        }).catch(cadre);
+      } catch (e0) { cadre(); }
+    }
+    function lecteurFermer() { var z = $('bi-lecteur'); if (!z.hidden) { z.hidden = true; lecteurCharge = false; $('bi-lect-corps').innerHTML = ''; } }
+    $('bi-lect-corps').addEventListener('scroll', lecteurFin, { passive: true });
+    $('bi-cgu-lire').addEventListener('click', lecteurOuvrir);
+    document.addEventListener('click', function (e) { if (e.target.closest && (e.target.closest('#bi-lect-fermer') || e.target.closest('#bi-lect-retour'))) lecteurFermer(); });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lecteurFermer(); });
+
+    /* ══ ÉTAPE 1 — VALIDATION PAR CHAMP : le message sous le champ fautif, le premier fautif reprend la main ══ */
+    var NOM_OK = /^[A-Za-zÀ-ÖØ-öø-ÿ]{2,}(?:[ '\-][A-Za-zÀ-ÖØ-öø-ÿ]+)*$/;
+    var REGLES = {
+      'bi-prenom': { e: 'bi-e-prenom', lbl: 'ton prénom', test: function (v) { return NOM_OK.test(v.trim()); }, msg: 'Deux lettres minimum.' },
+      'bi-nom':    { e: 'bi-e-nom', lbl: 'ton nom', test: function (v) { return !v.trim() || NOM_OK.test(v.trim()); }, msg: 'Deux lettres minimum — tel qu’il figure sur ta pièce d’identité, ou laisse vide.' },
+      'bi-email':  { e: 'bi-e-email', lbl: 'ton e-mail', test: function (v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v.trim()); }, msg: 'Format attendu : prenom.nom@exemple.fr — le code de confirmation y est envoyé.' },
+      'bi-mobile': { e: 'bi-e-mobile', lbl: 'ton mobile', test: function (v) { return /^0\d{9}$/.test(v.replace(/\D/g, '')); }, msg: '10 chiffres commençant par 0 — c’est ton identifiant de connexion.' },
+      'bi-mdp':    { e: null, lbl: 'ton mot de passe', test: function (v) { return !!v && v.length >= MIN_MDP; }, msg: MIN_MDP ? MIN_MDP + ' caractères minimum.' : 'Choisis un mot de passe.' }
+    };
+    function peindre(id, forcer) {
+      var r = REGLES[id], el = $(id), ok = r.test(el.value), vide = !el.value;
+      var montrer = !ok && !vide && (forcer || el.dataset.touche === '1');
+      el.classList.toggle('ko', montrer);
+      if (r.e) { var z = $(r.e); z.textContent = montrer ? r.msg : ''; z.classList.toggle('on', montrer); }
+      else { $('bi-mdp-aide').style.color = montrer ? 'var(--color-danger)' : ''; }
+      return ok;
+    }
+    Object.keys(REGLES).forEach(function (id) {
+      var el = $(id);
+      el.addEventListener('input', function () { peindre(id); message($('bi-err'), ''); });
+      el.addEventListener('blur', function () { el.dataset.touche = '1'; peindre(id); });
+    });
+    $('bi-mdp-voir').addEventListener('click', function () {
+      var i = $('bi-mdp'), vu = i.type === 'text';
+      i.type = vu ? 'password' : 'text'; this.textContent = vu ? 'Afficher' : 'Masquer';
+      this.setAttribute('aria-label', vu ? 'Afficher le mot de passe' : 'Masquer le mot de passe');
+    });
+    $('bi-cgu-ok').addEventListener('change', function () { $('bi-cgu-bloc').classList.remove('ko'); message($('bi-err'), ''); });
+
+    var compte = null, codes = {}, MDP = '';
+    function etape(n, texte) {
+      ['bi-form', 'bi-etape2', 'bi-ok'].forEach(function (id, i) { $(id).hidden = i !== n - 1; });
+      [1, 2, 3].forEach(function (i) { $('bi-step' + i).classList.toggle('on', i <= n); });
+      $('bi-etat').textContent = 'Étape ' + n + ' sur 3 — ' + texte;
+      var corps = document.querySelector('.pec-body'); if (corps) corps.scrollTop = 0;
+    }
+    function majCompte() { if (!compte) return; $('bi-compte-id').textContent = compte.id; $('bi-compte-statut').textContent = (D.STATUTS_COMPTE || {})[compte.statut] || compte.statut; }
+    function masquerTel(tel) { return tel.slice(0, 2) + ' •• •• •• ' + tel.slice(-2); }
+    function masquerMail(m) { var p = m.split('@'); return p[0].slice(0, 2) + '•••@' + (p[1] || ''); }
+
+    /* ① CRÉER — compteCreer('client') : le data-layer vérifie les champs requis, l'unicité du mobile et la règle du mot
+       de passe ; son motif s'affiche tel quel. Le compte naît relié à sa fiche client (refId) : c'est sous cette clé que
+       la lecture des CGU et leur acceptation sont posées, à l'instant même. */
+    $('bi-form').addEventListener('submit', function (e) {
+      e.preventDefault(); message($('bi-err'), '');
+      var premier = null;
+      Object.keys(REGLES).forEach(function (id) { $(id).dataset.touche = '1'; if (!peindre(id, true) && !premier) premier = id; });
+      if (premier) { message($('bi-err'), 'Vérifie ' + REGLES[premier].lbl + '.'); $(premier).focus(); return; }
+      if (CGU && !$('bi-cgu-ok').checked) {
+        $('bi-cgu-bloc').classList.add('ko');
+        message($('bi-err'), lu ? 'Coche « J’ai lu et j’accepte » pour créer ton compte.' : 'Lis d’abord les ' + CGU.titre + ' jusqu’au bout, puis accepte-les.');
+        if (!lu) lecteurOuvrir(); else $('bi-cgu-ok').focus();
+        return;
+      }
+      var prenom = $('bi-prenom').value.trim(), nom = $('bi-nom').value.trim();
+      var tel = $('bi-mobile').value.replace(/\D/g, ''), mail = $('bi-email').value.trim();
+      MDP = $('bi-mdp').value;
+      var r = D.compteCreer('client', { prenom: prenom, nom: nom, tel: tel, email: mail, motdepasse: MDP });
+      if (!r.ok) { MDP = ''; message($('bi-err'), r.motif || 'Création impossible.'); return; }
+      compte = r.compte; codes = r.codes || {};
+      // la lecture faite dans le lecteur, puis l'acceptation — sous la clé du porteur (sa fiche client), version en vigueur
+      if (lu && CGU && compte.refId && D.documentConsulter && D.acceptationsPoser) {
+        D.documentConsulter('bons', compte.refId, CGU.cle, compte.refId);
+        D.acceptationsPoser('bons', compte.refId, [CGU.cle], compte.refId);
+      }
+      // ② les codes attendus par le data-layer — affichés, jamais devinés
+      $('bi-cible-sms').textContent = masquerTel(tel); $('bi-cible-mail').textContent = masquerMail(mail);
+      $('bi-demo-sms').textContent = codes.sms || '—'; $('bi-demo-mail').textContent = codes.email || '—';
+      majCompte(); etape(2, 'confirme ton mobile et ton e-mail');
+      $('bi-code-sms').focus();
+    });
+
+    /* ② VÉRIFIER — chaque code passe par compteVerifier (le motif vient du data-layer) ; un canal confirmé se verrouille,
+       l'autre reste à saisir. Les deux confirmés : le compte est actif, on entre. */
+    function saisieCode(inp) {
+      inp.addEventListener('input', function () { this.value = this.value.replace(/\D/g, ''); if (LONG_CODE) this.value = this.value.slice(0, LONG_CODE); message($('bi-verif-err'), ''); });
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $('bi-verif-go').click(); } });
+    }
+    saisieCode($('bi-code-sms')); saisieCode($('bi-code-mail'));
+    var CANAUX = [{ canal: 'sms', input: 'bi-code-sms', etat: 'bi-sms-etat', lbl: 'SMS' }, { canal: 'email', input: 'bi-code-mail', etat: 'bi-mail-etat', lbl: 'e-mail' }];
+    function marquer(c) { $(c.input).disabled = true; var p = $(c.etat); p.className = 'pec-pill pec-pill--done'; p.textContent = '✓ Confirmé'; }
+    $('bi-verif-go').addEventListener('click', function () {
+      message($('bi-verif-err'), '');
+      if (!compte) { message($('bi-verif-err'), 'Recommence depuis l’étape 1.'); return; }
+      for (var i = 0; i < CANAUX.length; i++) {
+        var c = CANAUX[i];
+        if (compte.verifs && compte.verifs[c.canal]) { marquer(c); continue; }
+        var code = $(c.input).value.trim();
+        if (!code) { message($('bi-verif-err'), 'Saisis le code ' + c.lbl + '.'); $(c.input).focus(); return; }
+        var r = D.compteVerifier(compte.id, c.canal, code);
+        if (!r.ok) { message($('bi-verif-err'), 'Code ' + c.lbl + ' : ' + (r.motif || 'incorrect') + '.'); $(c.input).focus(); $(c.input).select(); return; }
+        compte = r.compte; marquer(c); majCompte();
+      }
+      connecter();
+    });
+
+    /* ③ ENTRER — compteConnecter : session + client actif, par la MÊME porte que la page de connexion. Puis là où on allait. */
+    function connecter() {
+      var co = D.compteConnecter('client', compte.identifiant, MDP);
+      MDP = '';
+      if (!co.ok) {
+        message($('bi-verif-err'), 'Compte créé et confirmé, mais la connexion a échoué : ' + (co.motif || 'connexion impossible') + '. Connecte-toi depuis la page de connexion.');
+        return;
+      }
+      var p = co.compte.profil || {};
+      $('bi-ok-txt').textContent = 'Bienvenue ' + (p.prenom || p.nom || co.compte.identifiant) + ' — tu es connecté·e. ' + (SLUG ? 'On t’emmène sur le bon proposé par la marque.' : 'On t’emmène sur tes bons.');
+      etape(3, 'compte créé, connexion ouverte');
+      setTimeout(function () { location.href = CIBLE; }, 1200);
+    }
+  })();
+</script>
+</body>
+</html>

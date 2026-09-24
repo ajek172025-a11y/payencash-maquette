@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Comptes manager</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<!--
+  COMPTES MANAGER — route `/comptes`. Réservé au rôle `direction` (ROLES_MANAGER).
+
+  (03/09 — protocole unique de compte) l'écran LIT la table `comptes` :
+    PEC_DATA.managersGet() — la PROJECTION manager_users (07/09) : comptes de démo
+    (emilie.r, super.mars, hotline.op) ET comptes invités/activés, avec identifiant,
+    rôle, statut, dernière connexion (`derniereConnexion`, posée par compteConnecter).
+   - Invitations en attente = statut `invite` (lien d'activation
+     01-connexion.html?invit=<id> + échéance `inviteExpireAt`).
+   - Le formulaire d'invitation CRÉE le compte (compteCreer('manager'|'hotline'), invitePar = session).
+   - Suspendre / réactiver = compteSuspendre / compteReactiver (journal bus).
+
+  Trois partis pris qui viennent de la spec :
+   - DÉSACTIVATION (suspension), jamais suppression : `manager_users` est référencé par les remises de
+     prélèvements, les paiements de marques, les validations et les réglages (`updated_by`). Supprimer une ligne
+     orphelinerait des traces d'audit — précisément ce qu'on cherche à préserver.
+   - Le DERNIER COMPTE `direction` ACTIF n'est pas
+     suspendable, et l'écran DIT pourquoi : un bouton grisé sans raison passe pour un bug.
+   - En production, le jeton d'invitation n'existe que dans l'e-mail (haché en base).
+     En DÉMO aucun e-mail ne part : le lien d'activation est affiché ici, et signalé comme tel.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Comptes manager</h1>
+        <p class="sub">Qui a accès, avec quels droits — managers et hotline. <span id="cm-sub" class="meta"></span></p>
+      </div>
+      <div class="pec-topbar-actions">
+        <button class="pec-btn tap" id="cm-inviter"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-plus"/></svg> Inviter</button>
+        <a class="pec-btn pec-btn--ghost tap" href="19-invitation.html" target="_blank">Écran d'invitation ↗</a>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Comptes</h2><p class="s">Un compte suspendu est bloqué à la connexion immédiatement, il n’attend pas l’expiration de son jeton.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <!-- (07/09 — audit navigation : toute liste se cherche, se trie et se pagine) -->
+        <input class="pec-search" type="search" data-fsearch="#cm-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#cm-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Personne</th><th>Rôle</th><th>Dernière connexion</th><th>État</th><th></th></tr></thead>
+          <tbody id="cm-rows" data-fpage="15"></tbody>
+        </table>
+        <p class="meta" id="cm-msg" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:22px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>On suspend, on ne supprime pas.</b> Ces comptes sont référencés par les remises, les paiements de marques, les validations et les réglages : supprimer <span id="cm-notice-nom">un compte</span> orphelinerait les traces qui disent qui a changé quoi. Un compte suspendu reste dans l’historique et peut être réactivé.</div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px" id="cm-inv-panel">
+      <div class="pec-panel-head">
+        <div><h2>Nouvelle invitation</h2><p class="s">Le compte est créé « invité » ; la personne choisit son mot de passe depuis le lien d’activation.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="pec-setting" style="padding-top:0">
+          <div><div class="t">Adresse e-mail</div><div class="s">C’est l’identifiant de connexion — refusée si un compte existe déjà (contrôle avant l’émission).</div></div>
+          <div class="pec-setting-control"><input class="pec-search" style="max-width:240px" type="email" id="cm-inv-email" placeholder="prenom@payencash.fr" aria-label="E-mail de l’invité"></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Nom affiché</div><div class="s">Ce qui apparaîtra dans le journal d’audit à côté de chaque action.</div></div>
+          <div class="pec-setting-control"><input class="pec-search" style="max-width:240px" type="text" id="cm-inv-nom" placeholder="Prénom N." aria-label="Nom affiché"></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Rôle</div><div class="s" id="role-desc">Un opérateur ne voit ni la configuration, ni les comptes, et ne peut pas effacer un compte client.</div></div>
+          <div class="pec-setting-control" style="gap:8px" data-fpick id="cm-inv-role">
+            <!-- boutons DÉRIVÉS de PEC_DATA.ROLES_MANAGER (07/09) : plus de « Propriétaire » en dur — data-role = code de l'enum manager_users -->
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Validité du lien</div><div class="s">Une invitation qui traîne un mois est une porte d’entrée oubliée.</div></div>
+          <div class="pec-setting-control"><span class="pec-pill pec-pill--off" id="cm-validite">—</span></div>
+        </div>
+        <p class="meta" id="cm-inv-msg" style="margin:8px 0 0"></p>
+        <div style="display:flex;justify-content:flex-end;margin-top:14px">
+          <button class="pec-btn tap" id="cm-inv-envoyer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-mail"/></svg> Créer l’invitation</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-head">
+        <div><h2>Invitations en attente</h2><p class="s">Comptes au statut « invité » : tant que le mot de passe n’est pas créé, aucune connexion n’est possible.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <!-- (07/09 — audit navigation : toute liste se cherche, se trie et se pagine) -->
+        <input class="pec-search" type="search" data-fsearch="#cm-invitations tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#cm-invitations tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Adresse</th><th>Rôle</th><th>Invitée par</th><th>Échéance</th><th></th></tr></thead>
+          <tbody id="cm-invitations" data-fpage="15">
+            <tr><td colspan="5" class="meta" style="text-align:center;padding:18px" id="cm-invit-vide">Aucune invitation en attente — chaque lien émis s’inscrira ici avec son échéance.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-lock"/></svg>
+      <div><b>En production, le lien d’invitation n’est visible nulle part sur cet écran.</b> Il n’existe que dans l’e-mail envoyé : la base n’en garde qu’une empreinte, comme pour un mot de passe. <b>En démo, aucun e-mail ne part</b> : le lien d’activation est affiché ci-dessus pour dérouler le parcours.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div>Une invitation expirée ou déjà utilisée ne s’active plus : l’invité voit le motif à l’activation et demande un nouveau lien — l’ancien ne peut pas être réactivé.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // COMPTES MANAGER + HOTLINE DÉRIVÉS DE LA TABLE `comptes` (protocole unique 03/09) :
+  // managersGet() = la projection manager_users (rôle, nom, actif déjà résolus) — démo et invités confondus,
+  // dernière connexion posée par compteConnecter, suspension/réactivation réelles.
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.comptesTous) return;
+    // UNE liste de rôles (ROLES_MANAGER) : les boutons en dérivent, le premier est pressé, #role-desc dit ses droits
+    document.getElementById('cm-inv-role').innerHTML = (D.ROLES_MANAGER || []).map(function (r, i) {
+      return '<button class="pec-filter tap" type="button" aria-pressed="' + (i === 0) + '" data-role="' + r.code + '" data-espace="' + r.espace + '" data-fset=\'' + JSON.stringify({ '#role-desc': r.label + ' — ' + r.droits }) + '\'>' + r.label + '</button>';
+    }).join('');
+    if (D.ROLES_MANAGER && D.ROLES_MANAGER[0]) document.getElementById('role-desc').textContent = D.ROLES_MANAGER[0].label + ' — ' + D.ROLES_MANAGER[0].droits;
+    var inv = (D.ref && D.ref.invitations) || {};
+    var validite = inv.validiteH ? inv.validiteH + ' heures' : '—';
+    document.getElementById('cm-validite').textContent = validite;
+    // ACTEUR (règle 03/09) : l'identifiant de la session UNIQUEMENT si elle est manager — jamais une session
+    // partenaire ou marque ouverte dans le même navigateur ; sinon « manager (démo) »
+    function acteur() { var m = D.managerConnecte(); return m && m.espace === 'manager' ? m.identifiant : 'manager (démo)'; }   // la ligne manager_users de la session
+    var moi = acteur();
+    function dateFr(ts) { if (!ts) return null; var d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    // rôle : `profil.role` (compte invité) ; pour un compte de DÉMO le trousseau porte le rôle dans `role` → repris en profil.nom (Direction, Superviseur, Conseiller)
+    // L'écran CONSOMME la projection manager_users (managersGet) : rôle, nom, actif, dernière
+    // connexion y sont déjà résolus — rien n'est recalculé ici (une seule règle, dans le data-layer)
+    function tous() { return D.managersGet(); }
+    function estProprio(c) { return c.role === 'direction'; }
+    function role(c) { return c.role_label; }
+    function nomDe(c) { return c.full_name; }
+    function render() {
+      var L = tous();
+      var comptes = L.filter(function (c) { return c.statut !== 'invite'; }).sort(function (a, b) { return (a.espace === b.espace ? 0 : a.espace === 'manager' ? -1 : 1) || (a.created_at || 0) - (b.created_at || 0); });
+      var invites = L.filter(function (c) { return c.statut === 'invite'; }).sort(function (a, b) { return (b.created_at || 0) - (a.created_at || 0); });
+      var proprios = comptes.filter(function (c) { return estProprio(c) && c.statut === 'actif'; });
+      document.getElementById('cm-sub').textContent = comptes.length + ' compte' + (comptes.length > 1 ? 's' : '') + ' · ' + invites.length + ' invitation' + (invites.length > 1 ? 's' : '') + ' en attente · session : ' + moi;
+      var second = comptes.filter(function (c) { return !estProprio(c); })[0];
+      document.getElementById('cm-notice-nom').textContent = second ? 'le compte « ' + nomDe(second) + ' » (' + second.identifiant + ')' : 'un compte';
+      document.getElementById('cm-rows').innerHTML = comptes.map(function (c) {
+        var proprio = estProprio(c), dernier = proprio && c.active && proprios.length === 1;
+        var mail = c.email || null;
+        var etat = c.statut === 'actif' ? '<span class="pec-pill pec-pill--live">Actif</span>' : c.statut === 'suspendu' ? '<span class="pec-pill pec-pill--wait">Suspendu</span>' : '<span class="pec-pill pec-pill--off">' + ((D.STATUTS_COMPTE || {})[c.statut] || c.statut) + '</span>';
+        var act = dernier ? '<div class="meta">Dernier propriétaire actif — sans lui, plus personne ne peut configurer.</div>'
+          : c.statut === 'actif' ? '<button class="pec-btn pec-btn--danger pec-btn--sm tap" data-act="suspendre" data-id="' + c.id + '">Suspendre</button>'
+          : c.statut === 'suspendu' ? '<button class="pec-btn pec-btn--sm tap" data-act="reactiver" data-id="' + c.id + '">Réactiver</button>' : '';
+        return '<tr data-id="' + c.id + '"><td class="who">' + nomDe(c) + '<div class="meta">' + c.identifiant + (mail && mail !== c.identifiant ? ' · ' + mail : '') + (c.seed ? ' · démo' : ' · créé via invitation') + (c.note ? ' · ' + c.note : '') + '</div></td>' +
+          '<td><span class="pec-pill ' + (proprio ? 'pec-pill--done' : 'pec-pill--off') + '">' + role(c) + '</span></td>' +
+          '<td class="meta"' + (c.last_login_at ? '' : ' title="aucune connexion journalisée"') + '>' + (dateFr(c.last_login_at) || '—') + '</td>' +
+          '<td>' + etat + '</td><td>' + act + '</td></tr>';
+      }).join('') || '<tr><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucun compte manager.</td></tr>';
+      document.getElementById('cm-invitations').innerHTML = invites.map(function (c) {
+        var exp = c.inviteExpireAt || 0, expiree = exp && Date.now() > exp, lien = '01-connexion.html?invit=' + c.id;
+        return '<tr data-id="' + c.id + '"><td class="who">' + (c.email || c.identifiant) + '<div class="meta">' + (c.full_name || '—') + '</div></td><td>' + role(c) + '</td><td class="meta">' + (c.invitePar || '—') + '</td>' +
+          '<td>' + (expiree ? '<span class="pec-pill pec-pill--wait">Expirée le ' + dateFr(exp) + '</span>' : '<span class="pec-pill pec-pill--off">' + (exp ? 'jusqu’au ' + dateFr(exp) : '—') + '</span>') + '</td>' +
+          '<td><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><a class="pec-btn pec-btn--sm tap" href="' + lien + '" target="_blank">Lien d’activation ↗</a><span class="meta" style="font-family:var(--font-mono);font-size:11px">' + lien + '</span></div></td></tr>';
+      }).join('') || '<tr><td colspan="5" class="meta" style="text-align:center;padding:18px" id="cm-invit-vide">Aucune invitation en attente — chaque lien émis s’inscrira ici avec son échéance.</td></tr>';
+    }
+    document.getElementById('cm-rows').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      var id = b.getAttribute('data-id'), c = D.compte(id), nom = (D.managersGet().filter(function (m) { return m.id === id; })[0] || {}).full_name || id;   // le nom de la projection, jamais le libellé du rôle
+      if (b.getAttribute('data-act') === 'suspendre') { D.compteSuspendre(id, moi); document.getElementById('cm-msg').textContent = nom + ' suspendu par ' + moi + ' — bloqué à la connexion, trace conservée.'; }
+      else { D.compteReactiver(id, moi); document.getElementById('cm-msg').textContent = nom + ' réactivé par ' + moi + '.'; }
+      render();
+    });
+    // INVITATION RÉELLE : compteCreer('manager'|'hotline') — statut invite, lien d'activation, échéance
+    document.getElementById('cm-inv-envoyer').addEventListener('click', function () {
+      var rb = document.querySelector('#cm-inv-role [aria-pressed="true"]') || document.querySelector('#cm-inv-role button');
+      var esp = rb.getAttribute('data-espace'), roleLbl = rb.getAttribute('data-role');
+      var email = document.getElementById('cm-inv-email').value.trim().toLowerCase();
+      var r = D.compteCreer(esp, { nom: document.getElementById('cm-inv-nom').value.trim(), email: email, role: roleLbl, identifiant: email, invitePar: moi });
+      var msg = document.getElementById('cm-inv-msg');
+      if (!r.ok) { msg.textContent = r.motif; return; }
+      msg.textContent = 'Invitation créée pour ' + (r.compte.profil.nom || email) + ' (' + ((D.roleManager(roleLbl) || {}).label || roleLbl) + ') — lien d’activation : 01-connexion.html?invit=' + r.compte.id + ' · valable ' + validite + '.';
+      document.getElementById('cm-inv-email').value = ''; document.getElementById('cm-inv-nom').value = '';
+      render();
+    });
+    document.getElementById('cm-inviter').addEventListener('click', function () { document.getElementById('cm-inv-panel').scrollIntoView({ behavior: 'smooth', block: 'start' }); document.getElementById('cm-inv-email').focus(); });
+    window.addEventListener('pec-bus', render); window.addEventListener('storage', render);
+    render();
+  })();
+</script>
+</body>
+</html>

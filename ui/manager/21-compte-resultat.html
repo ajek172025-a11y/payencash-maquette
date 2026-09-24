@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Compte de résultat</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  COMPTE DE RÉSULTAT — route `/compte-resultat`.
+  Suivi de gestion (pas la comptabilité légale). (23/09 — pivot grossiste) PRODUITS : les bons revendus aux
+  commerces du réseau, les pénalités du contrat, les abonnements au logiciel (HT). CHARGES : les bons achetés aux
+  marques, les frais bancaires. La TVA collectée sur les abonnements est une dette, pas un produit ; la valeur
+  faciale des bons transite : seule la marge est à nous. Données : PEC_MGR.finance(mois), dérivée des tables
+  Solution. Le résultat financier et l'exceptionnel n'ont aucune source — dit, jamais comblé par un chiffre.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<div class="pec-admin">
+  <aside class="pec-aside" data-pec-nav></aside>
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Compte de résultat — <span id="cr-periode">—</span></h1>
+        <p class="sub">Suivi de gestion en direct — exploitation, financier, exceptionnel. Position bénéficiaire ou déficitaire.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <div class="pec-controlbar"><label>Période <input class="pec-search" style="max-width:140px" type="month" id="cr-mois-sel" aria-label="Période"></label></div>
+        <button class="pec-btn pec-btn--sm tap" id="cr-export"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter (expert-comptable)</button>
+      </div>
+    </div>
+
+    <div class="pec-pocket pec-pocket--payable" style="margin-bottom:16px">
+      <div class="step">RÉSULTAT NET (période)</div>
+      <h3 id="cr-position">Position : à l'équilibre — aucune écriture sur la période</h3>
+      <div class="val" id="cr-net">0,00 €</div>
+      <div class="s" id="cr-net-s">Exploitation + financier + exceptionnel. Hors TVA collectée (dette envers l'État).</div>
+    </div>
+
+    <div class="pec-grid pec-grid--3" style="margin-bottom:22px">
+      <div class="pec-kpi"><div class="lbl">Résultat d'exploitation</div><div class="val" id="cr-expl">0<span class="u">,00 €</span></div><div class="hint" id="cr-expl-hint">Marge sur les bons + abonnements + pénalités − frais bancaires.</div></div>
+      <div class="pec-kpi"><div class="lbl">Résultat financier</div><div class="val" id="cr-fin">0<span class="u">,00 €</span></div><div class="hint" id="cr-fin-hint">Agios, intérêts — aucune écriture financière n'est journalisée (source absente, pas un zéro constaté).</div></div>
+      <div class="pec-kpi"><div class="lbl">Résultat exceptionnel</div><div class="val" id="cr-exc">0<span class="u">,00 €</span></div><div class="hint" id="cr-exc-hint">Litiges, cessions — aucune écriture exceptionnelle n'est journalisée (source absente, pas un zéro constaté).</div></div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Détail par journal (<span id="cr-mois">—</span>)</h2><p class="s" id="cr-journaux-s">Débit et crédit de chaque journal de la période — la contrepartie chiffrée des postes ci-dessous.</p></div></div>
+      <div class="pec-panel-body">
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Journal</th><th>Nature</th><th class="num">Écritures</th><th class="num">Débit</th><th class="num">Crédit</th></tr></thead>
+          <tbody id="cr-journaux"><tr><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucune écriture sur la période</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Produits (recettes réelles)</h2><p class="s">Les bons revendus au réseau, les pénalités, les abonnements HT. La valeur faciale transite ; la TVA collectée est une dette.</p></div></div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Poste</th><th>Classe</th><th class="num">Montant</th></tr></thead>
+          <tbody id="cr-produits"><tr><td colspan="3" class="meta" style="text-align:center;padding:18px">Aucune écriture de produit sur la période</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Charges (dépenses)</h2><p class="s">Les bons achetés aux marques, les frais bancaires — classés par nature.</p></div></div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Poste</th><th>Classe</th><th class="num">Montant</th></tr></thead>
+          <tbody id="cr-charges"><tr><td colspan="3" class="meta" style="text-align:center;padding:18px">Aucune écriture de charge sur la période</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-grid pec-grid--2" style="margin-bottom:16px">
+      <div class="pec-kpi"><div class="lbl">Impayés en cours (tous mois)</div><div class="val" id="cr-impayes">0<span class="u">,00 €</span></div><div class="hint" id="cr-impayes-hint">Des produits comptés que la banque n'a pas rendus — à représenter ou à provisionner.</div></div>
+      <div class="pec-kpi"><div class="lbl">Résultat cumulé (exercice)</div><div class="val" id="cr-cumul">0<span class="u">,00 €</span></div><div class="hint" id="cr-cumul-hint">Depuis la création (<span id="cr-cree">—</span>).</div></div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div><b>Suivi de gestion, pas la comptabilité légale.</b> Le régime de TVA des bons se déduit de chaque marque (art. 256 ter CGI : usage unique ou usages multiples, voir Marques) ; le plan de comptes, le paramétrage et les rattachements se calent avec l'expert-comptable. La TVA collectée est suivie à part (voir <a href="14-comptabilite.html">Comptabilité</a>).</div>
+    </div>
+  </main>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.ref || !D.periodeCourante || !window.PEC_MGR || !PEC_MGR.finance) return;
+    var esc = function (v) { return D.esc(v); };
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    var P = D.periodeCourante();
+    var sel = document.getElementById('cr-mois-sel'); sel.value = P.mois;
+    sel.addEventListener('change', function () { if (/^\d{4}-\d{2}$/.test(this.value)) { P = D.periodeCourante(new Date(+this.value.slice(0, 4), +this.value.slice(5, 7) - 1, 1)); rendre(); } });
+    var cree = (D.ref.societe || {}).creeeLe, creeTxt = '—';
+    if (cree) { var p = cree.split('-'); creeTxt = p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : cree; }
+    var NATURE = { Achats: 'Charges — bons achetés aux marques', Ventes: 'Produits — bons revendus aux commerces du réseau', Banque: 'Charges — frais bancaires (remises, virements)', 'Pénalités': 'Produits — pénalités du contrat (impayés, représentations)', Abonnements: 'Produits — abonnements au logiciel (HT, TVA à part)' };
+    function val(id, n) { var s = D.eur(n), i = s.lastIndexOf(','); document.getElementById(id).innerHTML = esc(s.slice(0, i)) + '<span class="u">' + esc(s.slice(i)) + '</span>'; }
+    function rendre() {
+      document.getElementById('cr-periode').textContent = P.label; document.getElementById('cr-mois').textContent = P.mois;
+      var F = PEC_MGR.finance(P.mois); if (!F) return;
+      var T = F.totaux, n = F.lignes.length;
+      document.getElementById('cr-net').textContent = D.eur(T.resultat);
+      document.getElementById('cr-position').textContent = !n ? 'Position : à l\'équilibre — aucune écriture sur la période'
+        : 'Position : ' + (T.resultat > 0 ? 'bénéficiaire' : T.resultat < 0 ? 'déficitaire' : 'à l\'équilibre') + ' — ' + pl(n, 'écriture') + ' en ' + P.label.toLowerCase();
+      document.getElementById('cr-net-s').textContent = 'Produits ' + D.eur(T.produits) + ' − charges ' + D.eur(T.charges) + '. Hors TVA collectée (' + D.eur(T.tva) + ', dette envers l\'État) et hors mouvements de trésorerie.';
+      val('cr-expl', T.resultat); val('cr-fin', 0); val('cr-exc', 0);
+      document.getElementById('cr-expl-hint').textContent = 'Marge sur les bons ' + D.eur(T.marge) + ' + abonnements ' + D.eur(T.abonnementsHT) + ' + pénalités ' + D.eur(T.penalites) + ' − frais bancaires ' + D.eur(T.frais) + '.';
+      // ── détail par journal
+      var J = Object.keys(F.parJournal);
+      document.getElementById('cr-journaux').innerHTML = J.length
+        ? J.map(function (k) { var x = F.parJournal[k]; return '<tr><td><b>' + esc(k) + '</b></td><td class="meta">' + esc(NATURE[k] || '—') + '</td><td class="num">' + x.n + '</td><td class="num">' + esc(D.eur(x.debit)) + '</td><td class="num">' + esc(D.eur(x.credit)) + '</td></tr>'; }).join('')
+        : '<tr><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucune écriture sur la période</td></tr>';
+      document.getElementById('cr-journaux-s').textContent = n ? pl(n, 'écriture') + ' réparties sur ' + J.length + ' journal' + (J.length > 1 ? 'aux' : '') + ' — le détail ligne à ligne est sur l\'écran Comptabilité.' : 'Débit et crédit de chaque journal de la période — aucune écriture pour l\'instant.';
+      // ── produits
+      var prod = [];
+      if (T.nVentes) prod.push(['Bons revendus aux commerces du réseau (' + pl(T.nVentes, 'bon') + ')', T.ventes]);
+      if (T.nPenalites) prod.push(['Pénalités mises à la charge des commerces (' + T.nPenalites + ')', T.penalites]);
+      if (T.nAbonnements) prod.push(['Abonnements au logiciel, HT (' + pl(T.nAbonnements, 'échéance') + ')', T.abonnementsHT]);
+      document.getElementById('cr-produits').innerHTML = prod.length
+        ? prod.map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td>Exploitation</td><td class="num">' + esc(D.eur(x[1])) + '</td></tr>'; }).join('')
+          + '<tr><td><b>Total produits</b></td><td><b>Exploitation</b></td><td class="num"><b>' + esc(D.eur(T.produits)) + '</b></td></tr>'
+          + '<tr><td class="meta">Pour mémoire — non produits</td><td class="meta">hors compte de résultat</td><td class="num meta">valeur faciale des bons (transite) ' + esc(D.eur(T.valeur)) + ' · TVA collectée (dette) ' + esc(D.eur(T.tva)) + '</td></tr>'
+        : '<tr><td colspan="3" class="meta" style="text-align:center;padding:18px">Aucune écriture de produit sur la période</td></tr>';
+      // ── charges
+      var ch = [];
+      if (T.nVentes) ch.push(['Bons achetés aux marques (' + pl(T.nVentes, 'bon') + ')', T.achats]);
+      if (T.frais) ch.push(['Frais bancaires (' + pl(T.nRemises, 'remise') + ', ' + pl(T.nReglements, 'virement') + ')', T.frais]);
+      document.getElementById('cr-charges').innerHTML = ch.length
+        ? ch.map(function (x) { return '<tr><td>' + esc(x[0]) + '</td><td>Exploitation</td><td class="num">' + esc(D.eur(x[1])) + '</td></tr>'; }).join('')
+          + '<tr><td><b>Total charges</b></td><td><b>Exploitation</b></td><td class="num"><b>' + esc(D.eur(T.charges)) + '</b></td></tr>'
+        : '<tr><td colspan="3" class="meta" style="text-align:center;padding:18px">Aucune écriture de charge sur la période</td></tr>';
+      // ── impayés (état) et cumul (toutes périodes)
+      val('cr-impayes', T.impayes);
+      document.getElementById('cr-impayes-hint').textContent = T.nImpayes ? pl(T.nImpayes, 'prélèvement') + ' revenu' + (T.nImpayes > 1 ? 's' : '') + ' impayé' + (T.nImpayes > 1 ? 's' : '') + ' — des produits comptés que la banque n\'a pas rendus : à représenter ou à provisionner.' : 'Aucun impayé en cours.';
+      var Ftot = PEC_MGR.finance(null);
+      val('cr-cumul', Ftot ? Ftot.totaux.resultat : 0);
+      document.getElementById('cr-cumul-hint').innerHTML = 'Depuis la création (<span id="cr-cree">' + esc(creeTxt) + '</span>) — ' + (Ftot && Ftot.lignes.length ? pl(Ftot.lignes.length, 'écriture') + ' toutes périodes confondues.' : 'aucune écriture pour l\'instant.');
+    }
+    rendre();
+    window.addEventListener('pec-bus', rendre); window.addEventListener('storage', rendre);
+    // EXPORT RÉEL : les écritures de la période, journalisées via PEC_MGR.csv (bus `export`)
+    document.getElementById('cr-export').addEventListener('click', function () {
+      if (!window.PEC_MGR || !PEC_MGR.csv) return;
+      var F = PEC_MGR.finance(P.mois), T = F.totaux;
+      var lignes = F.lignes.map(function (e) { return [new Date(e.at).toISOString(), e.journal, e.libelle, e.piece || '', e.debit || 0, e.credit || 0, e.tva || 0, e.source || '']; });
+      lignes.push(['', 'TOTAL', 'Produits', '', '', T.produits, '', 'PEC_MGR.finance']);
+      lignes.push(['', 'TOTAL', 'Charges', '', T.charges, '', '', 'PEC_MGR.finance']);
+      lignes.push(['', 'TOTAL', 'Résultat net', '', '', T.resultat, T.tva, 'PEC_MGR.finance']);
+      PEC_MGR.csv('compte-resultat-' + P.mois, ['horodatage', 'journal', 'libelle', 'piece', 'debit_eur', 'credit_eur', 'tva_eur', 'source'], lignes);
+    });
+  })();
+</script>
+</body>
+</html>

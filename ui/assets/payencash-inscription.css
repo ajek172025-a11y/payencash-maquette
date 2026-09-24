@@ -1,0 +1,209 @@
+/* ══ LES INSCRIPTIONS — marque (ui/tech/00-inscription) et partenaire (ui/partenaire/00-inscription) (24/09) ══════════════
+   Une seule mise en forme pour les deux parcours : le fil des étapes, les cartes d'étape, les portes Google / Apple, la
+   recherche au registre, la pièce d'identité (type, faces), les autres pièces du dossier, la déclaration cochée, le lecteur
+   des documents et le récapitulatif. Deux copies, c'était deux façons de dériver — et une inscription de marque qui
+   n'aurait pas eu la même allure que celle d'un commerce. Tout est rangé sous `.pec-ins` (posé sur le cadre de l'écran) :
+   rien ne fuit vers les autres pages. Les couleurs sont celles de payencash-v2.css. */
+.pec-ins .ins{display:flex;flex-direction:column;gap:14px;padding-bottom:28px}
+.pec-ins .ins-tete h1{margin:4px 0 0;font-size:22px;line-height:1.2;font-weight:800;letter-spacing:-.02em;color:var(--color-ink);text-wrap:balance}
+.pec-ins .ins-tete p{margin:5px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)}
+/* le fil des étapes : on voit où l'on est, ce qui est fait, ce qui reste — et l'on revient sur une étape faite */
+.pec-ins .fil{display:flex;gap:4px;margin:0;padding:0;list-style:none}
+.pec-ins .fil li{flex:1;min-width:0}
+.pec-ins .fil button{width:100%;display:flex;flex-direction:column;align-items:flex-start;gap:5px;border:0;background:none;padding:0;font:inherit;cursor:default;text-align:left}
+.pec-ins .fil .barre{display:block;width:100%;height:4px;border-radius:99px;background:var(--color-sep)}
+.pec-ins .fil .lbl{font-size:9.5px;font-weight:800;letter-spacing:.03em;color:var(--color-muted-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pec-ins .fil li.fait .barre{background:var(--color-mint-soft)} .pec-ins .fil li.fait .lbl{color:var(--color-primary-dark)} .pec-ins .fil li.fait button{cursor:pointer}
+.pec-ins .fil li.ici .barre{background:var(--color-primary)} .pec-ins .fil li.ici .lbl{color:var(--color-ink)}
+.pec-ins .fil li.attente .barre{background:repeating-linear-gradient(90deg,var(--color-amber-text) 0 6px,transparent 6px 10px)}
+.pec-ins .carte{background:var(--color-card);border-radius:18px;padding:16px;box-shadow:var(--shadow-card)}
+.pec-ins .carte h2{margin:0;font-size:17px;line-height:1.3;font-weight:800;letter-spacing:-.01em;color:var(--color-ink)}
+.pec-ins .carte .sous{margin:4px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
+.pec-ins .champ{margin-top:12px}
+.pec-ins .champ label,.pec-ins .champ .lbl{display:block;margin-bottom:5px;font-size:11.5px;font-weight:800;color:var(--color-ink)}
+.pec-ins .champ .fac{font-weight:600;color:var(--color-muted)}
+.pec-ins .champ .pec-input{width:100%;box-sizing:border-box}
+.pec-ins .aide{margin:5px 0 0;font-size:11px;line-height:1.5;color:var(--color-muted)}
+.pec-ins .aide.ok{color:var(--color-primary-dark);font-weight:700}
+.pec-ins .deux-col{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.pec-ins .err{margin:10px 0 0;padding:9px 11px;border-radius:11px;background:#FDECEC;color:#8E2A1E;font-size:11.5px;font-weight:700;line-height:1.45}
+.pec-ins .err a{color:inherit;font-weight:800}
+.pec-ins .demo{margin:10px 0 0;padding:9px 11px;border-radius:11px;border:1px dashed var(--color-sep);background:var(--color-bg);font-size:11px;line-height:1.5;color:var(--color-muted)}
+.pec-ins .demo b{font-family:var(--font-mono,ui-monospace,Menlo,monospace);letter-spacing:.18em;color:var(--color-ink);font-size:14px}
+.pec-ins .actions{display:flex;gap:8px;margin-top:16px}
+.pec-ins .actions .pec-cta{flex:1;text-align:center}
+.pec-ins .actions .pec-btn-secondary{flex:0 0 auto;font-weight:800}
+.pec-ins .plus-tard{display:block;margin:12px auto 0;border:0;background:none;padding:6px;font:inherit;font-size:12px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+/* Google / Apple : les deux portes les plus courtes */
+.pec-ins .sso{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:48px;border-radius:13px;border:1.5px solid var(--color-sep);background:var(--color-card);font:inherit;font-size:14px;font-weight:800;color:var(--color-ink);cursor:pointer}
+.pec-ins .sso + .sso{margin-top:8px}
+.pec-ins .sso svg{width:18px;height:18px;flex:none}
+.pec-ins .sso.apple{background:#111;border-color:#111;color:#fff}
+.pec-ins .ou{display:flex;align-items:center;gap:10px;margin:16px 0 2px;font-size:11px;font-weight:700;color:var(--color-muted-2)}
+.pec-ins .ou::before,.pec-ins .ou::after{content:"";flex:1;height:1px;background:var(--color-sep)}
+/* choix exclusifs (civilité, type de pièce, mode d'exercice) : des pastilles qu'on voit toutes */
+.pec-ins .choix{display:flex;flex-wrap:wrap;gap:7px}
+.pec-ins .choix button{border:1.5px solid var(--color-sep);border-radius:12px;background:var(--color-card);padding:10px 14px;font:inherit;font-size:13px;font-weight:700;color:var(--color-ink);cursor:pointer}
+.pec-ins .choix button[aria-checked="true"],.pec-ins .choix button[aria-pressed="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+.pec-ins .types{display:grid;gap:7px}
+.pec-ins .types button{display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
+.pec-ins .types small{font-size:11px;font-weight:600;color:var(--color-muted)}
+.pec-ins .modes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pec-ins .modes button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;padding:12px}
+.pec-ins .modes small{font-size:11px;line-height:1.45;font-weight:600;color:var(--color-muted)}
+.pec-ins .case{display:flex;align-items:flex-start;gap:10px;margin-top:12px;padding:11px 12px;border-radius:13px;border:1.5px solid var(--color-sep);background:var(--color-bg);cursor:pointer}
+.pec-ins .case input{flex:none;width:19px;height:19px;margin:1px 0 0;accent-color:var(--color-primary)}
+.pec-ins .case span{font-size:12px;line-height:1.5;color:var(--color-ink)}
+.pec-ins .case.fait{border-color:var(--color-mint-soft);background:var(--color-mint)}
+/* le registre des entreprises : une ligne sourcée — verte si la société est en activité, ambre sinon */
+.pec-ins .reg{margin:7px 0 0;border-radius:11px;padding:9px 11px;background:var(--color-bg);font-size:11px;line-height:1.5;color:var(--color-muted)}
+.pec-ins .reg.ok{background:var(--color-mint);color:var(--color-mint-ink)} .pec-ins .reg.warn{background:var(--color-amber-well);color:var(--color-amber-text)}
+.pec-ins .reg .src{display:block;margin-top:3px;font-size:10px;opacity:.85}
+.pec-ins .sugg{display:grid;gap:6px;margin-top:8px}
+.pec-ins .sugg button{display:flex;flex-direction:column;align-items:flex-start;gap:2px;border:1.5px solid var(--color-sep);border-radius:12px;background:var(--color-card);padding:9px 11px;font:inherit;text-align:left;cursor:pointer}
+.pec-ins .sugg button b{font-size:12.5px;color:var(--color-ink)} .pec-ins .sugg button small{font-size:10.5px;color:var(--color-muted)}
+.pec-ins .sugg .cessee{color:var(--color-amber-text);font-weight:800}
+.pec-ins .chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px}
+.pec-ins .chips .t{font-size:11px;font-weight:800;color:var(--color-muted)}
+.pec-ins .chips button{border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-card);padding:6px 11px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-ink);cursor:pointer}
+.pec-ins .chips button[aria-pressed="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+/* les faces de la pièce : un dépôt par face, avec son aperçu */
+.pec-ins .faces{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:10px}
+.pec-ins .faces.une{grid-template-columns:1fr}
+.pec-ins .face{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;min-height:118px;border-radius:14px;border:1.5px dashed var(--color-sep);background:var(--color-bg);cursor:pointer;overflow:hidden;text-align:center;padding:10px}
+.pec-ins .face input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.pec-ins .face b{font-size:12px;color:var(--color-ink)} .pec-ins .face small{font-size:10.5px;color:var(--color-muted)}
+.pec-ins .face img{max-width:100%;max-height:92px;border-radius:8px;object-fit:contain}
+.pec-ins .face.pleine{border-style:solid;border-color:var(--color-mint-soft);background:var(--color-mint)}
+.pec-ins .face:focus-within{outline:2px solid var(--color-primary);outline-offset:2px}
+.pec-ins .conseils{margin:10px 0 0;padding-left:17px;font-size:11px;line-height:1.6;color:var(--color-muted)}
+/* les autres pièces du dossier (Kbis, RIB…) : une ligne par pièce, son état au coffre, un bouton pour déposer */
+.pec-ins .pieces{display:grid;gap:8px;margin-top:10px}
+.pec-ins .piece{position:relative;display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:13px;border:1.5px solid var(--color-sep);background:var(--color-card)}
+.pec-ins .piece .t{flex:1;min-width:0}
+.pec-ins .piece .t b{display:block;font-size:12.5px;line-height:1.35;color:var(--color-ink)}
+.pec-ins .piece .t small{display:block;margin-top:2px;font-size:10.5px;line-height:1.45;color:var(--color-muted)}
+.pec-ins .piece .t .etat{display:block;margin-top:3px;font-size:10.5px;font-weight:800;color:var(--color-muted)}
+.pec-ins .piece.deposee{border-color:var(--color-mint-soft)} .pec-ins .piece.deposee .etat{color:var(--color-primary-dark)}
+.pec-ins .piece.refusee{border-color:#E7B4AD} .pec-ins .piece.refusee .etat{color:#8E2A1E}
+.pec-ins .piece label.depot{position:relative;flex:none;border-radius:10px;background:var(--color-mint);padding:8px 11px;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer;overflow:hidden}
+.pec-ins .piece label.depot input{position:absolute;inset:0;opacity:0;cursor:pointer}
+.pec-ins .piece label.depot:focus-within{outline:2px solid var(--color-primary);outline-offset:2px}
+.pec-ins .piece .err{margin:6px 0 0}
+/* les bénéficiaires effectifs : une fiche par personne, retirable ; l'attestation ferme la déclaration */
+.pec-ins .benef-fiche{margin-top:10px;padding:10px 12px;border-radius:13px;border:1.5px solid var(--color-sep);background:var(--color-card)}
+.pec-ins .benef-t{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pec-ins .benef-t b{font-size:12.5px;color:var(--color-ink)}
+.pec-ins .benef-t button{border:0;background:none;padding:4px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-danger);cursor:pointer}
+/* la déclaration type : le texte exact, tel qu'il sera conservé */
+.pec-ins .decl{margin:10px 0 0;padding:12px 13px;border-radius:13px;background:var(--color-bg);border-left:3px solid var(--color-primary);font-size:12.5px;line-height:1.6;color:var(--color-ink)}
+.pec-ins .src-art{display:block;margin-top:6px;font-size:10.5px;color:var(--color-muted)}
+.pec-ins .docs{display:grid;gap:8px;margin-top:10px}
+.pec-ins .doc{display:flex;align-items:center;gap:10px;padding:10px 11px;border-radius:13px;border:1.5px solid var(--color-sep);background:var(--color-card)}
+.pec-ins .doc .t{flex:1;min-width:0}
+.pec-ins .doc .t b{display:block;font-size:12.5px;line-height:1.35;color:var(--color-ink)}
+.pec-ins .doc .t small{display:block;margin-top:2px;font-size:10.5px;color:var(--color-muted)}
+.pec-ins .doc button{flex:none;border:0;border-radius:10px;background:var(--color-mint);padding:8px 11px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+.pec-ins .doc.accepte{border-color:var(--color-mint-soft)}
+.pec-ins .doc .etat{flex:none;font-size:10.5px;font-weight:800;color:var(--color-primary-dark)}
+/* le récapitulatif : chaque bloc se modifie à sa place */
+.pec-ins .recap{display:grid;gap:9px;margin-top:10px}
+.pec-ins .bloc{padding:11px 12px;border-radius:13px;background:var(--color-bg)}
+.pec-ins .bloc .h{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.pec-ins .bloc .h b{font-size:11px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)}
+.pec-ins .bloc .h button{border:0;background:none;padding:2px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+.pec-ins .bloc p{margin:5px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-ink)}
+.pec-ins .bloc .manque{color:var(--color-amber-text);font-weight:700}
+.pec-ins .fin h2{color:var(--color-primary-dark)}
+.pec-ins .liste-fin{margin:10px 0 0;padding-left:18px;font-size:12px;line-height:1.7;color:var(--color-ink)}
+.pec-ins .autre-porte{margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)}
+.pec-ins .autre-porte a{font-weight:800;color:var(--color-primary-dark)}
+/* la feuille Google / Apple (maquette) et le lecteur des documents couvrent le cadre, et se referment sur la page */
+.pec-ins .voile{position:absolute;inset:0;z-index:40;display:flex;align-items:flex-end;background:rgba(15,42,36,.42)}
+.pec-ins .feuille{width:100%;box-sizing:border-box;background:var(--color-card);border-radius:20px 20px 0 0;padding:18px 16px 20px}
+.pec-ins .feuille h3{margin:0;font-size:16px;font-weight:800;color:var(--color-ink)}
+/* (24/09, nuit) le lecteur sert aussi hors des inscriptions (partenaire › Mon point) : plein écran au-dessus de la barre d'onglets ;
+   dans une inscription, il couvre le cadre de l'inscription */
+.lect{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;background:var(--color-bg)}
+.pec-ins .lect{position:absolute;z-index:41}
+.lect .h{flex:none;display:flex;align-items:center;gap:6px;padding:10px 12px 8px;background:var(--color-card);box-shadow:var(--shadow-card)}
+.lect .h .retour{display:inline-flex;align-items:center;gap:2px;border:none;background:none;padding:6px 8px 6px 2px;font:inherit;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+.lect .h .retour svg{width:18px;height:18px}
+.lect .h .titre{min-width:0;flex:1;font-size:13px;font-weight:800;line-height:1.25;color:var(--color-ink)}
+.lect .h .v{font-size:10px;font-weight:700;color:var(--color-muted);white-space:nowrap}
+.lect .c{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 24px;font-size:13px;line-height:1.6;color:var(--color-ink)}
+.lect .c h1{font-size:18px;line-height:1.25;margin:0 0 6px} .lect .c h2{font-size:14px;margin:18px 0 6px;color:var(--color-primary-dark)} .lect .c h3{font-size:13px;margin:14px 0 5px}
+.lect .c p,.lect .c li{margin:6px 0} .lect .c ul,.lect .c ol{padding-left:18px}
+.lect .c .toc,.lect .c .toolbar,.lect .c .brand,.lect .c header{display:none}
+.lect .c a{color:var(--color-primary-dark);font-weight:700}
+.lect .c .fin-doc{margin:18px 0 0;padding-top:10px;border-top:1px dashed var(--color-sep);font-size:11px;color:var(--color-muted);text-align:center}
+.lect .c iframe{width:100%;height:100%;min-height:60vh;border:0;background:#fff}
+.lect .f{flex:none;padding:10px 14px 12px;background:var(--color-card);box-shadow:0 -6px 18px rgba(0,0,0,.05)}
+.lect .f .pec-cta{display:block;width:100%;text-align:center}
+.lect .f .s{margin:0;font-size:10.5px;line-height:1.45;color:var(--color-muted);text-align:center}
+.pec-ins button:focus-visible,.pec-ins input:focus-visible,.pec-ins select:focus-visible,.pec-ins a:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+@media (prefers-reduced-motion: reduce){ .pec-ins *{scroll-behavior:auto!important;transition:none!important} }
+/* (24/09) SUR UN TÉLÉPHONE, SEPT LIBELLÉS NE TIENNENT PAS : les barres restent toutes, seul le libellé de l'étape en cours
+   s'écrit — en entier, par-dessus la place des autres. Sur bureau, les fenêtres superposées se centrent au lieu de monter
+   du bas, et le lecteur garde une largeur de lecture. */
+@media (max-width: 559.98px) {
+  .pec-ins .fil li:not(.ici) .lbl { visibility: hidden; }
+  .pec-ins .fil li.ici .lbl { overflow: visible; max-width: none; }
+}
+@media (min-width: 1024px) {
+  .pec-ins .voile { align-items: center; justify-content: center; }
+  .pec-ins .feuille { max-width: 520px; border-radius: 20px; }
+  .lect .c > * { max-width: 760px; margin-left: auto; margin-right: auto; }
+  .lect .f { display: flex; justify-content: center; }
+  .lect .f > * { width: 100%; max-width: 520px; }
+  .pec-device:not(.pec-ins) .lect { left: var(--pec-nav-l, 236px); }   /* hors inscription, la barre latérale reste visible */
+}
+/* ══ (24/09, soir) L'INSCRIPTION SUR BUREAU : le fil des étapes devient une colonne à gauche (faites, en cours, à faire),
+   le formulaire prend la droite, le récapitulatif s'écrit sur deux colonnes. Sur téléphone, rien ne change. ══════════ */
+@media (min-width: 1024px) {
+  /* (24/09, soir) une connexion porte `pec-ins` pour ses briques mais reste une colonne étroite : `pec-etroit` l'emporte, sans que chaque page le contre */
+  .pec-device.pec-ins:not(.pec-etroit) > .pec-body > * { max-width: 1040px; }
+  .pec-ins .ins { display: grid; grid-template-columns: 232px minmax(0, 1fr); column-gap: 40px; row-gap: 18px; align-items: start; }
+  .pec-ins .ins-tete { grid-column: 1 / -1; }
+  .pec-ins .ins-tete h1 { font-size: 30px; letter-spacing: -.8px; }
+  .pec-ins .ins-tete p { margin-top: 6px; font-size: 14.5px; max-width: 64ch; }
+  .pec-ins .fil { grid-column: 1; flex-direction: column; gap: 2px; position: sticky; top: 24px; }
+  .pec-ins .fil li { flex: none; }
+  .pec-ins .fil button { flex-direction: row; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 12px; }
+  .pec-ins .fil .barre { width: 10px; height: 10px; flex: none; }
+  .pec-ins .fil .lbl { font-size: 13.5px; letter-spacing: 0; white-space: normal; overflow: visible; max-width: none; }
+  .pec-ins .fil li.ici button { background: var(--color-card); box-shadow: var(--shadow-card); }
+  .pec-ins .fil li.attente .barre { background: var(--color-amber-text); }
+  .pec-ins .carte, .pec-ins .autre-porte { grid-column: 2; }
+  .pec-ins .carte { padding: 28px 32px; border-radius: 20px; }
+  .pec-ins .carte h2 { font-size: 22px; }
+  .pec-ins .carte .sous { margin-top: 6px; font-size: 14px; max-width: 64ch; }
+  .pec-ins .champ { margin-top: 16px; }
+  .pec-ins .champ label, .pec-ins .champ .lbl { font-size: 13px; }
+  .pec-ins .aide { font-size: 12.5px; }
+  .pec-ins .err { font-size: 13px; padding: 11px 14px; }
+  .pec-ins .demo { font-size: 12.5px; }
+  .pec-ins .deux-col { gap: 14px; }
+  .pec-ins .choix button { font-size: 14px; }
+  .pec-ins .modes small, .pec-ins .types small { font-size: 12px; }
+  .pec-ins .case span { font-size: 13.5px; }
+  .pec-ins .reg { font-size: 12.5px; }
+  .pec-ins .sugg button b { font-size: 14px; } .pec-ins .sugg button small { font-size: 12px; }
+  .pec-ins .chips button, .pec-ins .chips .t { font-size: 12.5px; }
+  .pec-ins .face b { font-size: 13.5px; } .pec-ins .face small, .pec-ins .conseils { font-size: 12.5px; }
+  .pec-ins .piece .t b, .pec-ins .doc .t b { font-size: 14px; }
+  .pec-ins .piece .t small, .pec-ins .piece .t .etat, .pec-ins .doc .t small, .pec-ins .doc .etat { font-size: 12px; }
+  .pec-ins .piece label.depot, .pec-ins .doc button { font-size: 12.5px; padding: 9px 14px; }
+  .pec-ins .decl { font-size: 14px; padding: 14px 16px; }
+  .pec-ins .src-art { font-size: 12px; }
+  .pec-ins .recap { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .pec-ins .bloc { padding: 14px 16px; }
+  .pec-ins .bloc .h b { font-size: 11.5px; } .pec-ins .bloc .h button { font-size: 12.5px; }
+  .pec-ins .bloc p { font-size: 13.5px; }
+  .pec-ins .actions { justify-content: flex-end; margin-top: 22px; }
+  .pec-ins .actions .pec-cta { flex: 0 0 auto; min-width: 240px; }
+  .pec-ins .plus-tard { font-size: 13px; }
+  .pec-ins .sso, .pec-ins .ou { max-width: 440px; }
+  .pec-ins .liste-fin { font-size: 14px; }
+  .pec-ins .autre-porte { font-size: 13.5px; }
+}

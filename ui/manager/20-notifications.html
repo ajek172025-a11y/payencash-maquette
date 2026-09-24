@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Notifications</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  NOTIFICATIONS MANAGER — route `/notifications`.
+  Ce que le manager reçoit est presque toujours un ÉCART À TRAITER, pas une information : d'où l'ambre dominant.
+  (23/09 — pivot grossiste) LE FIL SE DÉRIVE DE L'ÉTAT, jamais du journal plafonné : une marque à valider, une
+  déclaration « réseau limité » à statuer, un dossier de vérification en retard, une candidature de commerce, un
+  point signé à activer, un arrêté dû dont la remise n'est pas préparée, une remise préparée pas encore déposée,
+  un impayé à représenter, une marque échue à payer (ou sans RIB), un abonnement du mois à prélever, une marque
+  proche du seuil ACPR, une demande d'assistance escaladée au manager. La ligne s'éteint dès que le fait disparaît.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Notifications</h1>
+        <p class="sub">Ce qui attend une décision.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <button class="pec-btn pec-btn--ghost tap" id="mn-tout-lu">Tout marquer comme lu</button><span class="meta" id="mn-msg" style="margin-left:10px"></span>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Non lues <span style="color:var(--color-muted)" id="mn-count">(0)</span></h2><p class="s">Diffusées à l’équipe : un écart s’adresse à qui prend le sujet.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#mn-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#mn-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Quand</th><th>Sujet</th><th>Destinataire</th><th></th></tr></thead>
+          <tbody id="mn-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Déjà lues</h2><p class="s">Conservées : une alerte traitée reste une trace de ce qui s’est passé.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#mn-lues tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#mn-lues tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Quand</th><th>Sujet</th><th>Destinataire</th><th>Lue par</th></tr></thead>
+          <tbody id="mn-lues" data-fpage="15">
+            <tr><td colspan="4" class="meta" style="text-align:center;padding:18px">Aucune alerte traitée pour l'instant — chaque alerte lue restera ici, avec qui l'a prise.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Une notification manager n’est pas une information, c’est un écart à traiter.</b> C’est pourquoi elles portent toutes une action à leur droite. Le jour où on y met des messages purement informatifs, la pastille devient du bruit et on apprend à l’ignorer — c’est exactement ce qui rend une alerte inutile.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div><b>« Équipe » n’est pas un destinataire vide.</b> Un arrêté dû ne s’adresse à personne en particulier : il s’adresse à qui prend le sujet. La colonne « Lue par » dit ensuite qui s’en est chargé — sans quoi deux personnes traitent le même écart, ou aucune.</div>
+    </div>
+  </main>
+
+</div>
+
+<script src="../assets/payencash-bus.js"></script>
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.techMarchands) return;
+    var LUES = 'pec-mgr-notif-lues';
+    var esc = function (v) { return D.esc(v); };
+    function lues() { try { return JSON.parse(localStorage.getItem(LUES) || '{}'); } catch (e) { return {}; } }
+    function lueInfo(v) { return typeof v === 'object' && v ? v : { at: v || 0, par: null }; }
+    // (règle 03/09) « lue par » = la session UNIQUEMENT si elle est manager, sinon « manager (démo) »
+    function qui() { return (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)'; }
+    function quand(at) {
+      var d = Date.now() - at;
+      if (d < 3600000) return 'il y a ' + Math.max(1, Math.round(d / 60000)) + ' min';
+      if (d < 86400000) return 'il y a ' + Math.round(d / 3600000) + ' h';
+      return 'hier ou avant';
+    }
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    function fil() {
+      var out = [], now = Date.now();
+      /* ① LES MARQUES — inscrites, à valider ; déclaration « réseau limité » à statuer ; seuil ACPR proche */
+      D.techMarchands({}).forEach(function (m) {
+        var c = D.techConformiteMarchand(m.id);
+        if (c && c.statut !== 'validated' && !(c.statueeLe && c.motif)) out.push({ id: 'decl:' + c.id, at: c.deposeeLe || now, sujet: 'Déclaration « réseau limité » à statuer : ' + m.raisonSociale, detail: '« ' + c.usageDeclare + ' » — valider, ou refuser avec un motif que la marque lit.', href: '46-marques.html', action: 'Statuer' });
+        if (m.statut === 'pending') out.push({ id: 'mq:' + m.id, at: m.creeLe || now, sujet: 'Marque à valider : ' + m.raisonSociale, detail: (m.siteUrl || '') + ' · SIRET ' + (m.siret || '—') + ' — dossier au coffre, déclaration statuée, documents acceptés, contrat-cadre signé puis contresigné.', href: '46-marques.html', action: 'Ouvrir' });
+        if (m.statut === 'validated' && D.techQuota) { var q = D.techQuota(m.id); if (q && q.seuilProche) out.push({ id: 'acpr:' + m.id + ':' + (q.seuilAtteint ? 'atteint' : 'proche'), at: now, sujet: (q.seuilAtteint ? 'Seuil ACPR atteint : ' : 'Seuil ACPR proche : ') + m.raisonSociale, detail: D.eur(q.valeur12Mois) + ' de bons sur douze mois glissants (' + String(q.seuilPct).replace('.', ',') + ' % du seuil de ' + D.eur(q.seuilAcpr) + ') — ' + (q.seuilAtteint ? 'plus aucun bon ne s’émet avant sa déclaration à l’ACPR.' : 'accompagner sa déclaration à l’ACPR avant le seuil.'), href: '46-marques.html', action: 'Voir' }); }
+      });
+      /* ② LES DOSSIERS DE VÉRIFICATION EN RETARD — l'escalade se CALCULE (l'échéance passe, personne n'a pris le dossier) */
+      try {
+        var nomDossier = function (portee, id) {
+          var n = null;
+          try {
+            if (portee === 'marchand') n = ((D.techMarchand && D.techMarchand(id)) || {}).raisonSociale;
+            else if (portee === 'partenaire') n = ((D.partenaire && D.partenaire(id)) || {}).enseigne;
+            else if (portee === 'client') n = ((D.client && D.client(id)) || {}).nomComplet;
+          } catch (e) {}
+          if (n) return n;
+          try { var cpt = D.compte ? D.compte(id) : null; if (cpt) { var pr = cpt.profil || {}; return pr.nom || pr.enseigne || cpt.identifiant || id; } } catch (e2) {}
+          return id;
+        };
+        (window.PEC_DOCS && PEC_DOCS.aVerifier ? PEC_DOCS.aVerifier() : []).filter(function (f) { return f.escalade; }).forEach(function (f) {
+          out.push({ id: 'kybesc:' + f.portee + ':' + f.id, at: f.at || now, sujet: 'Dossier de vérification en retard — escalade : ' + nomDossier(f.portee, f.id),
+            detail: PEC_DATA.nb(f.enAttente || 0, 'pièce') + ' à contrôler · engagement ' + (f.heures || '—') + ' h dépassé' + (f.assigne ? ' · assigné à ' + f.assigne : ' · non assigné') + '.', href: '42-verifications.html', action: 'Traiter' });
+        });
+      } catch (eEsc) {}
+      /* ③ LE RÉSEAU — candidatures de comptes, points signés à activer */
+      try {
+        (D.comptesAValider ? D.comptesAValider('partenaire') : []).forEach(function (c) {
+          var p = c.profil || {};
+          out.push({ id: 'prt-cand:' + c.id, at: c.creeAt || now, sujet: 'Candidature d’un commerce à valider : ' + (p.enseigne || c.identifiant),
+            detail: (p.ville ? p.ville + ' · ' : '') + 'SIRET ' + (p.siret || 'à fournir') + ' · dossier (Kbis, gérant, vidéo) à contrôler — valider rattache le point, l’activation vient ensuite.', href: '29-partenaires.html', action: 'Valider' });
+        });
+        (D.partenaires ? D.partenaires() : []).filter(function (p) { return p.statut === 'contrat_signe'; }).forEach(function (p) {
+          out.push({ id: 'prt-act:' + p.id, at: p.signeLe ? now : now, sujet: 'Contrat signé — point à activer : ' + (p.enseigne || p.id),
+            detail: (p.ville ? p.ville + ' · ' : '') + (p.kyb === 'valide' ? 'dossier validé : l’activation ouvre la vente.' : 'dossier ' + (p.kybDetail || 'à contrôler') + ' — l’activation attend le dossier.'), href: '29-partenaires.html', action: 'Activer' });
+        });
+      } catch (ePrt) {}
+      /* ④ L'ARGENT — arrêtés dus, remises à déposer, impayés, marques échues ou sans RIB, abonnements du mois */
+      try {
+        var pret = D.prelevementPreparation ? D.prelevementPreparation() : { pret: true, manquants: [] };
+        if (!pret.pret) out.push({ id: 'sepa-pret:' + pret.manquants.join('-'), at: now, sujet: 'Prélèvement SEPA : préparation incomplète', detail: 'Il manque : ' + pret.manquants.join(', ') + ' — aucune remise ne peut être fabriquée tant que ce n’est pas posé en Configuration.', href: '10-configuration.html', action: 'Régler' });
+        D.techArretesDus().forEach(function (a) {
+          if (a.du && a.ventes.length) out.push({ id: 'arrete:' + a.mode.id + ':' + a.fin, at: a.fin, sujet: 'Arrêté dû — remise à préparer : ' + a.mode.libelle, detail: pl(a.ventes.length, 'bon') + ' à prélever chez ' + pl(a.points.length, 'commerce') + ' pour ' + D.eur(a.total) + (a.enRetard ? ' · ' + a.enRetard + ' en retard d’un arrêté' : '') + '.', href: '45-solution-paiements.html', action: 'Préparer' });
+        });
+        D.techRemises({ statut: 'prepare' }).forEach(function (r) {
+          out.push({ id: 'remise:' + r.reference, at: r.at, sujet: 'Remise préparée, pas encore déposée : ' + r.reference, detail: D.eur(r.total) + ' · ' + r.modeLbl + ' · à déposer avant ' + D.dateHeure(r.depotAvant) + (now > r.depotAvant ? ' — <b>délai dépassé</b>' : '') + '.', href: '45-solution-paiements.html', action: 'Déposer' });
+        });
+        D.techRemises({}).forEach(function (r) {
+          (r.lignes || []).filter(function (li) { return li.statut === 'impaye' && !li.represente; }).forEach(function (li) {
+            out.push({ id: 'impaye:' + r.reference + ':' + li.debiteurId, at: r.retourLe || now, sujet: 'Prélèvement impayé : ' + li.debiteur, detail: D.eur(li.montant) + ' · ' + (li.motifBanqueLbl || li.motifBanque || 'motif non précisé')
+              /* (24/09, fondatrice) l'impayé se traite en trois temps : suspendu → le manager APPELLE et note l'appel → il valide la représentation */
+              + (li.appel ? ' — appel noté le ' + D.dateCourte(li.appel.at) + ' : à représenter (frais à la charge du commerce).' : ' — le commerce est suspendu : APPELLE-LE et note l’appel avant toute représentation.'), href: '45-solution-paiements.html', action: li.appel ? 'Représenter' : 'Noter l’appel' });
+          });
+        });
+        D.techReglementsDus().forEach(function (g) {
+          if (!g.rib) out.push({ id: 'rib:' + g.marchandId, at: g.echeance || now, sujet: 'Marque sans RIB : ' + g.marchand, detail: 'Nous lui devons ' + D.eur(g.montant) + ' — aucun virement ne partira tant qu’elle n’a pas déposé son RIB.', href: '46-marques.html', action: 'Voir' });
+          else if (g.echu) out.push({ id: 'echu:' + g.marchandId + ':' + g.echeance, at: g.echeance, sujet: 'Échéance atteinte — marque à payer : ' + g.marchand, detail: D.eur(g.montant) + ' pour ' + pl(g.ventes.length, 'bon') + ' · ' + g.mode.libelle + (g.couvert ? ' · prélèvements encaissés' : ' · ' + PEC_DATA.nb(g.attente, 'prélèvement') + ' encore en cours') + '.', href: '45-solution-paiements.html', action: 'Virer' });
+        });
+        var per = D.periodeCourante().mois;
+        var abos = D.techMarchands({ statut: 'validated' }).filter(function (m) { var du = D.techAbonnementDu(m, per); return du && du.montant > 0; });
+        if (abos.length) out.push({ id: 'abos:' + per, at: now, sujet: 'Abonnements du mois à prélever : ' + pl(abos.length, 'marque'), detail: abos.map(function (m) { return m.raisonSociale; }).join(', ') + ' — une remise « abonnements » sur leur mandat SEPA.', href: '45-solution-paiements.html', action: 'Prélever' });
+      } catch (eArg) {}
+      /* ⑤ L'ASSISTANCE — les demandes escaladées jusqu'au manager ou au médiateur */
+      try {
+        (D.demandesEscaladees ? D.demandesEscaladees() : []).filter(function (d) { return d.escalade.cle === 'manager' || d.escalade.cle === 'mediateur'; }).forEach(function (d) {
+          out.push({ id: 'sav-esc:' + d.id + ':' + d.escalade.cle, at: d.escalade.depuis, sujet: (d.escalade.cle === 'mediateur' ? 'Médiation ouverte — ' : 'Assistance escaladée au manager — ') + d.id,
+            detail: (d.sujet || '') + ' · ' + (d.client || '—') + ' — sans réponse depuis ' + d.escalade.heures + ' h. ' + d.escalade.libelle + '.', href: '27-assistance-reclamations.html', action: 'Trancher' });
+        });
+      } catch (eSE) {}
+      return out.sort(function (a, b) { return b.at - a.at; });
+    }
+    function rendre() {
+      var l = lues(), tout = fil();
+      var f = tout.filter(function (n) { return !l[n.id]; });
+      var deja = tout.filter(function (n) { return l[n.id]; });
+      document.getElementById('mn-count').textContent = '(' + f.length + ')';
+      document.getElementById('mn-lues').innerHTML = deja.map(function (n) {
+        var i = lueInfo(l[n.id]);
+        return '<tr><td class="meta">' + quand(n.at) + '</td><td><div class="who">' + esc(n.sujet) + '</div><div class="meta">' + n.detail + '</div></td><td class="meta">Équipe</td><td class="meta">' + esc(i.par || '—') + (i.at ? ' · ' + quand(i.at) : '') + '</td></tr>';
+      }).join('') || '<tr><td colspan="4" class="meta" style="text-align:center;padding:18px">Aucune alerte traitée pour l\'instant — chaque alerte lue restera ici, avec qui l\'a prise.</td></tr>';
+      document.getElementById('mn-rows').innerHTML = f.map(function (n) {
+        return '<tr><td class="meta">' + quand(n.at) + '</td><td><div class="who"><svg class="pec-ico" viewBox="0 0 24 24" style="color:var(--color-amber-text)"><use href="#i-alert"/></svg> ' + esc(n.sujet) + '</div><div class="meta">' + n.detail + '</div></td><td class="meta">Équipe</td><td><a class="pec-btn pec-btn--sm tap" href="' + n.href + '">' + n.action + '</a></td></tr>';
+      }).join('') || '<tr><td colspan="4" class="meta" style="text-align:center;padding:18px">Rien à traiter — les écarts (marques et déclarations à statuer, dossiers en retard, candidatures, arrêtés dus, remises à déposer, impayés, marques à payer, abonnements, escalades) s\'afficheront ici en direct.</td></tr>';
+    }
+    document.getElementById('mn-tout-lu').addEventListener('click', function () {
+      var l = lues(), par = qui(), n0 = 0; fil().forEach(function (n) { if (!l[n.id]) { l[n.id] = { at: Date.now(), par: par }; n0++; } });
+      var mm = document.getElementById('mn-msg');
+      if (!n0) { if (mm) mm.textContent = 'Tout est déjà lu — rien à marquer.'; return; }
+      if (mm) mm.textContent = '✓ ' + n0 + ' notification' + (n0 > 1 ? 's' : '') + ' marquée' + (n0 > 1 ? 's' : '') + ' lue' + (n0 > 1 ? 's' : '') + ' par ' + par + '.';
+      try { localStorage.setItem(LUES, JSON.stringify(l)); } catch (e2) {}
+      rendre();
+    });
+    window.addEventListener('pec-bus', rendre);
+    window.addEventListener('storage', rendre);
+    rendre();
+  })();
+</script>
+
+</body>
+</html>

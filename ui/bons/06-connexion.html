@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Se connecter</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : la porte d'un espace ne se ferme pas derrière sa propre garde -->
+<script src="../assets/payencash-bus.js"></script><!-- le journal : chaque tentative de connexion est consignée, réussie ou non -->
+<script src="../assets/payencash-bons.js"></script><!-- (24/09) le socle de l'app : sa barre de navigation -->
+<!-- SE CONNECTER (23/09, nuit — l'app « Mes bons » devient autonome : elle ouvre elle-même le compte de son porteur).
+     UNE SEULE PORTE, celle du protocole des comptes (03/09) : compteConnecter('client',
+     mobile, mot de passe) vérifie le statut du compte et le mot de passe, pose la session (pec-session) et le client
+     actif (pec-client-actif) — c'est ce compte qui range les bons et porte chaque usage chez la marque.
+     L'IDENTIFIANT DU COMPTE EST LE MOBILE (ESPACES_COMPTE.client.identifiant) ; on accepte aussi l'e-mail à l'écran :
+     il se RÉSOUT en mobile parmi les comptes clients (comptesTous), et le data-layer tranche ensuite comme pour
+     n'importe quel identifiant — un e-mail sans compte donne « identifiant inconnu », pas une invention.
+     MOT DE PASSE OUBLIÉ, réel et sur le même écran : compteMotDePasseOublie envoie le code (en maquette : affiché comme
+     code de démo — le seul SMS du parcours), compteMotDePasseReinitialiser le vérifie et pose le nouveau mot de passe,
+     puis on entre avec, par la même porte.
+     ON REVIENT OÙ ON ÉTAIT : `?retour=<page de l'app>` (posé par la garde) ou `?o=<slug>` (un bon proposé par une
+     marque → 05-offre), sinon la liste des bons. Le retour n'est rejoué que s'il reste DANS l'app (un fichier du dossier,
+     jamais une adresse absolue ni un autre protocole qu'on aurait glissé dans un lien). -->
+<style>
+  .bc-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
+  h1.bc-h1{margin:14px 0 0;font-size:21px;font-weight:800;letter-spacing:-0.02em;color:var(--color-ink)}
+  .bc-sub{margin:4px 0 0;font-size:12px;line-height:1.55;color:var(--color-muted)}
+  .bc-note{margin:12px 0 0;border-radius:12px;background:var(--color-bg);padding:9px 11px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .bc-note a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .bc-offre{padding:12px 14px;border:1.5px solid var(--color-mint)}
+  .bc-offre b{display:block;font-size:14px;color:var(--color-ink)}
+  .bc-offre p{margin:4px 0 0;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .bc-card{padding:14px 16px}
+  .bc-card .pec-input-label{margin-top:12px}
+  .bc-card .pec-input-label:first-child{margin-top:0}
+  .bc-mdp{position:relative}
+  .bc-mdp .pec-input{padding-right:70px}
+  .bc-mdp .voir{position:absolute;right:10px;top:50%;transform:translateY(-50%);border:none;background:none;font:inherit;font-size:11px;font-weight:800;color:var(--color-primary-dark);cursor:pointer;padding:4px}
+  .bc-aide{margin:5px 0 0;font-size:11px;line-height:1.5;color:var(--color-muted)}
+  .bc-demo{margin-top:8px;border:1.5px dashed var(--color-primary);border-radius:12px;background:var(--color-mint);padding:8px 11px;font-size:11px;line-height:1.55;color:var(--color-mint-ink)}
+  .bc-demo b{font-family:var(--font-mono);letter-spacing:.12em;color:var(--color-primary-dark)}
+  .bc-msg{margin-top:10px;border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5;font-weight:700}
+  .bc-msg.ko{background:var(--color-danger-well);color:var(--color-danger)}
+  .bc-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .bc-msg.info{background:var(--color-bg);color:var(--color-muted)}
+  .bc-msg b{font-family:var(--font-mono);font-size:14px;letter-spacing:.2em;color:var(--color-primary-dark)}
+  .bc-oubli{display:block;margin:10px 0 0 auto;border:none;background:none;padding:0;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+  .bc-t{font-size:14px;font-weight:800;color:var(--color-ink)}
+  .bc-s{margin:3px 0 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  .bc-lien{margin:10px 0 0;text-align:center;font-size:11px;color:var(--color-muted-2)}
+  .bc-lien a{font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .bc-code{font-family:var(--font-mono);text-align:center;font-size:20px;letter-spacing:.35em;font-weight:800}
+  .bc-creer{display:flex;align-items:center;gap:10px;padding:13px 14px;text-decoration:none;color:inherit}
+  .bc-creer .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .bc-creer .t{min-width:0;flex:1}
+  .bc-creer .t b{display:block;font-size:13.5px;color:var(--color-ink)}
+  .bc-creer .t small{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
+  .bc-rappel{margin:0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  /* (24/09, soir) la marge du corps est celle du téléphone et de la tablette ; sur bureau, la feuille partagée donne la sienne */
+  @media (max-width:1023.98px){ #bc-page{padding:14px 18px 8px} }
+  /* ══ (24/09, soir) L'ÉCHELLE DE BUREAU — dans la colonne étroite (pec-etroit) ══ */
+  @media (min-width:1024px){
+    h1.bc-h1{margin-top:0;font-size:30px;line-height:1.15}
+    .bc-sub{font-size:15px;margin-top:8px;max-width:62ch}
+    .bc-note{font-size:14px;padding:12px 14px}
+    .bc-offre{padding:18px 20px} .bc-offre b{font-size:17px} .bc-offre p{font-size:14px}
+    .bc-card{padding:24px 26px}
+    .bc-card .pec-input-label{margin-top:16px}
+    .bc-mdp .voir{font-size:13px}
+    .bc-aide{font-size:13px}
+    .bc-demo{font-size:13px;padding:11px 14px}
+    .bc-msg{font-size:13.5px;padding:12px 14px} .bc-msg b{font-size:16px}
+    .bc-oubli{font-size:13.5px}
+    .bc-t{font-size:17px} .bc-s{font-size:14px}
+    .bc-lien{font-size:13.5px}
+    .bc-code{font-size:24px}
+    .bc-creer{padding:18px 20px} .bc-creer .ic{width:42px;height:42px} .bc-creer .t b{font-size:16px} .bc-creer .t small{font-size:13.5px}
+    .bc-rappel{font-size:12.5px;max-width:80ch}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body data-formulaire>
+<div class="pec-scene">
+<div class="pec-device pec-etroit">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll" id="bc-page">
+
+    <!-- (24/09, soir) pec-entete-app : sur bureau, la colonne de navigation porte déjà la marque — cet en-tête s'efface -->
+    <header class="bc-hdr pec-entete-app">
+      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+    </header>
+
+    <h1 class="bc-h1">Se connecter</h1>
+    <p class="bc-sub">Ton e-mail ou ton mobile, et ton mot de passe. Tes bons de marque t’attendent sous ton compte.</p>
+
+    <!-- une session déjà ouverte se dit : on n'invite pas à se reconnecter quelqu'un qui l'est -->
+    <div class="bc-note" id="bc-deja" hidden>Tu es déjà connecté·e en tant que <b id="bc-deja-nom" style="color:var(--color-ink)">—</b>. <a id="bc-deja-go" href="01-mes-bons.html">Continuer ›</a> — ou connecte-toi avec un autre compte.</div>
+
+    <!-- UN BON PROPOSÉ PAR UNE MARQUE (?o= ou dans le retour) — celui qui arrive du lien partagé sait ce qui l'attend -->
+    <div class="pec-card bc-offre" id="bc-offre" hidden>
+      <b id="bc-offre-titre">—</b>
+      <p id="bc-offre-txt">—</p>
+    </div>
+
+    <form class="pec-card bc-card" id="bc-form" novalidate>
+      <label class="pec-input-label" for="bc-id">E-mail ou mobile</label>
+      <input class="pec-input" id="bc-id" type="text" autocomplete="username" inputmode="email" placeholder="prenom.nom@exemple.fr ou 06 12 34 56 78">
+      <div class="bc-demo" id="bc-demo" hidden>Compte de démonstration <b id="bc-demo-nom"></b> — il n’a jamais choisi de mot de passe : celui de démo est <b id="bc-demo-mdp"></b>.</div>
+      <label class="pec-input-label" for="bc-mdp">Mot de passe</label>
+      <span class="bc-mdp" style="display:block"><input class="pec-input" id="bc-mdp" type="password" autocomplete="current-password" placeholder="••••••••••"><button type="button" class="voir" id="bc-mdp-voir" aria-label="Afficher le mot de passe">Afficher</button></span>
+      <div class="bc-msg ko" id="bc-err" role="alert" hidden></div>
+      <button type="submit" id="bc-go" class="pec-cta tap" style="margin-top:14px">Se connecter</button>
+      <button type="button" class="bc-oubli pec-tap-confort" id="bc-oublie" aria-expanded="false" aria-controls="bc-oublie-panneau">Mot de passe oublié ?</button>
+    </form>
+
+    <!-- MOT DE PASSE OUBLIÉ — sur le même écran : le code (compteMotDePasseOublie), puis le nouveau mot de passe
+         (compteMotDePasseReinitialiser), puis on entre avec, par la même porte -->
+    <div class="pec-card bc-card" id="bc-oublie-panneau" hidden>
+      <div class="bc-t">Réinitialiser mon mot de passe</div>
+      <p class="bc-s">Un code part par SMS au mobile du compte — c’est le seul SMS de la connexion. Tu choisis ensuite un nouveau mot de passe.</p>
+      <label class="pec-input-label" for="bc-oublie-id">E-mail ou mobile du compte</label>
+      <input class="pec-input" id="bc-oublie-id" type="text" autocomplete="username" inputmode="email" placeholder="prenom.nom@exemple.fr ou 06 12 34 56 78">
+      <button type="button" id="bc-oublie-go" class="pec-btn-secondary tap" style="width:100%;margin-top:10px;font-weight:800">Recevoir le code</button>
+      <div class="bc-msg info" id="bc-oublie-msg" role="status" hidden></div>
+      <div id="bc-oublie-suite" hidden>
+        <label class="pec-input-label" for="bc-oublie-code">Code reçu par SMS</label>
+        <input class="pec-input bc-code" id="bc-oublie-code" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="______">
+        <label class="pec-input-label" for="bc-nouveau-mdp">Nouveau mot de passe</label>
+        <input class="pec-input" id="bc-nouveau-mdp" type="password" autocomplete="new-password" placeholder="••••••••••">
+        <p class="bc-aide" id="bc-nouveau-aide">—</p>
+        <button type="button" id="bc-reinit-go" class="pec-cta tap" style="margin-top:12px">Enregistrer et me connecter</button>
+      </div>
+    </div>
+
+    <!-- CRÉER SON COMPTE — la porte d'à côté, qui garde le bon proposé -->
+    <a class="pec-card bc-creer tap" id="bc-inscription" href="00-inscription.html">
+      <span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-plus"/></svg></span>
+      <span class="t"><b>Pas encore de compte ? Le créer</b><small>Prénom, nom, e-mail, mobile, mot de passe — puis un code par SMS et un par e-mail.</small></span>
+      <svg class="pec-ico pec-row-go" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
+    </a>
+
+    <p class="bc-rappel">Ton compte range les codes des bons d’achat des marques du réseau et porte chaque usage chez sa marque. Il ne détient aucune valeur, n’ouvre aucun compte de paiement et ne fait circuler aucun fonds.</p>
+
+    <div style="height:10px"></div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="06-connexion.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.compteConnecter) return;
+    function $(id) { return document.getElementById(id); }
+    function message(el, cls, txt) { el.hidden = !txt; el.className = 'bc-msg' + (cls ? ' ' + cls : ''); el.textContent = txt || ''; }
+    var Q = new URLSearchParams(location.search);
+
+    /* OÙ REVENIR : le retour posé par la garde (une page DE L'APP, et elle seule), sinon le bon proposé (?o=), sinon la liste */
+    var RETOUR = Q.get('retour') || '';
+    if (!(/^[a-z0-9-]+\.html(\?[^#]*)?$/i.test(RETOUR)) || RETOUR.indexOf('//') > -1 || RETOUR.indexOf(':') > -1) RETOUR = '';
+    var SLUG = Q.get('o') || (RETOUR ? (new URLSearchParams(RETOUR.split('?')[1] || '').get('o') || '') : '');
+    var CIBLE = RETOUR || (SLUG ? '05-offre.html?o=' + encodeURIComponent(SLUG) : '01-mes-bons.html');
+    $('bc-deja-go').href = CIBLE;
+    $('bc-inscription').href = '00-inscription.html' + (SLUG ? '?o=' + encodeURIComponent(SLUG) : '');
+    // la règle du nouveau mot de passe est celle que compteMotDePasseReinitialiser applique (ref.connexion.motDePasseMin)
+    var MIN_MDP = +((((D.ref || {}).connexion || {}).motDePasseMin) || 0);
+    var LONG_CODE = +((((D.ref || {}).otp || {}).longueur) || 0);
+    $('bc-nouveau-aide').textContent = (MIN_MDP ? MIN_MDP + ' caractères minimum. ' : '') + 'C’est lui qui te connectera désormais.';
+    if (LONG_CODE) $('bc-oublie-code').maxLength = LONG_CODE;
+
+    // une session déjà ouverte se dit — et l'on peut quand même entrer avec un autre compte
+    (function () {
+      var c = (D.clientConnecte && D.clientConnecte() && D.clientCourant) ? D.clientCourant() : null;
+      if (!c) return;
+      // un compte créé sans nom porte « Prénom . » : le point seul ne s'affiche pas
+      $('bc-deja-nom').textContent = String(c.nomComplet || c.prenom || '').replace(/\s+\.+$/, '').trim() || c.telComplet || 'toi';
+      $('bc-deja').hidden = false;
+    })();
+    // le bon proposé se NOMME (techLien) : un slug inconnu ne peint rien
+    (function () {
+      var x = (SLUG && D.techLien) ? D.techLien(SLUG) : null; if (!x) return;
+      $('bc-offre-titre').textContent = x.marchand + ' te propose un bon d’achat de ' + D.eur(x.montant);
+      $('bc-offre-txt').textContent = 'Il s’utilise uniquement chez ' + x.marchand + ', depuis cette app, avec ton compte. Connecte-toi : tu retrouves tes bons ' + x.marchand + ' pour l’utiliser, ou tu vois où en acheter un.';
+      $('bc-offre').hidden = false;
+    })();
+
+    /* L'IDENTIFIANT DU COMPTE EST LE MOBILE ; un e-mail se résout parmi les comptes clients. Sans correspondance, on
+       laisse passer la saisie telle quelle : c'est le data-layer qui dira « identifiant inconnu ». */
+    function identifiant(saisie) {
+      var s = String(saisie || '').trim(); if (!s) return '';
+      if (s.indexOf('@') > -1) {
+        var m = s.toLowerCase();
+        var c = (D.comptesTous ? D.comptesTous('client') : []).filter(function (x) { return String((x.profil || {}).email || '').toLowerCase() === m; })[0];
+        return c ? c.identifiant : s;
+      }
+      return s.replace(/\D/g, '') || s;
+    }
+    function masquerTel(tel) { tel = String(tel || ''); return tel.length >= 4 ? tel.slice(0, 2) + ' •• •• •• ' + tel.slice(-2) : tel; }
+
+    /* UN COMPTE DE DÉMONSTRATION n'a jamais choisi de mot de passe : le sien, dérivé (compteMdpAttendu), se dit comme tel
+       — comme le code d'accès des espaces pros. Un compte créé dans l'app a le sien : on n'affiche évidemment rien. */
+    $('bc-id').addEventListener('input', function () {
+      message($('bc-err'), 'ko', '');
+      var id = identifiant(this.value), c = (id && D.compteParIdentifiant) ? D.compteParIdentifiant('client', id) : null;
+      var demo = !!(c && !c.motdepasse && D.compteMdpAttendu && D.compteMdpAttendu(c));
+      $('bc-demo').hidden = !demo;
+      if (demo) { $('bc-demo-nom').textContent = (c.profil && c.profil.nom) || c.identifiant; $('bc-demo-mdp').textContent = D.compteMdpAttendu(c); }
+    });
+    $('bc-mdp').addEventListener('input', function () { message($('bc-err'), 'ko', ''); });
+    $('bc-mdp-voir').addEventListener('click', function () {
+      var i = $('bc-mdp'), vu = i.type === 'text';
+      i.type = vu ? 'password' : 'text'; this.textContent = vu ? 'Afficher' : 'Masquer';
+      this.setAttribute('aria-label', vu ? 'Afficher le mot de passe' : 'Masquer le mot de passe');
+    });
+
+    /* SE CONNECTER — compteConnecter('client', mobile, mot de passe) : statut du compte, mot de passe, session, client actif.
+       Chaque refus (inconnu, mot de passe, suspendu, supprimé…) s'affiche tel quel. Puis là où on allait. */
+    $('bc-form').addEventListener('submit', function (e) {
+      e.preventDefault(); message($('bc-err'), 'ko', '');
+      var id = identifiant($('bc-id').value), mdp = $('bc-mdp').value;
+      if (!id) { message($('bc-err'), 'ko', 'Saisis ton e-mail ou ton mobile.'); $('bc-id').focus(); return; }
+      if (!mdp) { message($('bc-err'), 'ko', 'Saisis ton mot de passe — ou « Mot de passe oublié ? ».'); $('bc-mdp').focus(); return; }
+      var r = D.compteConnecter('client', id, mdp);
+      if (!r.ok) { message($('bc-err'), 'ko', r.motif || 'Connexion impossible.'); return; }
+      location.href = CIBLE;
+    });
+
+    /* MOT DE PASSE OUBLIÉ — le code, puis le nouveau mot de passe, puis l'entrée par la même porte */
+    var resetCompte = null;
+    $('bc-oublie').addEventListener('click', function () {
+      var p = $('bc-oublie-panneau'); p.hidden = !p.hidden; this.setAttribute('aria-expanded', String(!p.hidden));
+      if (p.hidden) return;
+      if (!$('bc-oublie-id').value) $('bc-oublie-id').value = $('bc-id').value;
+      message($('bc-oublie-msg'), 'info', ''); $('bc-oublie-suite').hidden = true; resetCompte = null;
+      $('bc-oublie-id').focus(); p.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
+    $('bc-oublie-go').addEventListener('click', function () {
+      message($('bc-oublie-msg'), 'info', ''); $('bc-oublie-suite').hidden = true; resetCompte = null;
+      if (!D.compteMotDePasseOublie) { message($('bc-oublie-msg'), 'ko', 'Réinitialisation indisponible — recharge la page.'); return; }
+      var id = identifiant($('bc-oublie-id').value);
+      if (!id) { message($('bc-oublie-msg'), 'ko', 'Saisis d’abord l’e-mail ou le mobile du compte.'); $('bc-oublie-id').focus(); return; }
+      var r = D.compteMotDePasseOublie('client', id);
+      if (!r.ok) { message($('bc-oublie-msg'), 'ko', r.motif || 'Envoi impossible.'); return; }
+      resetCompte = r.compte;
+      var z = $('bc-oublie-msg'); z.hidden = false; z.className = 'bc-msg info';
+      z.innerHTML = 'Un code part par ' + (r.canal === 'sms' ? 'SMS au ' + D.esc(masquerTel(r.compte.identifiant)) : 'e-mail') + '. Maquette — rien n’est envoyé : code de démo <b>' + D.esc(r.code) + '</b>.';
+      $('bc-oublie-code').value = ''; $('bc-nouveau-mdp').value = '';
+      $('bc-oublie-suite').hidden = false; $('bc-oublie-code').focus();
+    });
+    $('bc-oublie-code').addEventListener('input', function () { this.value = this.value.replace(/\D/g, ''); if (LONG_CODE) this.value = this.value.slice(0, LONG_CODE); });
+    $('bc-reinit-go').addEventListener('click', function () {
+      if (!resetCompte || !D.compteMotDePasseReinitialiser) { message($('bc-oublie-msg'), 'ko', 'Recommence depuis « Recevoir le code ».'); return; }
+      var nouveau = $('bc-nouveau-mdp').value;
+      var r = D.compteMotDePasseReinitialiser(resetCompte.id, $('bc-oublie-code').value.trim(), nouveau);
+      if (!r.ok) { message($('bc-oublie-msg'), 'ko', r.motif || 'Réinitialisation refusée.'); $('bc-oublie-suite').hidden = false; return; }
+      // le mot de passe est changé : on entre avec, par la MÊME fonction que le formulaire
+      var co = D.compteConnecter('client', resetCompte.identifiant, nouveau);
+      if (!co.ok) { message($('bc-oublie-msg'), 'ko', 'Mot de passe enregistré, mais la connexion a échoué : ' + (co.motif || 'connexion impossible') + '.'); return; }
+      message($('bc-oublie-msg'), 'ok', '✓ Mot de passe enregistré — connexion ouverte, on t’emmène.');
+      $('bc-oublie-suite').hidden = true; resetCompte = null;
+      setTimeout(function () { location.href = CIBLE; }, 600);
+    });
+    ['bc-oublie-id', 'bc-oublie-code', 'bc-nouveau-mdp'].forEach(function (id, i) {
+      $(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') { e.preventDefault(); $(i === 0 ? 'bc-oublie-go' : 'bc-reinit-go').click(); } });
+    });
+  })();
+</script>
+</body>
+</html>

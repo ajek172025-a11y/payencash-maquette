@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Accès & comptes démo</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · filtres · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  ACCÈS & COMPTES DE DÉMONSTRATION (28/08 — fondatrice : « les infos de
+  connexion et mots de passe depuis l'espace manager »).
+  Le trousseau de la MAQUETTE : un compte par espace pour tester la chaîne de
+  bout en bout. Les mots de passe sont masqués par défaut, révélés à la demande,
+  copiables. Chaque ligne ouvre l'écran de connexion correspondant.
+
+  ⚠ CET ÉCRAN EST SPÉCIFIQUE À L'ENVIRONNEMENT DE DÉMONSTRATION. En production,
+  les mots de passe sont HACHÉS et jamais affichés — un tel écran n'existe pas.
+  Les identifiants ci-dessous sont fictifs et sans valeur hors de la maquette.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `accounts` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+<h1>Accès & comptes démo</h1>
+        <p class="sub">Le trousseau de la maquette — un compte par espace pour tester le parcours complet.</p>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px;--pec-notice-accent:#C77B21">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Environnement de démonstration.</b> Ces identifiants sont fictifs et ne servent qu'à parcourir la maquette. En production, les mots de passe sont <b>hachés</b> (jamais stockés ni affichés en clair) et cet écran n'existe pas : la connexion se fait par mot de passe personnel, réinitialisable, jamais consultable par un tiers.</div>
+    </div>
+
+    <!-- L'ESPACE PARTENAIRE ET L'APP MES BONS N'ONT PAS DE COMPTE DE DÉMO — zéro seed : un commerce naît de son inscription
+         (ui/partenaire/00), un utilisateur de la sienne dans Mes bons. Le dire ici évite de chercher un identifiant qui n'existe pas. -->
+    <div class="pec-notice pec-notice--info" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>
+      <div><b>Aucun compte de démo pour l'espace partenaire ni pour l'app Mes bons.</b> Un commerce du réseau naît de son inscription dans l'app partenaire (<a href="../partenaire/00-inscription.html">00-inscription</a>) — zéro seed : PayEnCash valide son dossier, puis active le point dans <a href="29-partenaires.html">Commerces du réseau</a>. Un utilisateur de Mes bons naît de son inscription dans <a href="../bons/01-mes-bons.html">Mes bons</a>.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" id="cd-jeu-msg" hidden style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div id="cd-jeu-txt"></div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-head">
+        <div><h2>Comptes par espace</h2><p class="s">Clique « Afficher » pour révéler un mot de passe, « Copier » pour le presse-papier, ou « Ouvrir » pour aller à l'écran de connexion.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <!-- (24/09) LE JEU DE DÉMONSTRATION se monte par de VRAIS gestes (tests/jeu-demo.js : comptes, dossiers, contrats, ventes) — zéro seed -->
+          <button class="pec-btn pec-btn--sm tap" id="cd-jeu">Monter le jeu de démonstration</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" id="cd-toggle-all">Tout afficher</button>
+        </div>
+      </div>
+      <div class="pec-panel-body">
+        <!-- (07/09 — audit navigation) recherche · filtre par espace · pagination -->
+        <div class="pec-controlbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 0 12px">
+          <input class="pec-search" type="search" id="cd-q" data-fsearch="#cd-rows tr" placeholder="Espace, rôle, identifiant, écran…" aria-label="Rechercher un compte de démo" style="flex:1 1 220px">
+          <div id="cd-filtres" data-fscope="#cd-rows tr" data-finit style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
+        <div class="meta" data-fvide="#cd-rows tr" data-fvide-txt="Aucun compte ne correspond à « %q »." style="display:none;padding:0 0 10px"></div>
+        <table class="pec-table">
+          <thead><tr><th>Espace</th><th>Rôle</th><th>Identifiant</th><th>Mot de passe</th><th></th></tr></thead>
+          <tbody id="cd-rows" data-fpage="12"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div>Pour tester la chaîne : connecte-toi en <b>Marque</b> (PayEnCash Solution) pour proposer un bon à un client, en <b>Commerce du réseau</b> pour le vendre au comptoir, en <b>Mes bons</b> pour l'utiliser chez la marque — puis reviens en <b>Manager</b> préparer la remise de l'arrêté, importer le retour de la banque et payer la marque.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (function () {
+    if (!window.PEC_DATA || !PEC_DATA.comptesDemo) return;
+    var reveles = {};
+
+    function slug(t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''); }
+    function ligne(c, i) {
+      var vu = !!reveles[i];
+      var mdp = vu
+        ? '<code style="font-family:var(--font-mono);font-weight:700;color:var(--color-ink)">' + c.motdepasse + '</code>'
+        : '<span style="font-family:var(--font-mono);letter-spacing:2px;color:var(--color-muted)">••••••••</span>';
+      return '<tr data-ftag="' + slug(c.espace) + '" data-s-espace="' + c.espace + '" data-s-id="' + (c.identifiant || '') + '">' +
+        '<td class="who">' + c.espace + '</td>' +
+        '<td>' + c.role + '<div class="meta">' + c.note + '</div></td>' +
+        '<td><code style="font-family:var(--font-mono);font-weight:700">' + c.identifiant + '</code> ' +
+          '<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-copy="' + c.identifiant + '" style="padding:2px 8px">copier</button></td>' +
+        '<td>' + mdp + ' ' +
+          '<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-reveal="' + i + '" style="padding:2px 8px">' + (vu ? 'masquer' : 'afficher') + '</button>' +
+          (vu ? ' <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-copy="' + c.motdepasse + '" style="padding:2px 8px">copier</button>' : '') + '</td>' +
+        '<td><a class="pec-btn pec-btn--sm tap" href="' + c.ecran + '">Ouvrir →</a></td>' +
+      '</tr>';
+    }
+
+    function maj() {
+      document.getElementById('cd-rows').innerHTML = PEC_DATA.comptesDemo.map(ligne).join('');
+      // (07/09 — fondatrice « pourquoi pas de recherche sur cette page ») filtres par espace DÉRIVÉS des comptes
+      var fz = document.getElementById('cd-filtres');
+      if (fz && !fz.children.length) {
+        var esp = []; PEC_DATA.comptesDemo.forEach(function (c) { if (esp.indexOf(c.espace) === -1) esp.push(c.espace); });
+        fz.innerHTML = '<button type="button" class="pec-filter tap" data-fval="tous" aria-pressed="true">Tous (' + PEC_DATA.comptesDemo.length + ')</button>' +
+          esp.map(function (e) { return '<button type="button" class="pec-filter tap" data-fval="' + slug(e) + '" aria-pressed="false">' + e + ' (' + PEC_DATA.comptesDemo.filter(function (c) { return c.espace === e; }).length + ')</button>'; }).join('');
+      }
+      var tout = PEC_DATA.comptesDemo.every(function (_, i) { return reveles[i]; });
+      document.getElementById('cd-toggle-all').textContent = tout ? 'Tout masquer' : 'Tout afficher';
+    }
+
+    document.addEventListener('click', function (e) {
+      var rev = e.target.closest('[data-reveal]');
+      if (rev) { var i = rev.getAttribute('data-reveal'); reveles[i] = !reveles[i]; maj(); return; }
+      var cp = e.target.closest('[data-copy]');
+      if (cp) {
+        var v = cp.getAttribute('data-copy');
+        if (navigator.clipboard) navigator.clipboard.writeText(v).then(function () {
+          var t = cp.textContent; cp.textContent = '✓'; setTimeout(function () { cp.textContent = t; }, 1200);
+        });
+        return;
+      }
+      if (e.target.id === 'cd-toggle-all') {
+        var tout = PEC_DATA.comptesDemo.every(function (_, i) { return reveles[i]; });
+        PEC_DATA.comptesDemo.forEach(function (_, i) { reveles[i] = !tout; });
+        maj();
+      }
+    });
+
+    maj();
+    /* (24/09) MONTER LE JEU : charge tests/jeu-demo.js une fois, puis rejoue les gestes (inscriptions, dossiers, contrats,
+       ventes) dans CETTE fenêtre — ce qui existe déjà est reconnu, rien n'est écrit deux fois. */
+    var jb = document.getElementById('cd-jeu');
+    if (jb) jb.addEventListener('click', function () {
+      var z = document.getElementById('cd-jeu-msg'), tx = document.getElementById('cd-jeu-txt');
+      var dire = function (html) { z.hidden = false; tx.innerHTML = html; };
+      var lancer = function () {
+        if (!window.PEC_JEU) { dire('<b>Le jeu de démonstration n’a pas pu être chargé</b> (tests/jeu-demo.js absent).'); return; }
+        jb.disabled = true; dire('Montage en cours — les gestes se rejouent…');
+        /* (24/09, soir) LE MONTAGE CONNECTE LES COMPTES QU'IL CRÉE (commerces, porteurs) : la session de l'appareil suit le dernier.
+           Le manager qui a cliqué ici reste le manager — sa session est reposée à la fin, la cliente de Mes bons reste celle de l'app. */
+        var sessionManager = null; try { sessionManager = localStorage.getItem('pec-session'); } catch (e0) {}
+        window.PEC_JEU.monter(window, function (res) {
+          try { if (sessionManager) localStorage.setItem('pec-session', sessionManager); } catch (e1) {}
+          jb.disabled = false;
+          var lib = function (x) { return typeof x === 'string' ? x : (x && (x.motif || x.etape || x.id)) || JSON.stringify(x); };
+          if (res.ok) dire('<b>Jeu monté</b> : ' + PEC_DATA.nb((res.fait || []).length, 'geste rejoué', 'gestes rejoués') + '. Les comptes ci-dessous ouvrent chaque espace.');
+          else dire('<b>Montage incomplet</b>' + (res.motif ? ' — ' + lib(res.motif) : '') + ((res.refus || []).length ? ' : ' + res.refus.map(lib).join(' · ') : '') + ((res.fait || []).length ? ' (' + PEC_DATA.nb(res.fait.length, 'geste rejoué', 'gestes rejoués') + ')' : ''));
+          maj();
+        });
+      };
+      if (window.PEC_JEU) { lancer(); return; }
+      var s = document.createElement('script'); s.src = '../../tests/jeu-demo.js'; s.onload = lancer; s.onerror = function () { lancer(); };
+      document.head.appendChild(s);
+    });
+  })();
+</script>
+</body>
+</html>

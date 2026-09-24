@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Vérifications KYC / KYB</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-entreprise.js"></script><!-- (23/09, soir) le registre des entreprises (api.gouv.fr) à côté du Kbis : ce qu'il dit, les écarts -->
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  VÉRIFICATIONS KYC / KYB (fondatrice 05/09 : « où le manager vérifie les KYB/KYC, et comment
+  s'organise le dispatch côté hotline — automatise tout ça »).
+
+  Le manager a ICI la vue d'ensemble : combien de dossiers attendent, qui les tient, lesquels
+  ont dépassé l'engagement de délai (ils remontent en ESCALADE), et le détail pièce par pièce
+  avec les fichiers OUVRABLES. La hotline garde la même file sur son pilotage : c'est la même
+  donnée, deux points de vue. Le dispatch est automatique à l'envoi du dossier (hôte en poste,
+  échéance dérivée du référentiel) ; le manager peut reprendre un dossier à tout moment.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `kyc_checks`, `kyc_documents` (coffre marque / commerce du réseau / utilisateur Mes bons), `accounts`, `partners`, `tech_merchants` — miroir server/db/schema.sql (partie 6) -->
+<div class="pec-admin">
+  <aside class="pec-aside" data-pec-nav></aside>
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Vérifications KYC / KYB</h1>
+        <p class="sub">Marques, commerces du réseau et utilisateurs Mes bons — les pièces déposées, contrôlées ici ou par la hotline.</p>
+      </div>
+    </div>
+
+    <div class="pec-kpis" id="v-kpis"></div>
+
+    <!-- (23/09, soir — fondatrice : « regarde le design : s'il y en a dix, je dois cliquer et visualiser en grand, avoir une
+         pagination ») LA FILE EST UNE LISTE : une ligne par dossier, dix par page ; le dossier s'ouvre EN GRAND dans le
+         panneau du dessous (identité déclarée, pièces, contrôle, activation) — jamais dix dossiers dépliés à la suite. -->
+    <div class="pec-panel" style="margin-bottom:16px" id="kyb-panneau-file">
+      <div class="pec-panel-head"><div><h2>File de contrôle</h2>
+        <p class="s">L'urgent d'abord : un dossier bloqué retient une marque ou un commerce hors du réseau. Ouvre un dossier pour le contrôler pièce par pièce — un refus motivé revient au déposant dans son espace.</p></div>
+        <div class="pec-topbar-actions"><div class="pec-controlbar" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input type="search" class="pec-search" id="v-q" placeholder="Nom, identifiant…" style="min-width:160px">
+          <select class="pec-search" id="v-portee"><option value="">Tous</option><option value="marchand">Marques (Solution)</option><option value="partenaire">Commerces du réseau</option><option value="client">Utilisateurs Mes bons</option></select>
+          <label class="pec-pill tap"><input type="checkbox" id="v-escalade" style="margin-right:5px">Seulement les dossiers en retard</label>
+        </div></div>
+      </div>
+      <div class="pec-panel-body">
+        <div id="kyb-file"></div>
+        <div id="kyb-pag" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px"></div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px" id="kyb-panneau-detail" hidden>
+      <div class="pec-panel-head"><div>
+        <a href="#" id="kyb-retour" class="s" style="display:inline-flex;align-items:center;gap:4px;font-weight:800;color:var(--color-primary-dark);text-decoration:none"><svg class="pec-ico" viewBox="0 0 24 24" style="width:16px;height:16px"><use href="#i-chevron-left"/></svg>File de contrôle</a>
+        <h2 id="kyb-detail-titre" style="margin-top:4px">—</h2><p class="s" id="kyb-detail-sous">—</p></div>
+        <div class="pec-topbar-actions" id="kyb-detail-actions"></div>
+      </div>
+      <div class="pec-panel-body">
+        <div id="kyb-detail-identite"></div>
+        <div id="kyb-detail-dossier" style="margin-top:10px"></div>
+        <div id="kyb-detail-suite" style="margin-top:14px"></div>
+      </div>
+    </div>
+
+    <!-- (23/09, soir — fondatrice : « pareil côté manager, logique de flux ») LA SUITE DU CONTRÔLE : un dossier complet
+         quittait la file et le manager perdait le fil. Les comptes dont le dossier est contrôlé mais qui ne sont pas encore
+         activés attendent ici, avec le geste qui active. -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Dossiers contrôlés — comptes à activer</h2><p class="s">Le dossier est complet et validé : il reste à activer le compte. Une marque activée peut éditer ses bons dès que ses documents sont acceptés et son contrat signé ; un commerce activé peut rejoindre le réseau des marques et vendre leurs bons.</p></div></div>
+      <div class="pec-panel-body"><div id="kyb-actifs"></div></div>
+    </div>
+    <style>
+      /* la liste de la file : une ligne cliquable par dossier */
+      .kv-row{display:grid;grid-template-columns:minmax(200px,1.6fr) minmax(120px,1fr) minmax(120px,1fr) minmax(150px,1.2fr) auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--color-sep);border-radius:10px;margin-bottom:8px;cursor:pointer;background:#fff}
+      .kv-row:hover{background:var(--color-card)}
+      .kv-row.escalade{border-color:#E8B4AE;background:#FDF6F5}
+      .kv-row .qui b{display:block;font-size:13px}
+      .kv-row .qui .s{margin:0}
+      .kv-row .num{font-variant-numeric:tabular-nums}
+      .kv-row .ouvrir{font-weight:800;color:var(--color-primary-dark);white-space:nowrap}
+      @media (max-width:900px){.kv-row{grid-template-columns:1fr auto}.kv-row>*:nth-child(2),.kv-row>*:nth-child(3),.kv-row>*:nth-child(4){display:none}}
+      .kv-pag button{font:inherit;font-size:12px;font-weight:700;border:1px solid var(--color-sep);background:#fff;color:var(--color-ink);border-radius:8px;padding:5px 10px;cursor:pointer}
+      .kv-pag button[aria-current]{background:var(--color-ink);color:#fff;border-color:var(--color-ink)}
+      .kv-pag button[disabled]{opacity:.4;cursor:default}
+    </style>
+
+    <div class="pec-panel">
+      <div class="pec-panel-head"><div><h2>Règles appliquées</h2><p class="s">Tarifs et délais viennent du référentiel — jamais écrits dans cet écran.</p></div></div>
+      <div class="pec-panel-body"><div id="v-regles"></div></div>
+    </div>
+  </main>
+</div>
+
+<script>
+  /* La file est le composant partagé avec la hotline (PEC_DOCS) ; ici s'ajoutent les KPI de
+     pilotage et le filtre « en retard », qui est la vraie question du manager. */
+  (function () {
+    var D = window.PEC_DATA, DOCS = window.PEC_DOCS; if (!D || !DOCS) return;
+    // (23/09 — pivot grossiste) trois portées : la marque, le commerce du réseau, le utilisateur de Mes bons
+    var QUI = { client: 'Utilisateur Mes bons', partenaire: 'Commerce du réseau', marchand: 'Marque (Solution)' };
+    function nomDe(portee, id) {
+      /* (10/09 — lot 4, constat E6 1.4) UN CANDIDAT N'EST PAS ENCORE AU RÉFÉRENTIEL : son dossier vit sous l'id de son
+         COMPTE, et l'écran affichait l'identifiant brut du compte. Chaque source est essayée, aucune ne s'arrête sur l'id. */
+      var n = null;
+      try {
+        if (portee === 'client') n = ((D.client && D.client(id)) || {}).nomComplet;
+        else if (portee === 'partenaire') n = ((D.partenaire && D.partenaire(id)) || {}).enseigne;
+        else if (portee === 'marchand') n = ((D.techMarchand && D.techMarchand(id)) || {}).raisonSociale;
+      } catch (e) {}
+      if (n) return n;
+      try { var cpt = D.compte ? D.compte(id) : null; if (cpt) { var pr = cpt.profil || {}; return pr.nom || pr.enseigne || cpt.identifiant || id; } } catch (e2) {}
+      return id;
+    }
+    function kpi(lbl, val, hint) { return '<div class="pec-kpi"><div class="lbl">' + lbl + '</div><div class="val">' + val + '</div><div class="hint">' + hint + '</div></div>'; }
+    var esc = function (v) { return D.esc ? D.esc(v) : String(v == null ? '' : v); };
+    /* (23/09, soir — fondatrice : « clique, remplis, visualise, valide un KYC et un KYB : la galère ») CE QUE L'ACTEUR A DÉCLARÉ,
+       relu du data-layer et passé au composant du dossier : il pré-remplit le relevé des mentions et dit, sous chaque pièce, ce
+       qu'on attend d'elle (le nom du dirigeant sur la pièce d'identité, la société sur le Kbis et le RIB). */
+    function contexteDe(portee, id) {
+      try {
+        if (portee === 'marchand' && D.techMarchand) {
+          var m = D.techMarchand(id); if (!m) return null;
+          var dir = D.techMarchandDirigeant ? D.techMarchandDirigeant(m) : null;
+          return { raisonSociale: m.raisonSociale, siret: m.siret, site: m.siteUrl, email: m.email, adresse: '',
+            dirigeant: dir ? { prenom: dir.prenom, nom: dir.nom } : null, dirigeantNomComplet: dir ? dir.nomComplet : '', dirigeantQualite: dir ? dir.qualite : '' };
+        }
+        if (portee === 'partenaire' && D.partenaire) {
+          var p = D.partenaire(id); if (!p) return null;
+          var g = p.gerant || p.responsable || p.dirigeant || '';
+          return { raisonSociale: p.raisonSociale || p.enseigne, siret: p.siret || '', site: '', email: p.email || '', adresse: [p.adresse, p.cp, p.ville].filter(Boolean).join(' '), dirigeant: null, dirigeantNomComplet: typeof g === 'string' ? g : '', dirigeantQualite: 'gérant' };
+        }
+        if (portee === 'client') {
+          var c = D.client ? D.client(id) : null, cpt = (!c && D.compte) ? D.compte(id) : null, pr = (cpt && cpt.profil) || {};
+          if (!c && !cpt) return null;
+          return { raisonSociale: '', siret: '', site: '', email: (c && c.email) || pr.email || '', adresse: '', dirigeant: null, dirigeantNomComplet: (c && c.nomComplet) || pr.nom || '', dirigeantQualite: '' };
+        }
+      } catch (e) {}
+      return null;
+    }
+    /* L'EN-TÊTE D'UN DOSSIER : l'identité déclarée, lisible d'un coup d'œil avant d'ouvrir la première pièce. */
+    function enTeteDeclare(portee, id) {
+      var c = contexteDe(portee, id); if (!c) return '';
+      var lignes = [];
+      if (c.raisonSociale) lignes.push('<b>' + esc(c.raisonSociale) + '</b>' + (c.siret ? ' · SIRET ' + esc(c.siret) : ''));
+      if (c.dirigeantNomComplet) lignes.push('Dirigeant déclaré : <b>' + esc(c.dirigeantNomComplet) + '</b>' + (c.dirigeantQualite ? ' (' + esc(c.dirigeantQualite) + ')' : '') + (portee === 'marchand' ? ' — c’est lui qui signe le contrat-cadre' : ''));
+      if (c.site || c.email) lignes.push([c.site ? esc(c.site) : '', c.email ? esc(c.email) : ''].filter(Boolean).join(' · '));
+      if (portee === 'marchand' && D.techConformiteMarchand) { var cf = D.techConformiteMarchand(id); lignes.push('Déclaration « réseau limité » : ' + (cf ? (cf.statut === 'validated' ? '<b style="color:var(--color-primary-dark)">validée</b>' : '<b style="color:#B3261E">à statuer</b> (<a href="46-marques.html" style="color:var(--color-primary-dark)">Solution — les marques</a>)') : '<b style="color:#B3261E">absente</b>')); }
+      return '<div class="s" style="margin:6px 0 4px;padding:8px 10px;border-radius:9px;background:var(--color-bg);line-height:1.6"><span style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)">Ce qui est déclaré</span><br>' + lignes.join('<br>') + '</div>';
+    }
+    /* LA SUITE DU FLUX : dossiers complets dont le compte n'est pas encore activé. */
+    function actifs() {
+      var z2 = document.getElementById('kyb-actifs'); if (!z2) return;
+      var l = [];
+      try {
+        (D.techMarchands ? D.techMarchands() : []).forEach(function (m) {
+          if (m.statut !== 'pending') return;
+          var e = DOCS.etat('marchand', m.id); if (e.etat !== 'valide') return;
+          var cf = D.techConformiteMarchand ? D.techConformiteMarchand(m.id) : null;
+          l.push({ portee: 'marchand', id: m.id, nom: m.raisonSociale, decl: cf, ok: !!(cf && cf.statut === 'validated') });
+        });
+        /* LE COMMERCE DU RÉSEAU : contrat de distribution signé et dossier validé → le point s'active (partenaireActiver, la
+           même porte que 29) ; un contrat encore à signer se dit, sans bouton. */
+        (D.partenaires ? D.partenaires() : []).forEach(function (p) {
+          if (p.statut !== 'contrat_signe' && p.statut !== 'contrat_a_signer') return;
+          if (p.kyb !== 'valide') return;
+          l.push({ portee: 'partenaire', id: p.id, nom: p.enseigne || p.id, point: p, ok: p.statut === 'contrat_signe' });
+        });
+      } catch (e0) {}
+      if (!l.length) { z2.innerHTML = '<p class="s" style="padding:6px 0">Aucun compte n’attend son activation.</p>'; return; }
+      z2.innerHTML = l.map(function (x) {
+        if (x.portee === 'partenaire') {
+          return '<div style="border:1px solid var(--color-sep);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+            + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>' + (QUI[x.portee] || x.portee) + ' · ' + esc(x.nom) + '</b><span class="s">dossier contrôlé · ' + (x.ok ? 'contrat de distribution signé' : 'contrat de distribution à signer par le gérant') + '</span><a href="#" data-ouvrir="' + esc(x.portee) + ':' + esc(x.id) + '" class="s" style="color:var(--color-primary-dark);font-weight:700">ouvrir en grand ›</a><span style="flex:1"></span>'
+            + (x.ok ? '<button type="button" class="pec-btn pec-btn--sm tap" data-activer-point="' + esc(x.id) + '">Activer le point</button>' : '')
+            + '<a href="29-partenaires.html" class="s" style="color:var(--color-primary-dark);font-weight:700">fiche (29)</a></div>'
+            + '<p class="s" data-activer-err="' + esc(x.id) + '" style="margin:6px 0 0;color:#B3261E" hidden></p></div>';
+        }
+        /* LA DÉCLARATION « RÉSEAU LIMITÉ » SE STATUE ICI AUSSI : c'est la dernière pièce du flux, et l'envoyer sur un autre
+           écran pour un clic, c'était perdre le contrôleur en route. Le texte déclaré est lu tel quel, puis validé ou refusé. */
+        var d = x.decl;
+        return '<div style="border:1px solid var(--color-sep);border-radius:10px;padding:10px 12px;margin-bottom:8px">'
+          + '<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><b>' + (QUI[x.portee] || x.portee) + ' · ' + esc(x.nom) + '</b><span class="s">dossier contrôlé</span><a href="#" data-ouvrir="' + esc(x.portee) + ':' + esc(x.id) + '" class="s" style="color:var(--color-primary-dark);font-weight:700">ouvrir en grand ›</a><span style="flex:1"></span>'
+          + (x.ok ? '<button type="button" class="pec-btn pec-btn--sm tap" data-activer="' + esc(x.id) + '">Activer le compte</button>' : '')
+          + '<a href="46-marques.html" class="s" style="color:var(--color-primary-dark);font-weight:700">fiche (46)</a></div>'
+          + (x.ok ? '' : (d
+              ? '<div class="s" style="margin-top:8px;padding:8px 10px;border-radius:9px;background:var(--color-bg);line-height:1.6"><span style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted)">Déclaration « réseau limité » — ' + (d.statueeLe && d.motif ? 'refusée, à corriger par la marque' : 'à statuer') + '</span><br>« ' + esc(d.usageDeclare) + ' »'
+                + (d.statueeLe && d.motif ? '<br><b style="color:#B3261E">Motif du refus : ' + esc(d.motif) + '</b>' : '')
+                + (d.statueeLe && d.motif ? '' : '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button type="button" class="pec-btn pec-btn--sm tap" data-decl-ok="' + esc(d.id) + '">Valider la déclaration</button>'
+                  + '<input type="text" class="pec-search" data-decl-motif="' + esc(d.id) + '" placeholder="Motif si tu refuses (la marque le lit)" style="flex:1;min-width:180px"><button type="button" class="pec-btn pec-btn--sm tap" data-decl-ko="' + esc(d.id) + '">Refuser</button></div>') + '</div>'
+              : '<p class="s" style="margin:6px 0 0;color:#B3261E">Aucune déclaration « réseau limité » déposée : la marque doit la déposer depuis son compte.</p>'))
+          + '<p class="s" data-activer-err="' + esc(x.id) + '" style="margin:6px 0 0;color:#B3261E" hidden></p></div>';
+      }).join('');
+      [].forEach.call(z2.querySelectorAll('[data-activer]'), function (b) {
+        b.addEventListener('click', function () {
+          var s2 = D.session && D.session(), r = D.techMarchandValider(b.getAttribute('data-activer'), (s2 && s2.identifiant) || 'manager');
+          if (!r.ok) { var pe = z2.querySelector('[data-activer-err="' + b.getAttribute('data-activer') + '"]'); if (pe) { pe.hidden = false; pe.textContent = r.motif; } return; }
+          tout();
+        });
+      });
+      [].forEach.call(z2.querySelectorAll('[data-activer-point]'), function (b) {
+        b.addEventListener('click', function () {
+          var s2 = D.session && D.session(), r = D.partenaireActiver(b.getAttribute('data-activer-point'), (s2 && s2.identifiant) || 'manager');
+          if (!r.ok) { var pe = z2.querySelector('[data-activer-err="' + b.getAttribute('data-activer-point') + '"]'); if (pe) { pe.hidden = false; pe.textContent = r.motif; } return; }
+          tout();
+        });
+      });
+      [].forEach.call(z2.querySelectorAll('[data-decl-ok],[data-decl-ko]'), function (b) {
+        b.addEventListener('click', function () {
+          var okD = b.hasAttribute('data-decl-ok'), idD = b.getAttribute(okD ? 'data-decl-ok' : 'data-decl-ko');
+          var s2 = D.session && D.session(), mi = z2.querySelector('[data-decl-motif="' + idD + '"]'), motif = mi ? String(mi.value || '').trim() : '';
+          if (!okD && !motif) { mi.focus(); mi.placeholder = 'Un refus se motive — la marque lit la raison'; return; }
+          var r = D.techConformiteStatuer(idD, okD, motif, (s2 && s2.identifiant) || 'manager');
+          if (r && r.ok === false) { window.alert(r.motif); return; }
+          tout();
+        });
+      });
+    }
+
+    function peindre() {
+      var file = DOCS.aVerifier();
+      var retard = file.filter(function (f) { return f.retard; });
+      var urgents = file.filter(function (f) { return f.urgence; });
+      var nonAssignes = file.filter(function (f) { return !f.assigne; });
+      var V = (D.ref && D.ref.verification) || {};
+      document.getElementById('v-kpis').innerHTML =
+        kpi('Dossiers en attente', file.length, 'marques, commerces du réseau, utilisateurs Mes bons') +
+        kpi('Urgents', urgents.length, 'un déblocage urgent a été demandé') +
+        kpi('En retard', retard.length, 'engagement de délai dépassé — escalade') +
+        kpi('Non assignés', nonAssignes.length, 'personne en poste à l\'envoi — à prendre');
+
+      var t = V.tarifs || {}, dl = V.delaiHeures || {};
+      var tarifs = Object.keys(t).filter(function (k) { return QUI[k]; }).map(function (k) { return QUI[k].toLowerCase() + ' : ' + (t[k] > 0 ? D.eur(t[k]) : 'gratuit'); });
+      document.getElementById('v-regles').innerHTML =
+        '<div class="s" style="line-height:1.9">' +
+        '<b>Qui paie</b> — ' + (tarifs.length ? esc(tarifs.join(' · ')) : 'aucun tarif au référentiel') + '.<br>' +
+        '<b>Délais tenus</b> — ' + (dl.standard ? esc(String(dl.standard)) + ' h en standard' : 'délai standard non renseigné') + (dl.urgence ? ', ' + esc(String(dl.urgence)) + ' h en urgence' : '') + '. Passé ce délai, le dossier remonte ici en escalade.<br>' +
+        '<b>Qui contrôle</b> — ' + esc((V.controleurs || []).join(' et ')) + '. Le dispatch est automatique vers l\'hôte en poste ; le manager peut reprendre un dossier.' +
+        '</div>';
+    }
+
+    /* ══ LA FILE — une LISTE paginée (dix par page), filtrée (retard, portée, recherche) ; un clic ouvre le dossier EN GRAND ══
+       L'état (page, filtres, dossier ouvert) vit dans l'adresse (#…) : recharger ou revenir en arrière retrouve la même vue. */
+    var TAILLE = 10;
+    var vue = { page: 1, q: '', portee: '', retard: false, ouvert: null };
+    function lireHash() {
+      try {
+        var h = new URLSearchParams(String(location.hash || '').replace(/^#/, ''));
+        vue.page = Math.max(1, parseInt(h.get('page') || '1', 10) || 1); vue.q = h.get('q') || ''; vue.portee = h.get('portee') || ''; vue.retard = h.get('retard') === '1';
+        var o = h.get('dossier'); vue.ouvert = o && o.indexOf(':') > 0 ? { portee: o.split(':')[0], id: o.split(':').slice(1).join(':') } : null;
+      } catch (e) {}
+      var q0 = document.getElementById('v-q'), p0 = document.getElementById('v-portee'), r0 = document.getElementById('v-escalade');
+      if (q0) q0.value = vue.q; if (p0) p0.value = vue.portee; if (r0) r0.checked = vue.retard;
+    }
+    function ecrireHash() {
+      var h = new URLSearchParams();
+      if (vue.page > 1) h.set('page', String(vue.page)); if (vue.q) h.set('q', vue.q); if (vue.portee) h.set('portee', vue.portee); if (vue.retard) h.set('retard', '1');
+      if (vue.ouvert) h.set('dossier', vue.ouvert.portee + ':' + vue.ouvert.id);
+      var nh = h.toString();
+      try { history.replaceState(null, '', location.pathname + location.search + (nh ? '#' + nh : '')); } catch (e) {}
+    }
+    var z = document.getElementById('kyb-file'), zp = document.getElementById('kyb-pag');
+    function filtres() {
+      var q = String(vue.q || '').toLowerCase().trim();
+      return DOCS.aVerifier().filter(function (f) {
+        if (vue.retard && !f.retard) return false;
+        if (vue.portee && f.portee !== vue.portee) return false;
+        if (q && (nomDe(f.portee, f.id) + ' ' + f.id).toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+    }
+    function file() {
+      var l = filtres(), n = l.length, pages = Math.max(1, Math.ceil(n / TAILLE));
+      if (vue.page > pages) vue.page = pages;
+      var deb = (vue.page - 1) * TAILLE, tranche = l.slice(deb, deb + TAILLE);
+      if (!n) { z.innerHTML = '<p class="s" style="padding:6px 0">' + (vue.retard ? 'Aucun dossier en retard — les délais sont tenus.' : (vue.q || vue.portee) ? 'Aucun dossier pour ce filtre.' : 'Aucun dossier en attente de contrôle.') + '</p>'; zp.innerHTML = ''; return; }
+      z.innerHTML = tranche.map(function (f) {
+        var frais = DOCS.fraisRegles(f.portee, f.id);
+        return '<div class="kv-row' + (f.escalade ? ' escalade' : '') + '" role="button" tabindex="0" data-ouvrir="' + f.portee + ':' + f.id + '">'
+          + '<div class="qui"><b>' + esc(nomDe(f.portee, f.id)) + '</b><span class="s">' + (QUI[f.portee] || f.portee) + ' · ' + esc(f.id)
+            + (f.urgence ? ' <span class="pec-pill" style="background:#FDECEC;color:#B3261E">URGENT' + (f.commande ? ' · commande ' + esc(f.commande) : '') + '</span>' : '')
+            + (f.escalade ? ' <span class="pec-pill" style="background:#FDECEC;color:#B3261E">ESCALADE</span>' : '')
+            + (frais ? ' <span class="pec-pill">examen réglé</span>' : '') + '</span></div>'
+          + '<div class="s num">' + PEC_DATA.nb(f.enAttente, 'pièce') + ' à contrôler<br>' + esc(f.libelle || f.etat) + '</div>'
+          + '<div class="s">' + (f.assigne ? 'Assigné à <b>' + esc(f.assigne) + '</b>' : '<b>Non assigné</b>') + '</div>'
+          + '<div class="s">' + (f.echeance ? 'à traiter <b' + (f.retard ? ' style="color:#B3261E"' : '') + '>' + DOCS.resteLbl(f.resteMs) + '</b><br>engagement ' + f.heures + ' h' : (f.nonSoumis ? 'pas encore envoyé au contrôle' : '—')) + '</div>'
+          + '<div class="ouvrir">Ouvrir ›</div></div>';
+      }).join('');
+      /* LA PAGINATION DIT OÙ L'ON EST : « 1–10 sur 23 », précédent / suivant, et les pages. */
+      var fin = Math.min(n, deb + TAILLE), boutons = '';
+      for (var p = 1; p <= pages; p++) boutons += '<button type="button" data-page="' + p + '"' + (p === vue.page ? ' aria-current="page"' : '') + '>' + p + '</button>';
+      zp.className = 'kv-pag';
+      zp.innerHTML = '<span class="s" style="margin:0">' + (deb + 1) + '–' + fin + ' sur ' + n + '</span><span style="flex:1"></span>'
+        + '<button type="button" data-page="' + (vue.page - 1) + '"' + (vue.page <= 1 ? ' disabled' : '') + '>‹ Précédent</button>' + boutons + '<button type="button" data-page="' + (vue.page + 1) + '"' + (vue.page >= pages ? ' disabled' : '') + '>Suivant ›</button>';
+    }
+    zp.addEventListener('click', function (e) { var b = e.target.closest('[data-page]'); if (!b || b.disabled) return; vue.page = +b.getAttribute('data-page'); ecrireHash(); file(); });
+    z.addEventListener('click', function (e) { var r = e.target.closest('[data-ouvrir]'); if (!r) return; var p = r.getAttribute('data-ouvrir').split(':'); ouvrir(p[0], p.slice(1).join(':')); });
+    z.addEventListener('keydown', function (e) { if (e.key !== 'Enter' && e.key !== ' ') return; var r = e.target.closest && e.target.closest('[data-ouvrir]'); if (!r) return; e.preventDefault(); var p = r.getAttribute('data-ouvrir').split(':'); ouvrir(p[0], p.slice(1).join(':')); });
+    ['v-q', 'v-portee', 'v-escalade'].forEach(function (id) {
+      document.getElementById(id).addEventListener(id === 'v-q' ? 'input' : 'change', function () {
+        vue.q = document.getElementById('v-q').value; vue.portee = document.getElementById('v-portee').value; vue.retard = document.getElementById('v-escalade').checked; vue.page = 1;
+        ecrireHash(); file();
+      });
+    });
+
+    /* ══ LE DOSSIER EN GRAND : l'identité déclarée, les pièces (le composant du coffre, côté contrôleur), puis la suite
+       du flux — reprendre le dossier, statuer la déclaration, activer le compte. Le retour ramène à la liste, à sa page. ══ */
+    var zD = document.getElementById('kyb-panneau-detail'), zF = document.getElementById('kyb-panneau-file');
+    function ouvrir(portee, id) { vue.ouvert = { portee: portee, id: id }; ecrireHash(); detail(); try { zD.scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {} }
+    function fermer() { vue.ouvert = null; ecrireHash(); detail(); }
+    document.getElementById('kyb-retour').addEventListener('click', function (e) { e.preventDefault(); fermer(); });
+    function detail() {
+      var o = vue.ouvert;
+      zD.hidden = !o; zF.hidden = !!o;
+      if (!o) return;
+      var f = DOCS.aVerifier().filter(function (x) { return x.portee === o.portee && x.id === o.id; })[0] || null;
+      var e = DOCS.etat(o.portee, o.id), s3 = D.session && D.session();
+      document.getElementById('kyb-detail-titre').textContent = (QUI[o.portee] || o.portee) + ' · ' + nomDe(o.portee, o.id);
+      document.getElementById('kyb-detail-sous').innerHTML = esc(e.libelle || e.etat) + (f ? (f.assigne ? ' · assigné à <b>' + esc(f.assigne) + '</b>' : ' · <b>non assigné</b>') + (f.echeance ? ' · à traiter <b' + (f.retard ? ' style="color:#B3261E"' : '') + '>' + DOCS.resteLbl(f.resteMs) + '</b> (engagement ' + f.heures + ' h)' : '') : ' · dossier contrôlé');
+      document.getElementById('kyb-detail-actions').innerHTML = (f ? '<button type="button" class="pec-btn pec-btn--sm tap" id="kyb-prendre">Reprendre le dossier</button>' : '')
+        + (o.portee === 'marchand' ? ' <a href="46-marques.html" class="pec-btn pec-btn--sm tap" style="text-decoration:none">Fiche de la marque (46)</a>' : o.portee === 'partenaire' ? ' <a href="29-partenaires.html" class="pec-btn pec-btn--sm tap" style="text-decoration:none">Fiche du point (29)</a>' : '');
+      var bp = document.getElementById('kyb-prendre');
+      if (bp) bp.addEventListener('click', function () { DOCS.assigner(o.portee, o.id, (s3 && (s3.role || s3.identifiant)) || 'Manager'); tout(); });
+      document.getElementById('kyb-detail-identite').innerHTML = enTeteDeclare(o.portee, o.id);
+      var h = document.getElementById('kyb-detail-dossier'); h.innerHTML = '';
+      DOCS.rendreDossier(h, o.portee, o.id, { manager: true, par: (s3 && s3.identifiant) || 'Manager', onChange: tout, contexte: function () { return contexteDe(o.portee, o.id); } });
+      document.getElementById('kyb-detail-suite').innerHTML = suiteHTML(o.portee, o.id, e);
+    }
+    /* LA SUITE DU FLUX, DANS LE DOSSIER : ce qu'il reste après les pièces — pour une marque, statuer la déclaration
+       « réseau limité » puis activer le compte ; pour un commerce, l'activation se fait sur sa fiche. */
+    function suiteHTML(portee, id, e) {
+      if (portee !== 'marchand' || !D.techMarchand) return '';
+      var m = D.techMarchand(id); if (!m) return '';
+      var d = D.techConformiteMarchand ? D.techConformiteMarchand(id) : null, declOk = !!(d && d.statut === 'validated');
+      var etapes = [
+        { t: 'Pièces du dossier contrôlées', ok: e.etat === 'valide', s: e.etat === 'valide' ? 'toutes validées' : (e.libelle || e.etat) },
+        { t: 'Déclaration « réseau limité » statuée', ok: declOk, s: declOk ? 'validée' : (d ? (d.statueeLe && d.motif ? 'refusée — la marque doit corriger' : 'à statuer') : 'non déposée') },
+        { t: 'Compte activé', ok: m.statut === 'validated', s: m.statut === 'validated' ? 'actif' : D.techStatutLbl(m.statut) }
+      ];
+      var html = '<div class="s" style="font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-bottom:6px">La suite du flux</div>'
+        + '<div style="display:grid;gap:6px">' + etapes.map(function (x, i) {
+            return '<div style="display:flex;align-items:center;gap:9px;font-size:12.5px"><span style="flex:none;width:20px;height:20px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;background:' + (x.ok ? 'var(--color-primary)' : 'var(--color-sep)') + ';color:' + (x.ok ? '#fff' : 'var(--color-ink)') + '">' + (x.ok ? '✓' : (i + 1)) + '</span><b>' + x.t + '</b><span class="s" style="margin:0">' + esc(x.s) + '</span></div>';
+          }).join('') + '</div>';
+      if (d && !declOk && !(d.statueeLe && d.motif)) {
+        html += '<div class="s" style="margin-top:10px;padding:8px 10px;border-radius:9px;background:var(--color-bg);line-height:1.6">« ' + esc(d.usageDeclare) + ' »'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px"><button type="button" class="pec-btn pec-btn--sm tap" data-decl-ok="' + esc(d.id) + '">Valider la déclaration</button>'
+          + '<input type="text" class="pec-search" data-decl-motif="' + esc(d.id) + '" placeholder="Motif si tu refuses (la marque le lit)" style="flex:1;min-width:180px"><button type="button" class="pec-btn pec-btn--sm tap" data-decl-ko="' + esc(d.id) + '">Refuser</button></div></div>';
+      }
+      if (m.statut !== 'validated') {
+        html += '<div style="margin-top:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          + (e.etat === 'valide' && declOk ? '<button type="button" class="pec-btn pec-btn--sm tap" data-activer="' + esc(id) + '">Activer le compte</button>' : '<span class="s" style="margin:0">L’activation attend ' + (e.etat !== 'valide' ? 'le contrôle des pièces' : 'la déclaration') + '.</span>')
+          + '<p class="s" data-activer-err="' + esc(id) + '" style="margin:0;color:#B3261E" hidden></p></div>';
+      }
+      return html;
+    }
+    document.getElementById('kyb-detail-suite').addEventListener('click', function (e) {
+      var s2 = D.session && D.session(), par = (s2 && s2.identifiant) || 'manager';
+      var a = e.target.closest('[data-activer]');
+      if (a) { var r = D.techMarchandValider(a.getAttribute('data-activer'), par); if (!r.ok) { var pe = e.currentTarget.querySelector('[data-activer-err]'); if (pe) { pe.hidden = false; pe.textContent = r.motif; } return; } tout(); return; }
+      var b = e.target.closest('[data-decl-ok],[data-decl-ko]');
+      if (b) {
+        var okD = b.hasAttribute('data-decl-ok'), idD = b.getAttribute(okD ? 'data-decl-ok' : 'data-decl-ko');
+        var mi = e.currentTarget.querySelector('[data-decl-motif="' + idD + '"]'), motif = mi ? String(mi.value || '').trim() : '';
+        if (!okD && !motif) { mi.focus(); mi.placeholder = 'Un refus se motive — la marque lit la raison'; return; }
+        var r2 = D.techConformiteStatuer(idD, okD, motif, par);
+        if (r2 && r2.ok === false) { window.alert(r2.motif); return; }
+        tout();
+      }
+    });
+    /* les lignes « comptes à activer » ouvrent aussi le dossier en grand */
+    document.getElementById('kyb-actifs').addEventListener('click', function (e) { var r = e.target.closest('[data-ouvrir]'); if (r) { var p = r.getAttribute('data-ouvrir').split(':'); ouvrir(p[0], p.slice(1).join(':')); } });
+
+    function tout() { peindre(); file(); actifs(); detail(); }
+    lireHash();
+    window.addEventListener('hashchange', function () { lireHash(); file(); detail(); });
+    tout();
+    // (10/09 — lot 4) un panneau ouvert (relevé des mentions, signature) est une SAISIE EN COURS : on ne repeint pas dessus
+    function toutSiLibre() { if (document.querySelector('.pd-sign')) return; tout(); }
+    /* le clic sur « ouvrir en grand » d'une ligne à activer est un lien : on ne suit pas le « # » nu */
+    document.getElementById('kyb-actifs').addEventListener('click', function (e) { if (e.target.closest && e.target.closest('[data-ouvrir]')) e.preventDefault(); }, true);
+    window.addEventListener('storage', toutSiLibre);
+    window.addEventListener('pec-bus', toutSiLibre);
+  })();
+</script>
+</body>
+</html>

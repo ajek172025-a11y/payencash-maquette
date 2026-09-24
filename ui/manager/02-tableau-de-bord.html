@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Tableau de bord</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  TABLEAU DE BORD — route `/`.
+  (23/09 — pivot grossiste) QUATRE CHIFFRES, ET LA VIE DU RÉSEAU EN DIRECT. Nous achetons les bons des marques
+  quand un commerce du réseau les vend au comptoir ; nous payons la marque à l'échéance de son offre ; le commerce
+  nous règle par prélèvement après l'arrêté, ou d'avance s'il est commissionnaire. Les quatre tuiles disent donc :
+  ce que le réseau a acheté aujourd'hui, ce que nous devons aux marques, ce que l'arrêté du soir a à prélever (et
+  ce qui est revenu impayé), et qui compose le réseau. L'activité, c'est la table des ventes — une ligne par bon.
+  TOUT EST DÉRIVÉ : techVentes, techReglementsDus, techArretesDus, techMarchands, techRevendeurs. Rien n'est posé.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `tech_sales`, `tech_payouts`, `tech_dd_files`, `tech_merchants`, `tech_resellers` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Tableau de bord</h1>
+        <p class="sub">Vue d’ensemble de la journée — ce que le réseau achète, ce que nous devons, ce que l’arrêté prélève.</p>
+      </div>
+      <div class="pec-topbar-actions"></div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:16px">
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg> Bons achetés aujourd’hui</div>
+        <div class="val" id="tb-jour">0</div>
+        <div class="hint" id="tb-jour-hint">aucune vente au comptoir aujourd’hui</div>
+      </div>
+      <div class="pec-kpi" id="tb-du-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg> Dû aux marques</div>
+        <div class="val" id="tb-du">0,00 €</div>
+        <div class="hint" id="tb-du-hint">rien à payer pour l’instant</div>
+      </div>
+      <div class="pec-kpi" id="tb-arrete-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-landmark"/></svg> À prélever à l’arrêté</div>
+        <div class="val" id="tb-arrete">0,00 €</div>
+        <div class="hint" id="tb-arrete-hint">aucun bon en attente de prélèvement</div>
+      </div>
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg> Le réseau</div>
+        <div class="val" id="tb-reseau">0<span class="u">/0</span></div>
+        <div class="hint" id="tb-reseau-hint">commerces validés / marques validées</div>
+      </div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-head">
+        <div><h2>Activité en direct</h2><p class="s" id="tb-act-sub">Les bons achetés au comptoir, un par ligne — ce que le commerce nous doit, ce que nous devons à la marque.</p></div>
+        <div style="display:flex;gap:10px"><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="45-solution-paiements.html">Prélèvements &amp; paiements</a></div>
+      </div>
+      <div class="pec-panel-body">
+        <!-- (07/09 — audit navigation : toute liste se cherche, se trie et se pagine) -->
+        <input class="pec-search" type="search" data-fsearch="#tb-rows tr" placeholder="Rechercher une vente, une marque, un commerce…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#tb-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Réf.</th><th>Marque</th><th>Commerce</th><th class="num">Bon</th><th class="num">Le commerce nous doit</th><th class="num">Nous devons à la marque</th><th>Prélèvement</th><th>Marque</th></tr></thead>
+          <tbody id="tb-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script src="../assets/payencash-bus.js"></script>
+<script>
+  // ZÉRO donnée en dur : l'activité = les ventes RÉELLES des tables Solution, repeintes à chaque événement du bus.
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.techVentes || !D.techReglementsDus || !D.techArretesDus) return;
+    var esc = function (v) { return D.esc(v); };
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    function maj() {
+      var minuit = new Date(); minuit.setHours(0, 0, 0, 0); minuit = minuit.getTime();
+      var ventes = D.techVentes({}), vives = ventes.filter(function (v) { return v.statut !== 'annulee'; });
+      // ① CE QUE LE RÉSEAU A ACHETÉ AUJOURD'HUI — valeur des bons, achetés à la marque au comptoir
+      var jour = vives.filter(function (v) { return v.at >= minuit; });
+      var valJour = jour.reduce(function (s, v) { return s + v.montant; }, 0);
+      var margeJour = jour.reduce(function (s, v) { return s + v.marge; }, 0);
+      document.getElementById('tb-jour').textContent = String(jour.length);
+      document.getElementById('tb-jour-hint').textContent = jour.length
+        ? D.eur(valJour) + ' de bons · notre marge ' + D.eur(margeJour)
+        : 'aucune vente au comptoir aujourd’hui';
+      // ② CE QUE NOUS DEVONS AUX MARQUES — par échéance, et ce qui est échu
+      var dus = D.techReglementsDus(), now = Date.now();
+      var duTot = dus.reduce(function (s, g) { return s + g.montant; }, 0), echus = dus.filter(function (g) { return g.echu; });
+      var sansRib = dus.filter(function (g) { return !g.rib; }).length;
+      document.getElementById('tb-du').textContent = D.eur(duTot);
+      document.getElementById('tb-du-hint').textContent = dus.length
+        ? pl(dus.length, 'échéance') + (echus.length ? ' · ' + echus.length + ' échue' + (echus.length > 1 ? 's' : '') + ' à payer maintenant' : ' · aucune échue') + (sansRib ? ' · ' + sansRib + ' sans RIB' : '')
+        : 'rien à payer pour l’instant';
+      document.getElementById('tb-du-kpi').classList.toggle('pec-kpi--alert', echus.length > 0 || sansRib > 0);
+      // ③ L'ARRÊTÉ — ce qui attend le prélèvement, ce qui est dû ce soir, ce qui est revenu impayé
+      var aPrelever = vives.filter(function (v) { return v.statut === 'a_prelever'; });
+      var impayes = vives.filter(function (v) { return v.statut === 'impaye'; });
+      var arretesDus = D.techArretesDus().filter(function (a) { return a.du; });
+      document.getElementById('tb-arrete').textContent = D.eur(aPrelever.reduce(function (s, v) { return s + v.prixPoint; }, 0));
+      document.getElementById('tb-arrete-hint').textContent = (aPrelever.length || impayes.length)
+        ? pl(aPrelever.length, 'bon') + ' en attente' + (arretesDus.length ? ' · ' + pl(arretesDus.length, 'arrêté') + ' dû — remise à préparer' : '')
+          + (impayes.length ? ' · ' + impayes.length + ' impayé' + (impayes.length > 1 ? 's' : '') + ' (' + D.eur(impayes.reduce(function (s, v) { return s + v.prixPoint; }, 0)) + ')' : '')
+        : 'aucun bon en attente de prélèvement';
+      document.getElementById('tb-arrete-kpi').classList.toggle('pec-kpi--alert', arretesDus.length > 0 || impayes.length > 0);
+      // ④ LE RÉSEAU — commerces validés, marques validées, et ce qui attend une validation
+      var revs = D.techRevendeursGet(), mqs = D.techMarchandsGet();
+      var rOk = revs.filter(function (r) { return r.statut === 'validated'; }).length, mOk = mqs.filter(function (m) { return m.statut === 'validated'; }).length;
+      var rAtt = revs.filter(function (r) { return r.statut === 'pending'; }).length, mAtt = mqs.filter(function (m) { return m.statut === 'pending'; }).length;
+      document.getElementById('tb-reseau').innerHTML = rOk + '<span class="u">/' + mOk + '</span>';
+      document.getElementById('tb-reseau-hint').textContent = (revs.length || mqs.length)
+        ? pl(rOk, 'commerce') + ' validé' + (rOk > 1 ? 's' : '') + ' · ' + pl(mOk, 'marque') + ' validée' + (mOk > 1 ? 's' : '') + ((rAtt || mAtt) ? ' · en attente : ' + PEC_DATA.nb(rAtt, 'commerce') + ', ' + PEC_DATA.nb(mAtt, 'marque') : '')
+        : 'le réseau se construit — commerces validés / marques validées';
+      // L'ACTIVITÉ — une ligne par vente, la plus récente d'abord
+      document.getElementById('tb-act-sub').textContent = ventes.length
+        ? pl(ventes.length, 'vente') + ' au comptoir · ' + D.eur(vives.reduce(function (s, v) { return s + v.montant; }, 0)) + ' de bons achetés par le réseau' + (ventes.length - vives.length ? ' · ' + PEC_DATA.nb(ventes.length - vives.length, 'annulée') : '')
+        : 'Les bons achetés au comptoir, un par ligne — ce que le commerce nous doit, ce que nous devons à la marque.';
+      document.getElementById('tb-rows').innerHTML = ventes.length ? ventes.map(function (v) {
+        return '<tr data-s-at="' + (v.at || 0) + '"><td class="ref">' + esc(v.reference) + '<div class="meta">' + esc(D.dateHeure(v.at)) + '</div></td>' +
+          '<td class="who">' + esc(v.marchand) + '<div class="meta">' + esc(v.modeLbl || '') + '</div></td>' +
+          '<td>' + esc(v.revendeur) + (v.paiement === 'avance' ? '<div class="meta">payé d’avance</div>' : '') + '</td>' +
+          '<td class="num">' + esc(D.eur(v.montant)) + '</td>' +
+          '<td class="num">' + esc(D.eur(v.prixPoint)) + '</td>' +
+          '<td class="num">' + esc(D.eur(v.prixMarque)) + '</td>' +
+          '<td><span class="pec-pill ' + esc(D.techVenteStatutPill(v.statut)) + '">' + esc(D.techVenteStatutLbl(v.statut)) + '</span></td>' +
+          '<td><span class="pec-pill ' + esc((D.TECH_MARQUE_STATUTS[v.marqueStatut] || ['', ''])[1]) + '">' + esc((D.TECH_MARQUE_STATUTS[v.marqueStatut] || [v.marqueStatut || '—'])[0]) + '</span></td></tr>';
+      }).join('') : '<tr><td colspan="8" class="meta" style="text-align:center;padding:18px">Aucune vente pour l’instant — la première apparaîtra ici dès qu’un commerce du réseau vend un bon au comptoir.</td></tr>';
+    }
+    maj();
+    window.addEventListener('pec-bus', maj);
+    window.addEventListener('storage', maj);
+  })();
+</script>
+</body>
+</html>

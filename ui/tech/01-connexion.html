@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Connexion des marques</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-tech.js"></script>
+<script src="../assets/payencash-inscription.js"></script><!-- les portes Google / Apple, communes aux inscriptions et aux connexions -->
+<!-- PAYENCASH SOLUTION — CONNEXION DES MARQUES (refondue le 24/09).
+     UNE MARQUE ENTRE AVEC SON COMPTE : e-mail et mot de passe, ou Google / Apple (le protocole des comptes, espace « marque »).
+     Avant, on entrait avec le seul identifiant MCH-… — sans mot de passe pour un compte né d'une inscription — et la liste des
+     « comptes de cet appareil » ouvrait un espace d'un clic. Les deux portes sont fermées.
+     Une inscription non terminée reprend où elle s'était arrêtée ; un commerce du réseau qui se présente ici est renvoyé vers
+     son app, nommée. Le jeu de démonstration monte la marque de démonstration par le VRAI parcours (compte, puis étapes). -->
+<style>
+  /* ce qui est propre à la connexion — le reste (cartes, champs, portes Google / Apple, feuille) vient de payencash-inscription.css */
+  .pec-ins .lien{display:block;margin:12px auto 0;border:0;background:none;padding:6px;font:inherit;font-size:12px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+  .pec-ins .ok{margin:10px 0 0;padding:9px 11px;border-radius:11px;background:var(--color-mint);color:var(--color-mint-ink);font-size:11.5px;font-weight:700;line-height:1.45}
+  .pec-ins .demo b{font-size:inherit}
+  #tc-demo-ids b{letter-spacing:0;font-size:12px}
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body data-formulaire>
+<div class="pec-scene">
+<div class="pec-device pec-ins pec-etroit" id="tc-cadre" style="position:relative">
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+  <div class="pec-tech-entete" id="tk-entete"></div>
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+    <div class="pec-info-body" style="display:flex;flex-direction:column;gap:14px;padding-bottom:28px">
+
+      <section class="carte" id="tc-carte">
+        <h2>Connexion</h2>
+        <div id="tc-sso-boutons" style="margin-top:12px"></div>
+        <div class="ou">ou avec ton adresse e-mail</div>
+        <div class="champ"><label for="tc-email">E-mail</label><input class="pec-input" id="tc-email" type="email" autocomplete="username" inputmode="email"></div>
+        <div class="champ"><label for="tc-mdp">Mot de passe</label><input class="pec-input" id="tc-mdp" type="password" autocomplete="current-password"></div>
+        <p class="err" id="tc-err" role="alert" hidden></p>
+        <!-- UNE ADRESSE JAMAIS CONFIRMÉE : le code se saisit ICI, sans renvoyer la personne recommencer son inscription -->
+        <div id="tc-code-z" hidden style="margin-top:10px">
+          <p class="demo" id="tc-code-demo">—</p>
+          <div class="champ"><label for="tc-code">Code reçu par e-mail</label><input class="pec-input" id="tc-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+          <div class="actions"><button type="button" class="pec-cta tap" id="tc-code-go">Confirmer et entrer</button></div>
+        </div>
+        <div class="actions"><button type="button" class="pec-cta tap" id="tc-go">Se connecter</button></div>
+        <button type="button" class="lien tap" id="tc-oubli-ouvrir">Mot de passe oublié ?</button>
+        <!-- MOT DE PASSE OUBLIÉ — le code part à l'adresse du compte (le canal qu'il a vérifié), puis le nouveau mot de passe -->
+        <div id="tc-oubli" hidden style="margin-top:6px;padding-top:12px;border-top:1px solid var(--color-sep)">
+          <div class="champ" style="margin-top:0"><label for="tc-oubli-email">E-mail du compte</label><input class="pec-input" id="tc-oubli-email" type="email" autocomplete="username"></div>
+          <div class="actions"><button type="button" class="pec-btn-secondary tap" id="tc-oubli-code-go" style="flex:1">Recevoir un code</button></div>
+          <div id="tc-oubli-suite" hidden>
+            <p class="demo" id="tc-oubli-demo">—</p>
+            <div class="champ"><label for="tc-oubli-code">Code reçu</label><input class="pec-input" id="tc-oubli-code" type="text" inputmode="numeric" maxlength="6" autocomplete="one-time-code"></div>
+            <div class="champ"><label for="tc-oubli-mdp">Nouveau mot de passe</label><input class="pec-input" id="tc-oubli-mdp" type="password" autocomplete="new-password"></div>
+            <div class="actions"><button type="button" class="pec-cta tap" id="tc-oubli-go">Enregistrer et se connecter</button></div>
+          </div>
+          <p class="err" id="tc-oubli-err" role="alert" hidden></p>
+        </div>
+      </section>
+
+      <p style="margin:0;text-align:center;font-size:12px">Pas encore de compte ? <a class="pec-tap-confort" href="00-inscription.html" style="font-weight:800;color:var(--color-primary-dark)">Inscrire ma marque</a></p>
+
+      <!-- LE JEU DE DÉMONSTRATION : la chaîne entière d'un geste, et SEULEMENT sur un geste (zéro seed) -->
+      <section class="carte">
+        <h2 style="font-size:14px">Jeu de démonstration</h2>
+        <p style="margin:6px 0 0;font-size:12px;line-height:1.6;color:var(--color-muted)" id="tc-demo-txt">—</p>
+        <p class="demo" id="tc-demo-ids">—</p>
+        <button type="button" class="pec-btn-secondary tap" id="tc-demo" style="display:block;width:100%;text-align:center;margin-top:10px;font-weight:800">Monter le jeu de démonstration</button>
+        <div class="ok" id="tc-demo-ok" hidden></div>
+      </section>
+    </div>
+  </div>
+  <nav id="tk-menu"></nav>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '01-connexion.html'); T.hero('tk-hero', { teinte: 'porte', titre: 'Ton espace de marque', promesse: 'Tes bons, ton réseau de vente, tes paiements.' }); }
+  if (!D || !D.techRef || !D.ESPACES_COMPTE.marque) return;
+  var esc = D.esc.bind(D);
+  function montrer(id, html) { var z = $(id); if (!z) return; z.hidden = !html; z.innerHTML = html || ''; }
+  function val(id) { return String(($(id) || {}).value || '').trim(); }
+
+  /* ENTRER : le compte ouvre SA fiche de marque ; une inscription non terminée reprend à sa prochaine étape */
+  function entrer(compte) {
+    var m = compte ? D.techMarchandParCompte(compte.id) : null;
+    if (!m) { montrer('tc-err', 'Ce compte n’a pas de fiche de marque : recommence l’inscription.'); return; }
+    if (T) T.entrer(m.id, 'marchand');
+    location.href = m.statut === 'draft' ? '00-inscription.html' : '02-espace.html';
+  }
+  /* UN COMMERCE DU RÉSEAU QUI SE PRÉSENTE ICI : son compte existe, ailleurs — on le nomme, et on l'emmène */
+  /* un compte de partenaire se reconnaît à son identifiant OU à l'adresse de son profil (les plus anciens ont un identifiant à part) */
+  function comptePartenaire(email) {
+    return D.compteParIdentifiant('partenaire', email) || D.comptesTous('partenaire').filter(function (c) { return String((c.profil || {}).email || '').toLowerCase() === email; })[0] || null;
+  }
+  function autrePorte(email) {
+    var p = comptePartenaire(email);
+    if (!p) return false;
+    montrer('tc-err', 'Cette adresse est celle d’un compte de ' + esc(D.terme('commerce')) + ' ou de ' + esc(D.terme('nomade')) + ', pas d’une marque. '
+      + 'Ta porte est l’app des partenaires : <a href="../partenaire/01-connexion.html">l’ouvrir</a>.');
+    return true;
+  }
+  function connecter() {
+    montrer('tc-err', '');
+    var email = val('tc-email').toLowerCase();
+    if (!email) { montrer('tc-err', 'Indique l’adresse e-mail de ton compte.'); $('tc-email').focus(); return; }
+    if (!D.compteParIdentifiant('marque', email)) {
+      if (autrePorte(email)) return;
+      montrer('tc-err', !D.comptesTous('marque').length
+        ? 'Aucun compte de marque sur cet appareil — les données ne voyagent pas d’un navigateur à l’autre. Monte le jeu de démonstration juste en dessous, ou <a href="00-inscription.html">inscris ta marque</a>.'
+        : 'Aucun compte de marque avec cette adresse. <a href="00-inscription.html">Inscrire ma marque</a>');
+      return;
+    }
+    var r = D.compteConnecter('marque', email, $('tc-mdp').value);
+    if (!r.ok && r.aVerifier) { demanderCode(r.compte); return; }
+    if (!r.ok) { montrer('tc-err', esc(r.motif)); return; }
+    entrer(r.compte || D.compteParIdentifiant('marque', email));
+  }
+  /* LE CODE D'UNE ADRESSE NON CONFIRMÉE — le mot de passe a été vérifié AVANT (compteConnecter authentifie avant de parler de
+     l'état du compte : on ne dit pas à un inconnu qu'un compte attend sa confirmation). */
+  var compteCode = null;
+  function demanderCode(c) {
+    compteCode = c;
+    montrer('tc-err', '');
+    $('tc-code-demo').innerHTML = 'Ton adresse n’est pas encore confirmée : un code a été envoyé à ' + esc(c.identifiant) + '. Maquette : aucun e-mail ne part. Code attendu : <b>' + esc(D.compteCodes(c).email) + '</b>.';
+    $('tc-code-z').hidden = false; $('tc-go').hidden = true; $('tc-code').focus();
+  }
+  $('tc-code-go').addEventListener('click', function () {
+    if (!compteCode) return;
+    var v = D.compteVerifier(compteCode.id, 'email', val('tc-code'));
+    if (!v.ok) { montrer('tc-err', esc(v.motif)); return; }
+    var r = D.compteConnecter('marque', compteCode.identifiant, $('tc-mdp').value);
+    if (!r.ok) { montrer('tc-err', esc(r.motif)); return; }
+    entrer(D.compte(compteCode.id));
+  });
+  $('tc-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('tc-code-go').click(); });
+  $('tc-go').addEventListener('click', connecter);
+  $('tc-email').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('tc-mdp').focus(); });
+  $('tc-mdp').addEventListener('keydown', function (e) { if (e.key === 'Enter') connecter(); });
+
+  /* GOOGLE / APPLE — la brique commune : le compte s'ouvre (ou naît, vérifié, sans mot de passe) par le fournisseur */
+  if (window.PEC_INSCRIPTION) {
+    PEC_INSCRIPTION.boutonsSso($('tc-sso-boutons'), 'tc');
+    PEC_INSCRIPTION.sso({ pre: 'tc', racine: $('tc-cadre'), portee: $('tc-sso-boutons'), emailDefaut: function () { return val('tc-email'); },
+      onValider: function (fournisseur, email) {
+        if (comptePartenaire(email) && !D.compteParIdentifiant('marque', email)) { autrePorte(email); return { ok: true }; }
+        var r = D.compteSso('marque', fournisseur, email);
+        if (!r.ok) return r;
+        entrer(r.compte || D.compteParIdentifiant('marque', email));
+        return { ok: true };
+      } });
+  }
+
+  /* MOT DE PASSE OUBLIÉ */
+  var compteOubli = null;
+  $('tc-oubli-ouvrir').addEventListener('click', function () { $('tc-oubli').hidden = !$('tc-oubli').hidden; $('tc-oubli-email').value = val('tc-email'); });
+  $('tc-oubli-code-go').addEventListener('click', function () {
+    montrer('tc-oubli-err', '');
+    var r = D.compteMotDePasseOublie('marque', val('tc-oubli-email').toLowerCase());
+    if (!r.ok) { montrer('tc-oubli-err', esc(r.motif)); return; }
+    if (r.compte.sso && !r.compte.motdepasse) { montrer('tc-oubli-err', 'Ce compte s’ouvre avec ' + esc(D.SSO_FOURNISSEURS[r.compte.sso.fournisseur]) + ' : il n’a pas de mot de passe à réinitialiser.'); return; }
+    compteOubli = r.compte;
+    $('tc-oubli-demo').innerHTML = 'Un code a été envoyé à ' + esc(r.compte.identifiant) + '. Maquette : aucun e-mail ne part. Code attendu : <b>' + esc(r.code) + '</b>. Nouveau mot de passe : ' + D.compteMdpMin('marque') + ' caractères au moins.';
+    $('tc-oubli-suite').hidden = false; $('tc-oubli-code').focus();
+  });
+  $('tc-oubli-go').addEventListener('click', function () {
+    montrer('tc-oubli-err', '');
+    if (!compteOubli) return;
+    var r = D.compteMotDePasseReinitialiser(compteOubli.id, val('tc-oubli-code'), $('tc-oubli-mdp').value);
+    if (!r.ok) { montrer('tc-oubli-err', esc(r.motif)); return; }
+    var c = D.compteConnecter('marque', compteOubli.identifiant, $('tc-oubli-mdp').value);
+    if (!c.ok) { montrer('tc-oubli-err', esc(c.motif)); return; }
+    entrer(D.compte(compteOubli.id));
+  });
+
+  /* ══ LE JEU DE DÉMONSTRATION ═══════════════════════════════════════════════════════════════════════════════ */
+  var TR = (D.comptesDemo || []).filter(function (c) { return /Solution/i.test(c.espace || ''); })[0] || null;
+  $('tc-demo-txt').innerHTML = 'Une <b>marque e-commerce</b>, inscrite par le vrai parcours : compte, entreprise, dirigeante, déclaration. Puis son dossier contrôlé, '
+    + 'ses documents lus et acceptés, son contrat-cadre signé, sa clé d’API. Rien n’existe tant que tu n’as pas cliqué. Les ' + esc(D.terme('commerce', 'pluriel')) + ' et les '
+    + esc(D.terme('nomade', 'pluriel')) + ' naissent de leur inscription dans l’app des partenaires.';
+  $('tc-demo-ids').innerHTML = TR ? 'Ensuite : <b>' + esc(TR.identifiant) + '</b> / <b>' + esc(TR.motdepasse) + '</b>. Maquette : en production, un mot de passe n’est jamais affiché ni stocké en clair.' : '';
+  $('tc-demo').addEventListener('click', function () {
+    var b = this; b.disabled = true; b.textContent = 'Montage…';
+    T.jeuDemo(function (r) {
+      b.disabled = false; b.textContent = 'Remonter le jeu de démonstration';
+      var z = $('tc-demo-ok'); z.hidden = false;
+      if (!r.ok) { z.style.background = 'var(--color-amber-well)'; z.style.color = 'var(--color-amber-text)'; z.textContent = r.motif; return; }
+      /* LE SECRET NE S'AFFICHE QU'ICI, ET QU'UNE FOIS : déjà généré, il ne peut pas être remontré — on le dit. */
+      z.innerHTML = '<b>Jeu monté</b> — ' + esc(r.fait.join(' · ')) + '.'
+        + (r.cle ? '<br>Clé publique : <code style="font-size:11px">' + esc(r.cle.clePublique) + '</code>' : '')
+        + (r.secret ? '<br><b>Clé secrète (montrée une seule fois)</b> : <code style="font-size:11px">' + esc(r.secret) + '</code>' : (r.cle ? '<br>La clé secrète existait déjà : elle n’est pas conservée, donc elle ne peut pas être remontrée.' : ''))
+        + '<br>Les identifiants sont posés dans le formulaire : touche « Se connecter ».';
+      if (TR) { $('tc-email').value = TR.identifiant; $('tc-mdp').value = TR.motdepasse; }
+    });
+  });
+})();
+</script>
+</body>
+</html>

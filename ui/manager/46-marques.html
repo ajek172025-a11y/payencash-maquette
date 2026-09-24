@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Marques</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  PAYENCASH SOLUTION — LES MARQUES, VUES DU MANAGER (23/09, fondatrice : « concentre-toi sur Solution, l'app utilisateur,
+  le manager, le partenaire sédentaire, le partenaire mobile, la vitrine »).
+  IL N'EXISTAIT AUCUN ÉCRAN POUR VALIDER UNE MARQUE : une ligne du banc ou le jeu de démonstration passaient son statut
+  de « en attente » à « validée », et personne d'autre. Ici le manager fait ce que la vraie vie demande, dans l'ordre :
+    ① le DOSSIER (KYB) — le coffre, le même que Vérifications ; ② la DÉCLARATION « réseau limité » — statuée, avec un
+    motif si elle est refusée ; ③ les DOCUMENTS lus et acceptés par la marque, et le CONTRAT-CADRE qu'elle a signé, que
+    nous CONTRESIGNONS ; ④ la VALIDATION (ou la suspension, motivée, ou la réactivation) ; ⑤ ce qu'elle fait : formule,
+    quota du mois, seuil ACPR, RIB.
+  TOUT EST DÉRIVÉ : techMarchands, PEC_DOCS.etat, techConformiteMarchand, documentsEtat, techQuota, techMarchandRib.
+  Les gestes passent par le data-layer, qui refuse et dit pourquoi (valider sans déclaration validée, sans dossier…).
+  (23/09, soir — audit) LE DOSSIER SE CONTRÔLE ICI AUSSI. « Vérifications » ne liste que les dossiers ENVOYÉS — or une marque qui
+  n'a déposé que la pièce d'identité de son dirigeant ne peut pas encore envoyer (il lui manque des pièces) : sa pièce restait
+  hors de portée du contrôleur, et sa dirigeante ne pouvait pas signer. Chaque carte déplie le rendu du coffre en mode
+  manager (ouvrir, valider, refuser, contresigner), pièce par pièce — le même que Vérifications, sur la même donnée.
+-->
+<style>
+  .mq-grille{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:14px}
+  .mq{background:var(--color-card);border-radius:16px;box-shadow:var(--shadow-card);padding:14px 16px}
+  .mq h3{margin:0;font-size:15px;font-weight:800;letter-spacing:-.01em;color:var(--color-ink)}
+  .mq .sub{font-size:11.5px;color:var(--color-muted);margin-top:2px}
+  .mq .l{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--color-sep);font-size:12px}
+  .mq .l:last-child{border-bottom:none}
+  .mq .l b{color:var(--color-ink)}
+  .mq .l .v{text-align:right;color:var(--color-muted);max-width:60%}
+  .mq .acts{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+  .mq .err{margin:8px 0 0;font-size:11.5px;font-weight:700;color:#8E2A1E}
+  .mq textarea{width:100%;border:1.5px solid var(--color-sep);border-radius:10px;padding:8px 10px;font:inherit;font-size:12px;margin-top:6px}
+  .kpis{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 14px}
+  .kpi{background:var(--color-card);border-radius:14px;box-shadow:var(--shadow-card);padding:10px 14px;min-width:140px}
+  .kpi .k{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)}
+  .kpi .v{font-size:20px;font-weight:800;color:var(--color-ink)}
+  .mq-dossier{margin-top:8px;border-top:1px dashed var(--color-sep);padding-top:8px}
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<div class="pec-admin">
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Marques — PayEnCash Solution</h1>
+        <p class="sub">Nous achetons leurs bons, et notre réseau les achète pour les remettre aux clients. Ici : leur dossier, leur déclaration « réseau limité », leurs documents et leur contrat, leur validation — et ce qu’elles font.</p>
+      </div>
+      <div class="pec-topbar-actions" style="display:flex;gap:8px;align-items:center">
+        <select class="pec-search" id="mq-filtre" style="max-width:220px">
+          <option value="">Toutes les marques</option>
+          <!-- (24/09, soir — audit zéro dur) les autres options se posent depuis PEC_DATA.TECH_STATUTS : un seul libellé par statut -->
+        </select>
+      </div>
+    </div>
+
+    <div class="kpis" id="mq-kpis"></div>
+    <div id="mq-msg" hidden class="msg"></div>
+    <div class="mq-grille" id="mq-liste"></div>
+  </main>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, DOCS = window.PEC_DOCS, $ = function (i) { return document.getElementById(i); };
+  if (!D || !D.techMarchands) return;
+  var esc = function (v) { return D.esc(v); };
+  var pill = function (t, cls) { return '<span class="pec-pill ' + cls + '" style="flex:none;font-size:9.5px;padding:3px 8px">' + esc(t) + '</span>'; };
+  var msgs = {};   // le dernier refus par marque, gardé le temps du repeint
+  var ouverts = {};   // les dossiers dépliés, gardés d'un repeint à l'autre (le bus repeint à chaque geste)
+  var QUI = function () { var s = D.session ? D.session() : null; return (s && s.identifiant) || 'manager'; };
+  var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+
+  function peindre() {
+    var f = $('mq-filtre').value, tous = D.techMarchands({}), brouillons = D.techMarchands({ statut: 'draft' });
+    var l = f === 'draft' ? brouillons : f ? tous.filter(function (m) { return m.statut === f; }) : tous;
+    $('mq-kpis').innerHTML = [
+      ['Marques', tous.length], ['Inscriptions à terminer', brouillons.length], ['En attente', tous.filter(function (m) { return m.statut === 'pending'; }).length],
+      ['Validées', tous.filter(function (m) { return m.statut === 'validated'; }).length],
+      ['Suspendues', tous.filter(function (m) { return m.statut === 'suspended'; }).length],
+      ['Bons achetés par le réseau', D.techBons({}).filter(function (b) { return b.etat !== 'cancelled'; }).length]
+    ].map(function (k) { return '<div class="kpi"><div class="k">' + esc(k[0]) + '</div><div class="v">' + esc(String(k[1])) + '</div></div>'; }).join('');
+
+    $('mq-liste').innerHTML = l.length ? l.map(function (m) {
+      /* UNE INSCRIPTION EN COURS : qui (l'adresse du compte), depuis quand, où elle s'est arrêtée — et aucun geste : il n'y a
+         rien à valider tant qu'elle n'est pas envoyée. */
+      if (m.statut === 'draft') {
+        var ins = D.techMarchandInscription(m.id) || { etapes: [] }, faites = ins.etapes.filter(function (e) { return e.ok; }).length;
+        var pro = ins.etapes.filter(function (e) { return e.cle === ins.prochaine; })[0];
+        return '<div class="mq" data-m="' + esc(m.id) + '"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h3>' + esc(m.raisonSociale || m.email || m.id) + '</h3>'
+          + '<div class="sub">' + esc(m.id) + ' · compte ' + esc(m.email || '—') + ' · commencée le ' + esc(D.dateHeure(m.creeLe)) + '</div></div>' + pill(D.techStatutLbl('draft'), 'pec-pill--wait') + '</div>'
+          + '<div class="l"><b>Avancement</b><span class="v">' + faites + ' / ' + ins.etapes.length + ' étapes' + (pro ? ' · prochaine : ' + esc(pro.lbl.toLowerCase()) : '') + '</span></div></div>';
+      }
+      var eD = (DOCS && DOCS.etat) ? DOCS.etat('marchand', m.id) : null;
+      var c = D.techConformiteMarchand(m.id);
+      var docs = D.documentsEtat('marchand', m.id), nOk = docs.filter(function (d) { return d.aJour; }).length;
+      var ct = (DOCS && DOCS.get) ? DOCS.get('marchand', m.id, 'contrat') : null;
+      var q = D.techQuota(m.id) || {}, rib = D.techMarchandRib(m), trav = D.techMarchandPeutTravailler(m.id);
+      /* la pièce d'identité du dirigeant, lue au coffre : c'est elle qui ouvre la signature du contrat-cadre (KYC) */
+      var cni = (DOCS && DOCS.get) ? DOCS.get('marchand', m.id, 'cni') : null;
+      var kycLbl = !DOCS ? '' : (cni ? (cni.statut === 'validee' ? 'pièce d’identité contrôlée' : cni.statut === 'refusee' ? 'pièce d’identité refusée' : 'pièce d’identité déposée, à contrôler') : 'pièce d’identité manquante');
+      var st = [D.techStatutLbl(m.statut), D.techStatutPill(m.statut)];
+      var err = msgs[m.id] ? '<p class="err">' + esc(msgs[m.id]) + '</p>' : '';
+      return '<div class="mq" data-m="' + esc(m.id) + '">'
+        + '<div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><h3>' + esc(m.raisonSociale) + '</h3>'
+        + '<div class="sub">' + esc(m.id) + ' · ' + esc(m.siteUrl || '') + ' · SIRET ' + esc(m.siret || '—')
+        + (m.dirigeant ? ' · dirigeant : ' + esc(m.dirigeant.prenom + ' ' + m.dirigeant.nom) + ' (' + esc(m.dirigeant.qualite) + ')' + (kycLbl ? ' — ' + (cni && cni.statut === 'validee' ? esc(kycLbl) : '<b style="color:var(--color-amber-text)">' + esc(kycLbl) + '</b>') : '') : ' · <b style="color:#8E2A1E">dirigeant non déclaré</b>') + (m.motifSuspension ? ' · <b style="color:#8E2A1E">' + esc(m.motifSuspension) + '</b>' : '') + '</div></div>' + pill(st[0], st[1]) + '</div>'
+        /* ① le dossier */
+        + '<div class="l" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b>Dossier (KYB)</b><span class="v">' + esc(eD ? (eD.libelle || eD.etat) : 'coffre indisponible')
+        + (eD ? ' · <button type="button" class="pec-btn pec-btn--sm tap" data-dossier="' + esc(m.id) + '">' + (ouverts[m.id] ? 'Replier les pièces' : 'Contrôler les pièces') + '</button>' : '') + '</span></div>'
+        + '<div class="mq-dossier" id="mq-dossier-' + esc(m.id) + '"' + (ouverts[m.id] ? '' : ' hidden') + '></div></div>'
+        /* ② la déclaration */
+        + '<div class="l" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b>Déclaration « réseau limité »</b><span class="v">' + esc(c ? (c.statut === 'validated' ? 'validée' : c.statut === 'rejected' ? 'refusée' : 'à statuer') : 'non déposée') + '</span></div>'
+        + (c ? '<div style="font-size:11.5px;color:var(--color-muted);margin-top:4px">« ' + esc(c.usageDeclare) + ' »' + (c.motif ? ' — <b style="color:#8E2A1E">' + esc(c.motif) + '</b>' : '') + '</div>'
+            + (c.statut !== 'validated' ? '<div class="acts"><button type="button" class="pec-btn pec-btn--sm tap" data-decl-ok="' + esc(c.id) + '">Valider la déclaration</button>'
+                + '<button type="button" class="pec-btn pec-btn--sm tap" data-decl-ko="' + esc(c.id) + '">Refuser (motif)</button></div>'
+                + '<textarea data-decl-motif="' + esc(c.id) + '" rows="2" placeholder="Motif du refus — la marque le lit tel quel" hidden></textarea>' : '') : '')
+        + '</div>'
+        /* ③ documents + contrat */
+        + '<div class="l"><b>Documents lus et acceptés</b><span class="v">' + nOk + ' / ' + docs.length + (nOk < docs.length ? ' · ' + docs.filter(function (d) { return !d.aJour; }).map(function (d) { return d.titre; }).join(', ') : '') + '</span></div>'
+        + '<div class="l" style="display:block"><div style="display:flex;justify-content:space-between;gap:10px"><b>Contrat-cadre</b><span class="v">'
+        + (m.contratSigneLe ? 'signé le ' + esc(D.dateHeure(m.contratSigneLe)) + ' par ' + esc(m.contratSignataire || '—') + (ct && ct.contresigne ? ' · contresigné le ' + esc(D.dateHeure(ct.contresigne.at)) : ' · <b style="color:var(--color-amber-text)">à contresigner</b>') : 'non signé') + '</span></div>'
+        + (m.contratSigneLe && !(ct && ct.contresigne) ? '<div class="acts"><button type="button" class="pec-btn pec-btn--sm tap" data-contresigner="' + esc(m.id) + '">Contresigner au nom de ' + esc(D.techRef().nom) + '</button></div>' : '')
+        + '</div>'
+        /* ⑤ ce qu'elle fait */
+        + '<div class="l"><b>Formule · quota</b><span class="v">' + esc((q.formule || {}).nom || '—') + ' · ' + esc(pl(q.emisMois || 0, 'bon')) + (q.max != null ? ' sur ' + q.max : '') + ' ce mois · seuil ACPR ' + esc(String(q.seuilPct || 0).replace('.', ',')) + ' %</span></div>'
+        /* (24/09) LA TVA DES BONS SE QUALIFIE PAR MARQUE (art. 256 ter CGI) : ce qu'elle a déclaré à l'inscription (taux unique, France seule) */
+        + (function () { var tv = D.techMarchandTva ? D.techMarchandTva(m) : null; return tv ? '<div class="l"><b>TVA des bons</b><span class="v" title="' + esc(tv.explication || '') + '">' + (tv.regime ? esc(tv.libelle) + ' (' + esc(tv.regime) + ')' : '<b style="color:var(--color-amber-text)">' + esc(tv.libelle) + '</b>') + '</span></div>' : ''; })()
+        /* (24/09) LES BÉNÉFICIAIRES EFFECTIFS — déclarés et attestés par la marque (prévention de la fraude, art. L561-2-2 CMF pour la définition) */
+        + (function () { var be = D.beneficiairesEtat ? D.beneficiairesEtat(m.beneficiaires, m.dirigeant, m.formeJuridique) : null; if (!be) return '';
+            return '<div class="l"><b>Bénéficiaires effectifs</b><span class="v">' + (be.ok
+              ? (be.ei ? 'entreprise individuelle — le dirigeant' : be.aucun ? 'aucun à 25 % — le représentant légal' : esc(be.personnes.map(function (p) { return p.prenom + ' ' + p.nom + (p.part != null ? ' (' + p.part + ' %)' : ''); }).join(', ')))
+                + (be.attesteLe ? ' · attesté le ' + esc(D.dateCourte(be.attesteLe)) : '')
+              : '<b style="color:var(--color-amber-text)">non déclarés</b>') + '</span></div>'; })()
+        + '<div class="l"><b>Offre · RIB</b><span class="v">' + esc(D.techMarchandMode(m).libelle) + ' · ' + (rib ? esc(rib.ibanMasque || '') : '<b style="color:var(--color-amber-text)">aucun RIB</b>') + '</span></div>'
+        /* ce que le réseau lui a acheté, et ce que nous lui devons encore — sommé des ventes, jamais tenu à part */
+        + (function () { var t = D.techVentesTotaux({ marchandId: m.id }); return '<div class="l"><b>Achats du réseau</b><span class="v">' + (t.ventes ? esc(pl(t.ventes, 'bon')) + ' · ' + esc(D.eur(t.valeur)) + ' · nous lui devons ' + esc(D.eur(t.duMarque)) : 'aucun bon vendu pour l’instant') + '</span></div>'; })()
+        /* (24/09, soir) LES REFUS DE BONS VALIDES, signalés par les porteurs et notés par la hotline (techRefusSignales) */
+        + (function () { var rs = D.techRefusSignales ? D.techRefusSignales(m.id) : []; if (!rs.length) return '';
+            var notes = rs.filter(function (x) { return x.refusNote; }).length;
+            return '<div class="l"><b>Bons refusés signalés</b><span class="v"><b style="color:var(--color-amber-text)">' + rs.length + '</b> · ' + notes + ' noté' + (notes > 1 ? 's' : '') + ' par la hotline comme refus d’un bon valide</span></div>'; })()
+        + '<div class="l"><b>Peut travailler avec nous</b><span class="v">' + (trav.ok ? 'oui' : esc(trav.manque.map(function (x) { return x.libelle; }).join(' · '))) + '</span></div>'
+        /* ④ les gestes */
+        + '<div class="acts">'
+        + (m.statut !== 'validated' && m.statut !== 'suspended' ? '<button type="button" class="pec-btn pec-btn--sm tap" data-valider="' + esc(m.id) + '">Valider la marque</button>' : '')
+        + (m.statut === 'validated' ? '<button type="button" class="pec-btn pec-btn--sm tap" data-suspendre="' + esc(m.id) + '">Suspendre (motif)</button>' : '')
+        + (m.statut === 'suspended' ? '<button type="button" class="pec-btn pec-btn--sm tap" data-reactiver="' + esc(m.id) + '">Réactiver</button>' : '')
+        + '</div>'
+        + '<textarea data-susp-motif="' + esc(m.id) + '" rows="2" placeholder="Motif de la suspension — la marque le lit tel quel" hidden></textarea>'
+        + err + '</div>';
+    }).join('') : '<p style="font-size:12.5px;color:var(--color-muted)">Aucune marque' + (f ? ' dans cet état' : ' inscrite') + '. Une marque naît de son inscription dans PayEnCash Solution — jamais d’une liste écrite.</p>';
+    /* LES DOSSIERS DÉPLIÉS SE REMONTENT APRÈS LA PEINTURE : le rendu du coffre (mode manager) porte ses propres gestes —
+       ouvrir, valider, refuser avec motif, contresigner — et rappelle `peindre` à chaque changement. */
+    Object.keys(ouverts).forEach(function (id) {
+      var z = $('mq-dossier-' + id); if (!z || !ouverts[id] || !DOCS || !DOCS.rendreDossier) return;
+      DOCS.rendreDossier(z, 'marchand', id, { manager: true, par: QUI(), onChange: function () { setTimeout(peindre, 30); } });
+    });
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target, dz = t.closest ? t.closest('[data-dossier]') : null;
+    if (dz) { var idD = dz.getAttribute('data-dossier'); ouverts[idD] = !ouverts[idD]; peindre(); return; }
+    var el = t.closest ? t.closest('[data-valider],[data-suspendre],[data-reactiver],[data-decl-ok],[data-decl-ko],[data-contresigner]') : null;
+    if (!el) return;
+    var id = el.getAttribute('data-valider') || el.getAttribute('data-suspendre') || el.getAttribute('data-reactiver') || el.getAttribute('data-contresigner');
+    var r = null;
+    if (el.hasAttribute('data-valider')) r = D.techMarchandValider(id, QUI());
+    else if (el.hasAttribute('data-reactiver')) r = D.techMarchandReactiver(id, QUI());
+    else if (el.hasAttribute('data-suspendre')) {
+      var ta = document.querySelector('[data-susp-motif="' + id + '"]');
+      if (ta && ta.hidden) { ta.hidden = false; ta.focus(); return; }   // premier clic : on demande le motif ; second : on suspend
+      r = D.techMarchandSuspendre(id, ta ? ta.value : '', QUI());
+    }
+    else if (el.hasAttribute('data-contresigner')) {
+      try { var p = DOCS.contresigner('marchand', id, 'contrat', QUI()); if (p && p.then) { p.then(function () { msgs[id] = null; peindre(); }, function (x) { msgs[id] = String((x && x.message) || x); peindre(); }); return; } r = p || { ok: true }; } catch (ex) { r = { ok: false, motif: ex.message }; }
+    }
+    else {
+      var cid = el.getAttribute('data-decl-ok') || el.getAttribute('data-decl-ko'), ok = el.hasAttribute('data-decl-ok');
+      var tm = document.querySelector('[data-decl-motif="' + cid + '"]');
+      if (!ok && tm && tm.hidden) { tm.hidden = false; tm.focus(); return; }
+      r = D.techConformiteStatuer(cid, ok, tm ? tm.value : '', QUI());
+      var card = el.closest('.mq'); id = card ? card.getAttribute('data-m') : id;
+    }
+    if (r && r.ok === false) msgs[id] = r.motif; else msgs[id] = null;
+    peindre();
+  });
+  /* le filtre propose les statuts du référentiel, dans leur ordre de vie : inscription, vérification, validée, suspendue */
+  ['draft', 'pending', 'validated', 'suspended'].forEach(function (s) { var o = document.createElement('option'); o.value = s; o.textContent = D.techStatutLbl(s); $('mq-filtre').appendChild(o); });
+  $('mq-filtre').addEventListener('change', peindre);
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

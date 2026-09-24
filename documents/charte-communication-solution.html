@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Charte de communication — PayEnCash Solution</title>
+<style>
+  :root{
+    --ajek:#10A06A; --ajek-d:#0C7F54; --ink:#1a1f1c; --muted:#5b675f;
+    --line:#d9e5dd; --bg:#f4f7f5; --card:#ffffff; --chip:#e8f3ec;
+    --amber:#E39A2E; --amberink:#8a5a00; --amberbg:#FDF1E7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ink:#e8efe9; --muted:#9fb0a6; --line:#254034; --bg:#0d1512; --card:#121d18; --chip:#173026; --amberink:#e8c37a; --amberbg:#2a2410; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .sheet{max-width:860px;margin:28px auto;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,.06)}
+  header{background:linear-gradient(115deg,#0F2A24 0%,var(--ajek-d) 55%,var(--ajek) 100%);color:#fff;padding:26px 44px}
+  .brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
+  header h1{margin:6px 0 2px;font-size:22px;line-height:1.25}
+  .doc-id{display:inline-block;margin-top:10px;background:rgba(255,255,255,.18);
+    padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.04em}
+  .body{padding:26px 44px 44px}
+  .note{background:var(--chip);border:1px solid var(--line);border-left:3px solid var(--ajek);
+    border-radius:8px;padding:12px 14px;font-size:13.5px;color:var(--muted);margin:0 0 16px}
+  .warn{background:var(--amberbg);border:1px solid var(--amber);border-left:4px solid var(--amber);
+    border-radius:8px;padding:12px 14px;font-size:13px;color:var(--amberink);margin:0 0 20px}
+  h2{font-size:15.5px;margin:26px 0 8px;color:var(--ajek-d);border-bottom:2px solid var(--line);padding-bottom:6px}
+  h2 .art{font-weight:400;color:var(--muted);font-size:12px}
+  @media (prefers-color-scheme: dark){ h2{color:#5fd39a} }
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border:1px solid var(--line);vertical-align:top}
+  th{background:var(--chip);font-weight:600;color:var(--ink)}
+  ul,ol{margin:6px 0 6px 2px;padding-left:20px} li{margin:5px 0} p{margin:7px 0}
+  .fill{color:var(--muted);font-style:italic}
+  .cl{margin:6px 0}
+  .cl b{color:var(--ajek-d)} @media (prefers-color-scheme: dark){ .cl b{color:#5fd39a} }
+  .toc{columns:2;column-gap:26px;font-size:13px;margin:6px 0 4px;padding:12px 16px;background:var(--chip);border:1px solid var(--line);border-radius:8px}
+  .toc a{display:block;color:var(--ink);text-decoration:none;margin:3px 0;break-inside:avoid}
+  .toc a:hover{color:var(--ajek);text-decoration:underline}
+  .foot{margin-top:26px;padding-top:14px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+  .toolbar{max-width:860px;margin:16px auto 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:0 8px}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;text-decoration:none}
+  .btn.p{background:var(--ajek);color:#fff;border-color:var(--ajek)}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+  @media print{ body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;border:none;margin:0} h2{break-after:avoid} .cl{break-inside:avoid} }
+</style>
+<style>
+  .sev{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em}
+  .s1{background:#FDECEC;color:#B3261E}.s2{background:#FDF1E7;color:#8a5a00}.s3{background:#E8F3EC;color:#0C7F54}
+  .ok{color:#0C7F54;font-weight:700}.ko{color:#B3261E;font-weight:700}.pa{color:#8a5a00;font-weight:700}
+  .toc a{display:block;padding:3px 0;color:var(--ajek-d);text-decoration:none}
+  h3{font-size:14px;margin:16px 0 6px}
+  .ref{font-size:12px;color:var(--muted)}
+</style>
+<script src="../ui/assets/payencash-icons.js"></script>
+<script src="../ui/assets/payencash-data.js"></script>
+</head>
+<body>
+<div class="toolbar"><a class="btn" href="../index.html">← payencash.fr</a><a class="btn" href="cgu-espace-solution.html">CGU de l'espace</a><a class="btn" href="conditions-bons-de-marque.html">Annexe 1 · Conditions des bons</a><a class="btn" href="conditions-logiciel-solution.html">Annexe 2 · Logiciel</a><button class="btn p" onclick="window.print()">Imprimer / PDF</button></div>
+<div class="sheet">
+<header>
+  <div class="brand">AJEK · marque PayEnCash</div>
+  <h1>Charte de communication<br><span style="font-weight:400;font-size:16px">annexe 3 au contrat-cadre d’achat et de distribution des bons d’achat</span></h1>
+  <span class="doc-id">Version 2026-09-23 · en vigueur</span>
+</header>
+<div class="body">
+<!-- (23/09) LA CHARTE DE COMMUNICATION : ce que la Marque a le droit de dire de PayEnCash Solution, et ce qu'elle ne
+     dit jamais. Le cadre ACPR ne se joue pas seulement dans nos écrans : une marque qui présente PayEnCash comme
+     « un moyen de paiement » ou « un portefeuille » nous expose autant qu'elle. Les mots interdits sont ceux que la
+     fondatrice a bannis le 23/09 ; les mots justes sont ceux du grossiste.
+     (23/09, soir) LE SLOGAN ET LA VALIDITÉ SONT ÉCRITS : le lecteur de Compte › Documents retire les scripts, et la
+     marque acceptait une charte dont le slogan était « — ». Le script, page ouverte seule, relit `slogan()` et
+     `bonsRef().validiteMois` et signale une différence — il ne réécrit pas un texte versionné. -->
+
+<div class="note"><b>Ce que fixe cette annexe.</b> Les mots avec lesquels la Marque parle de PayEnCash Solution à ses clients et sur ses réseaux, ceux qu'elle n'emploie jamais, et les mentions qui figurent sur tout visuel. Elle est lue jusqu'au bout et acceptée dans l'Espace ; un manquement est traité à l'article 7.</div>
+
+<h2>1 · Ce que nous sommes, dit avec les bons mots</h2>
+<p><b>1.1</b> <span data-societe="nom">AJEK</span>, sous la marque <b>PayEnCash Solution</b>, est <b>grossiste</b> : elle achète les bons d’achat de la Marque au moment où un commerce de son réseau les vend, avec une remise sur le prix d'achat figée à la vente, et elle paie la Marque à l'échéance de l'offre que celle-ci a choisie. La Marque utilise d’une part la technologie d’édition de ses bons, d’autre part ce réseau.</p>
+<p><b>1.2</b> Formules autorisées : « bon d’achat <i>Marque</i>, vendu par le réseau PayEnCash » ; « disponible au comptoir des commerces du réseau PayEnCash » ; « valable uniquement sur <i>site de la Marque</i> » ; « s'utilise depuis l'app Mes bons » ; le slogan en vigueur : « <b>Vos bons d’achat, notre réseau</b> » (à la date de la présente version — l'Espace fait foi).</p>
+<p><b>1.3</b> Pour un bon qu'elle propose à un client (sa commande, son devis), la Marque dit « <b>bon proposé</b> » et « <b>lien de vente</b> ». Elle n'écrit jamais « demande de paiement », « lien de paiement » ni « page de paiement » : la page ouverte par le client ne demande aucun paiement et n'encaisse rien — elle dit où acheter le bon et avec quoi l'utiliser.</p>
+
+<h2>2 · Ce que la Marque ne dit jamais</h2>
+<ul>
+<li>Présenter PayEnCash comme un <b>moyen de paiement</b>, un <b>service de paiement</b>, un <b>portefeuille</b>, un <b>wallet</b>, un <b>compte</b>, une <b>cagnotte</b>, de la <b>monnaie électronique</b> ou une <b>carte prépayée</b>.</li>
+<li>Promettre que l’on « paie sans carte » ou « sans donnée bancaire » : le bon s’achète au comptoir d’un commerce, qui encaisse avec ses propres moyens ; la Marque ne décrit pas comment le client règle.</li>
+<li>Laisser croire que le bon est <b>rechargeable</b>, <b>remboursable en espèces</b>, <b>échangeable</b>, ou utilisable <b>ailleurs</b> que sur son propre site.</li>
+<li>Employer « commission », « reversement », « nous reversons », « encaissement pour votre compte » pour décrire la relation : <span data-societe="nom">AJEK</span> <b>achète</b> les bons et <b>paie</b> la Marque.</li>
+<li>Écrire « bons illimités » sans l'astérisque de la formule, ni « un million de bons » : la limite est une valeur (1 000 000 € de bons vendus sur douze mois), pas un nombre.</li>
+</ul>
+
+<h2>3 · Mentions obligatoires sur tout visuel</h2>
+<p>Le nom de la Marque émettrice ; le site sur lequel le bon est valable ; sa durée de validité (<b>12 mois</b> à la date de la présente version — l'application fait foi) ; la mention « ni remboursable en espèces, ni rendu de monnaie » ; « s'utilise depuis l'app Mes bons » ; la marque PayEnCash Solution telle que fournie par l’Espace (logo et graphie), sans altération.</p>
+
+<h2>4 · Prix et remises</h2>
+<p>Un prix barré n’est affiché que si une remise est réellement consentie par la Marque sur ce bon ; sans remise, aucun faux rabais : le visuel propose le bon comme un cadeau. Les prix sont ceux de la Marque, toutes taxes comprises. Les tailles disponibles s'affichent avec leurs quantités, telles que l'Espace les dérive.</p>
+
+<h2>5 · Réseaux sociaux</h2>
+<p>Les visuels et vidéos générés par l’Espace peuvent être publiés sur les comptes reliés par la Marque. Le lien de vente qui les accompagne est le seul lien à diffuser ; il ne doit pas être modifié.</p>
+
+<h2>6 · Le site web compris dans la formule illimitée</h2>
+<p>Le site servi par l'Espace sur le nom de domaine de la Marque est dérivé de son espace (articles, lien de vente, réseau, mentions du bon). Il porte les mêmes mots que la présente charte ; il n'encaisse rien et mène au bon d'achat, qui s'achète au comptoir d'un commerce du réseau.</p>
+
+<h2>7 · Manquement</h2>
+<p>Une communication contraire à la présente charte est signalée à la Marque, qui la corrige sans délai. En cas de récidive, <span data-societe="nom">AJEK</span> peut suspendre l’édition des bons jusqu’à correction, dans les conditions du contrat-cadre.</p>
+
+<h2>8 · Lecture et acceptation</h2>
+<p>Le présent document est <b>consulté dans l’Espace jusqu'à sa fin</b>, puis reconnu « lu et accepté » dans sa version en vigueur, avec la date et l'identifiant du compte. Une nouvelle version est présentée à nouveau à la lecture et soumise à une nouvelle acceptation.</p>
+
+<div class="foot"><b>Version 2026-09-23.</b> Annexe de travail au contrat-cadre — <b>à faire relire par un avocat avant tout emploi réel</b>. Le slogan et la durée de validité cités sont ceux de la présente version ; l'Espace et l'application affichent les valeurs en vigueur.</div>
+<div id="charte-vive" class="note" hidden style="margin-top:12px"></div>
+</div></div>
+<script>
+/* Page ouverte seule : on relit le référentiel et on SIGNALE une différence avec le texte (le lecteur de l'app retire ce
+   script : la marque accepte ce qui est écrit). */
+(function () {
+  var D = window.PEC_DATA; if (!D || !D.techRef) return;
+  var slogan = D.slogan ? D.slogan() : '', validite = D.bonsRef ? D.bonsRef().validiteMois : null, nom = (D.techRef() || {}).nom;
+  var ecarts = [];
+  if (slogan && slogan !== 'Vos bons d’achat, notre réseau') ecarts.push('slogan en vigueur : « ' + D.esc(slogan) + ' »');
+  if (validite != null && +validite !== 12) ecarts.push('validité en vigueur : ' + D.esc(String(validite)) + ' mois');
+  if (nom && nom !== 'PayEnCash Solution') ecarts.push('nom en vigueur : ' + D.esc(nom));
+  var z = document.getElementById('charte-vive');
+  if (z && ecarts.length) { z.hidden = false; z.innerHTML = '<b>Le référentiel ne dit plus ce que cette version écrit</b> — ' + ecarts.join(' ; ') + '. Une nouvelle version de cette charte doit être publiée et présentée à l’acceptation.'; }
+  if (D.societeAppliquer) D.societeAppliquer(document);
+})();
+</script>
+</body>
+</html>

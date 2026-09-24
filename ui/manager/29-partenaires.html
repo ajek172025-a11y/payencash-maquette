@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Commerces du réseau</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  COMMERCES DU RÉSEAU — route /partenaires.
+  (23/09 — pivot grossiste) LE RÉSEAU QUI VEND LES BONS DES MARQUES : des commerces SÉDENTAIRES (tabac, presse,
+  épicerie — le client s'y rend) et des commissionnaires NOMADES (micro-entrepreneurs qui se déplacent). Les deux
+  signent le même contrat de distribution ; ce qui les sépare, c'est comment ils nous règlent : le sédentaire vend
+  d'abord et nous le prélevons après l'arrêté (mandat SEPA, encours plafonné, suspension à l'impayé) ; le nomade
+  achète ses bons D'AVANCE (garantie + versements d'avance) — aucun impayé possible de son côté.
+  UN COMMERCE A DEUX LIGNES QUI PARLENT DE LA MÊME ENTREPRISE : le POINT (inscription dans l'app, dossier de
+  vérification au coffre, contrat de distribution signé, activation par le manager — partenaires()) et son inscription
+  au RÉSEAU DES MARQUES (techRevendeurs : mandat SEPA ou avance, encours, ventes), rattachée par `partenaireId`.
+  Ce que le manager fait ICI : valider les candidatures de comptes (le dossier du coffre est LU, jamais décrété),
+  activer / refuser / suspendre / réactiver / clôturer un point — motivé, journalisé —, lire ce que chaque commerce
+  nous doit, ce qu'il a vendu, son mandat ou son avance, et surveiller les rencontres des nomades (annuler, motivé).
+  Zéro seed : un commerce naît de son inscription dans l'app partenaire — jamais d'ici.
+  Et on ne dit JAMAIS ici COMMENT le client règle son bon au comptoir : c'est l'affaire du commerce, pas la nôtre.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `partners`, `tech_resellers`, `tech_sales`, `tech_sepa_mandates`, `tech_advance_movements`, `tech_meetings`, `accounts`, `kyc_documents`, `audit_log` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Commerces du réseau</h1>
+        <p class="sub">Sédentaires et nomades : ils vendent les bons des marques au comptoir, nous les achetons à la marque à ce moment-là, et ils nous règlent leur prix d’achat — par prélèvement après l’arrêté, ou d’avance. Candidatures, activation, suspension, mandat, encours, ventes : tout se pilote ici ; l’app partenaire lit ce même référentiel.</p>
+      </div>
+      <div class="pec-topbar-actions"><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="45-solution-paiements.html">Prélèvements &amp; paiements →</a></div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:16px">
+      <div class="pec-kpi"><div class="lbl">Vendent</div><div class="val" id="pa-actifs">—</div><div class="hint" id="pa-actifs-hint">validés au réseau des marques</div></div>
+      <div class="pec-kpi"><div class="lbl">En intégration</div><div class="val" id="pa-integration">—</div><div class="hint" id="pa-integration-hint">contrat, dossier, vérification — la vente n’est pas ouverte</div></div>
+      <div class="pec-kpi"><div class="lbl">Suspendus</div><div class="val" id="pa-suspendus">—</div><div class="hint">vente coupée — les bons déjà vendus restent valables</div></div>
+      <div class="pec-kpi" id="pa-encours-kpi"><div class="lbl">Ce que le réseau nous doit</div><div class="val" id="pa-encours">—</div><div class="hint" id="pa-encours-hint">bons vendus, pas encore prélevés</div></div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div><b>Le cycle d'un commerce :</b> il naît de son <b>inscription</b> dans l'app partenaire (compte à valider ci-dessous) · il dépose son dossier (Kbis, pièce d'identité du gérant, vidéo), contrôlé dans <a href="42-verifications.html">Vérifications</a> · il signe le <b>contrat de distribution</b> · le manager <b>active</b> le point ici — c'est l'activation qui ouvre la vente · il rejoint le <b>réseau des marques</b> depuis son app et signe son mandat SEPA (ou verse sa garantie s'il est nomade). Ensuite, à chaque bon vendu, il nous doit son prix d'achat jusqu'au prélèvement de l'arrêté ; un impayé le suspend jusqu'à régularisation. Chaque transition est un clic tracé, jamais une bascule automatique.</div>
+    </div>
+
+    <!-- CANDIDATURES : comptes créés dans l'app partenaire, e-mail confirmé — DÉRIVÉ de comptesAValider('partenaire').
+         Valider = compteValider(id, moi, {kyb:true}) : le data-layer LIT le dossier du coffre et rattache (ou crée) le point
+         « contrat à signer » ; refuser exige un motif que le candidat lit. -->
+    <div class="pec-panel" style="margin-bottom:16px" id="pc-panel">
+      <div class="pec-panel-head">
+        <div><h2>Candidatures à valider <span class="pec-pill" id="pc-n" style="background:var(--color-amber-well);color:var(--color-amber-text)">0</span></h2><p class="s">Comptes créés dans l'app partenaire, e-mail confirmé — dossier de vérification à contrôler pièce par pièce dans <a href="42-verifications.html">Vérifications</a> : la validation le LIT, elle ne le décrète pas. Valider rattache le compte à son point (ou le crée, « contrat à signer »).</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#pc-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#pc-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <div id="pc-msg" hidden class="meta" style="background:#FDECEA;border:1px solid #F0B4AC;border-radius:10px;padding:9px 12px;margin:0 0 10px;color:#8E2A1E;font-weight:700"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Enseigne</th><th>Mode · ville</th><th>Responsable</th><th>SIRET</th><th>Créé le</th><th>Dossier</th><th>Actions</th></tr></thead>
+          <tbody id="pc-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Le réseau</h2><p class="s" id="pa-sub">Chaque commerce : son point (contrat, dossier, statut), son inscription au réseau des marques (mandat ou avance, encours), ce qu'il a vendu ce mois — et les gestes du cycle de vie. Un refus du data-layer s'affiche tel quel sous la liste.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#pa-rows tr" placeholder="Rechercher un commerce, une ville, un SIRET…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#pa-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <div class="pec-table-defile">
+        <table data-fsortable class="pec-table">
+          <!-- (24/09, nuit — audit de mise en page à 1280 px) neuf colonnes débordaient de 430 px : l'identité du commerce (mode,
+               lieu, contact) tient dans SA cellule, les actions s'empilent, et si une ligne reste trop large, c'est la bande
+               de la table qui défile — jamais la page -->
+          <thead><tr><th>Commerce</th><th>Point</th><th>Réseau des marques</th><th>Mandat · avance</th><th class="num">Nous doit</th><th class="num">Ventes du mois</th><th>Actions</th></tr></thead>
+          <tbody id="pa-rows" data-fpage="15"></tbody>
+        </table>
+        </div>
+        <!-- UN GESTE MOTIVÉ SE CONFIRME ICI (refuser, suspendre, clôturer) : le motif est lu par le commerce, il n'est jamais optionnel. -->
+        <div id="pa-act-form" hidden style="margin-top:12px;border:1px solid var(--color-sep);border-radius:10px;padding:10px 12px;background:var(--color-surface)">
+          <div style="font-weight:700;font-size:12.5px" id="pa-act-titre">—</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+            <input class="pec-search" id="pa-act-motif" placeholder="motif (obligatoire — le commerce le lira)" aria-label="Motif" style="min-width:320px;flex:1">
+            <button type="button" class="pec-btn pec-btn--sm tap" id="pa-act-go">Confirmer</button>
+            <button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" id="pa-act-annuler">Annuler</button>
+          </div>
+        </div>
+        <div id="pa-msg" hidden class="meta" style="border-radius:10px;padding:9px 12px;margin:10px 0 0;font-weight:700"></div>
+      </div>
+    </div>
+
+    <!-- FICHE DU POINT — champs d'identité (partenaireEnregistrer), dossier du coffre (rendreDossier manager:true), contrat de
+         distribution (lire, contresigner), acceptations des documents en vigueur. Le STATUT ne se choisit pas dans un menu :
+         il se fait par son geste (Activer / Suspendre / Réactiver / Clôturer), motivé et journalisé. -->
+    <div class="pec-panel" id="pa-form" hidden style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2 id="pa-form-titre">Fiche du point</h2><p class="s" id="pa-form-sub">Un point naît de l'inscription dans l'app partenaire — ici on corrige sa fiche, on lit son dossier et son contrat.</p></div></div>
+      <div class="pec-panel-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:760px">
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">Enseigne<input class="pec-search" id="paf-enseigne" style="width:100%;margin-top:4px" placeholder="ex. Tabac de la Plaine"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">SIRET (14 chiffres)<input class="pec-search" id="paf-siret" inputmode="numeric" style="width:100%;margin-top:4px" placeholder="identifie le distributeur au contrat"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">Adresse<input class="pec-search" id="paf-adresse" style="width:100%;margin-top:4px" placeholder="n°, rue (un nomade n'en a pas)"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">Code postal<input class="pec-search" id="paf-cp" inputmode="numeric" style="width:100%;margin-top:4px" placeholder="13001"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">Ville<input class="pec-search" id="paf-ville" style="width:100%;margin-top:4px" placeholder="Marseille"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">Responsable (gérant·e)<input class="pec-search" id="paf-responsable" style="width:100%;margin-top:4px" placeholder="tel que sur le Kbis"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">Téléphone<input class="pec-search" id="paf-tel" type="tel" style="width:100%;margin-top:4px" placeholder="ligne du commerce"></label>
+          <label style="font-size:12px;font-weight:700;color:var(--color-muted)">E-mail<input class="pec-search" id="paf-email" type="email" style="width:100%;margin-top:4px" placeholder="identifiant du gérant"></label>
+        </div>
+        <div class="meta" id="paf-etat" style="margin-top:10px">—</div>
+        <div style="display:flex;gap:10px;margin-top:12px;align-items:center;flex-wrap:wrap">
+          <button class="pec-btn pec-btn--sm tap" id="paf-enregistrer">Enregistrer la fiche</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" id="paf-fermer">Fermer</button>
+          <span class="meta" id="paf-msg" style="font-weight:700"></span>
+        </div>
+
+        <div style="margin-top:16px;border-top:1px solid var(--color-sep);padding-top:14px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted);margin-bottom:8px">Contrat de distribution</div>
+          <div id="paf-contrat" class="meta">—</div>
+          <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" id="paf-contrat-lire">Lire le contrat signé</button>
+            <button type="button" class="pec-btn pec-btn--sm tap" id="paf-contrat-cosigner">Contresigner pour PayEnCash</button>
+          </div>
+        </div>
+
+        <div style="margin-top:16px;border-top:1px solid var(--color-sep);padding-top:14px">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted);margin-bottom:8px">Dossier de vérification du point</div>
+          <div id="paf-dossier"></div>
+          <div id="paf-acceptations" class="meta" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LES RENCONTRES DES NOMADES — un utilisateur demande qu'un commissionnaire nomade vienne lui vendre le bon d'une
+         marque. Le manager les VOIT toutes ; il ne peut qu'ANNULER, en motivant, ce que personne n'honore. TOUT EST DÉRIVÉ
+         (techRencontresGet, l'expiration se calcule) : rien n'est écrit ici. ══ -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Rencontres — commissionnaires nomades</h2>
+        <p class="s">Ce que les utilisateurs demandent, qui l'a pris, et où ça en est. Un nomade de marque ne partage pas sa position : aucune heure n'est inventée.</p></div>
+        <div class="pec-topbar-actions"><span class="pec-pill" id="rc-fenetre">—</span></div>
+      </div>
+      <div class="pec-panel-body">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px">
+          <div class="pec-panel" style="padding:11px 13px"><p class="pec-section-label" style="margin:0 0 2px">EN ATTENTE</p><div style="font-size:22px;font-weight:800" id="rc-k-att">—</div><div class="meta" id="rc-k-att-s">—</div></div>
+          <div class="pec-panel" style="padding:11px 13px"><p class="pec-section-label" style="margin:0 0 2px">PRISES</p><div style="font-size:22px;font-weight:800" id="rc-k-pri">—</div><div class="meta" id="rc-k-pri-s">—</div></div>
+          <div class="pec-panel" style="padding:11px 13px"><p class="pec-section-label" style="margin:0 0 2px">SERVIES</p><div style="font-size:22px;font-weight:800" id="rc-k-srv">—</div><div class="meta" id="rc-k-srv-s">—</div></div>
+          <div class="pec-panel" style="padding:11px 13px"><p class="pec-section-label" style="margin:0 0 2px">SANS PRENEUR</p><div style="font-size:22px;font-weight:800" id="rc-k-exp">—</div><div class="meta" id="rc-k-exp-s">—</div></div>
+        </div>
+        <input class="pec-search" type="search" data-fsearch="#rc-rows tr" placeholder="Rechercher une rencontre, une marque, un nomade…" aria-label="Rechercher dans cette liste" style="max-width:420px;margin-bottom:10px">
+        <div class="meta" data-fvide="#rc-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Référence</th><th>Marque</th><th>Où · quand</th><th>Nomade</th><th class="num">Bon à remettre</th><th>État</th><th>Où ça en est</th><th></th></tr></thead>
+          <tbody id="rc-rows" data-fpage="15"></tbody>
+        </table>
+        <div id="rc-vide" hidden class="meta" style="padding:10px 0">Aucune rencontre pour l'instant — elles apparaissent dès qu'un utilisateur en demande une depuis la page d'un bon proposé par une marque.</div>
+        <div id="rc-act" hidden style="margin-top:12px;border:1px solid var(--color-sep);border-radius:10px;padding:10px 12px;background:var(--color-surface)">
+          <div style="font-weight:700;font-size:12.5px" id="rc-act-t">—</div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px">
+            <input class="pec-search" id="rc-act-motif" placeholder="motif (obligatoire — l’utilisateur et le nomade le liront)" aria-label="Motif" style="min-width:320px;flex:1">
+            <button type="button" class="pec-btn pec-btn--sm tap" id="rc-act-go">Confirmer l'annulation</button>
+            <button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" id="rc-act-non">Annuler</button>
+          </div>
+        </div>
+        <div id="rc-msg" hidden class="meta" style="border-radius:10px;padding:9px 12px;margin:10px 0 0;font-weight:700"></div>
+      </div>
+    </div>
+
+    <div class="pec-notice">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Activer sans contrat signé ni dossier validé, c'est ouvrir la vente sans contrôle.</b> Le data-layer le refuse et dit pourquoi : un point ne passe « Actif » qu'avec le contrat de distribution signé ET un dossier de vérification validé (Kbis, pièce du gérant, vidéo). Et un commerce validé au réseau des marques ne vend qu'avec son mandat SEPA signé (ou sa garantie versée s'il est nomade), aucun impayé en cours et un encours sous le plafond — la règle vit dans le data-layer, l'écran ne fait que la lire.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  /* LE RÉSEAU ET LES GESTES DU CYCLE DE VIE. Tout vient de techRevendeurs (le réseau des marques : mandat, avance, encours,
+     ventes) et de partenaires() (le point : contrat lu au coffre, KYB dérivé du coffre) ; chaque geste passe par SA porte
+     (partenaireActiver / Refuser / Suspendre / Reactiver / Cloturer / Enregistrer) et son refus est affiché mot pour mot. */
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.techRevendeurs) return;
+    var editId = null, action = null;
+    function $(id) { return document.getElementById(id); }
+    function esc(s) { return D.esc(s); }
+    function acteur() { return (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)'; }
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    function points() { return D.partenaires ? D.partenaires() : []; }
+    function point(id) { return (id && D.partenaire) ? D.partenaire(id) : null; }
+    function comptesDuPoint(id) { return (D.comptesTous('partenaire') || []).filter(function (c) { return c.refId === id || (c.profil || {}).pointId === id; }); }
+    function message(txt, ok) {
+      var z = $('pa-msg'); if (!z) return;
+      if (!txt) { z.hidden = true; z.innerHTML = ''; return; }
+      z.hidden = false; z.innerHTML = txt;
+      z.style.background = ok ? 'var(--color-mint, #E7F4ED)' : '#FDECEA'; z.style.border = ok ? '1px solid var(--color-primary)' : '1px solid #F0B4AC'; z.style.color = ok ? 'var(--color-primary-dark, #1E7A50)' : '#8E2A1E';
+    }
+    function kybPill(p) {
+      if (p.kyb === 'valide') return '<span class="pec-pill pec-pill--done" title="' + esc(p.kybDetail || '') + '">Dossier validé</span>';
+      var lbl = { a_completer: 'dossier incomplet', a_soumettre: 'à envoyer', en_verification: 'en contrôle', a_corriger: 'pièce refusée' }[p.kyb] || 'à vérifier';
+      return '<span class="pec-pill pec-pill--wait" title="' + esc(p.kybDetail || '') + '">' + esc(lbl) + '</span>';
+    }
+    /* LE RÉSEAU = l'union des deux lignes : chaque inscription au réseau des marques (RVD) avec son point (PRT) rattaché par
+       partenaireId ou par SIRET, puis les points qui ne sont pas encore inscrits au réseau des marques. */
+    function lignes() {
+      var pts = points(), vus = {}, out = [];
+      D.techRevendeurs({}).forEach(function (r) {
+        var p = point(r.partenaireId) || pts.filter(function (x) { return x.siret && r.siret && String(x.siret).replace(/\s/g, '') === String(r.siret).replace(/\s/g, ''); })[0] || null;
+        if (p) vus[p.id] = true;
+        out.push({ r: r, p: p });
+      });
+      pts.forEach(function (p) { if (!vus[p.id]) out.push({ r: null, p: p }); });
+      return out;
+    }
+    function rendre() {
+      var L = lignes(), mois = D.periodeCourante().mois;
+      if (!$('pa-actifs')) return;   /* la page a été remplacée pendant que le bus réveillait ce rendu : rien à peindre */
+      var revs = D.techRevendeursGet();
+      var ok = revs.filter(function (r) { return r.statut === 'validated'; }).length;
+      var susp = revs.filter(function (r) { return r.statut === 'suspended'; }).length + points().filter(function (p) { return p.statut === 'suspendu'; }).length;
+      var integ = L.filter(function (x) { return !(x.r && x.r.statut === 'validated') && !(x.r && x.r.statut === 'suspended') && !(x.p && (x.p.statut === 'suspendu' || x.p.statut === 'clos' || x.p.statut === 'refuse')); }).length;
+      $('pa-actifs').textContent = String(ok);
+      $('pa-actifs-hint').textContent = ok ? pl(revs.filter(function (r) { return r.statut === 'validated' && !D.partenaireEstMobile(r); }).length, 'sédentaire') + ' · ' + pl(revs.filter(function (r) { return r.statut === 'validated' && D.partenaireEstMobile(r); }).length, 'nomade') : 'validés au réseau des marques';
+      $('pa-integration').textContent = String(integ);
+      /* la ventilation DIT ce qui compose le chiffre : un point actif qui ne s'est pas encore inscrit au réseau des marques
+         (depuis son app) ne vend aucun bon de marque — il compte ici, et la phrase le nomme au lieu de le laisser deviner. */
+      var sansInscription = L.filter(function (x) { return !x.r && x.p && x.p.statut === 'actif'; }).length;
+      $('pa-integration-hint').textContent = integ ? [PEC_DATA.nb(points().filter(function (p) { return p.statut === 'contrat_signe'; }).length, 'contrat signé', 'contrats signés') + ' à activer', points().filter(function (p) { return p.statut === 'contrat_a_signer'; }).length + ' à signer', revs.filter(function (r) { return r.statut === 'pending'; }).length + ' en attente de vérification au réseau des marques', PEC_DATA.nb(sansInscription, 'point actif pas encore inscrit', 'points actifs pas encore inscrits') + ' au réseau des marques'].filter(function (t) { return !/^0 /.test(t); }).join(' · ') : 'contrat, dossier, vérification — la vente n’est pas ouverte';
+      $('pa-suspendus').textContent = String(susp);
+      var encTot = 0, impTot = 0, nImp = 0;
+      revs.forEach(function (r) { var e = D.techEncours(r.id); encTot += e.montant; impTot += e.impayeMontant; nImp += e.impayes ? (e.prelevementsImpayes || 1) : 0; });
+      $('pa-encours').textContent = D.eur(encTot);
+      $('pa-encours-hint').textContent = (encTot || impTot) ? 'bons vendus, pas encore prélevés' + (nImp ? ' · ' + pl(nImp, 'prélèvement') + ' impayé' + (nImp > 1 ? 's' : '') + ' pour ' + D.eur(impTot) : '') : 'bons vendus, pas encore prélevés — rien pour l’instant';
+      $('pa-encours-kpi').classList.toggle('pec-kpi--alert', nImp > 0);
+      $('pa-sub').textContent = L.length ? pl(L.length, 'commerce') + ' — le point (contrat, dossier, statut), l’inscription au réseau des marques (mandat ou avance, encours), les ventes du mois, et les gestes du cycle de vie.' : 'Aucun commerce pour l’instant — un commerce naît de son inscription dans l’app partenaire.';
+      // le geste manager du moment d'abord : contrat signé → à activer, puis les autres
+      var RANG = function (x) { var p = x.p; if (p && p.statut === 'contrat_signe') return 0; if (p && p.statut === 'contrat_a_signer') return 1; if (x.r && x.r.statut === 'pending') return 2; if (x.r && x.r.statut === 'suspended') return 3; if (x.r && x.r.statut === 'validated') return 4; return 5; };
+      L.sort(function (a, b) { return RANG(a) - RANG(b) || String((a.r && a.r.raisonSociale) || (a.p && a.p.enseigne) || '').localeCompare(String((b.r && b.r.raisonSociale) || (b.p && b.p.enseigne) || ''), 'fr'); });
+      $('pa-rows').innerHTML = L.map(function (x) {
+        var r = x.r, p = x.p, nom = (r && r.raisonSociale) || (p && p.enseigne) || '—', mobile = r ? D.partenaireEstMobile(r) : (p ? D.partenaireEstMobile(p) : false);
+        var ville = (r && r.ville) || (p && p.ville) || '', adresse = (r && r.adresse) || (p && p.adresse) || '';
+        var acts = [];
+        if (p) {
+          if (p.statut === 'contrat_signe' || p.statut === 'contrat_a_signer') { acts.push('<button class="pec-btn pec-btn--sm tap" data-pa-activer="' + esc(p.id) + '">Activer</button>'); acts.push('<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-pa-refuser="' + esc(p.id) + '">Refuser…</button>'); }
+          if (p.statut === 'suspendu') acts.push('<button class="pec-btn pec-btn--sm tap" data-pa-reactiver="' + esc(p.id) + '">Réactiver</button>');
+          else if (p.statut !== 'clos' && p.statut !== 'refuse') acts.push('<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-pa-suspendre="' + esc(p.id) + '">Suspendre…</button>');
+          if (p.statut !== 'clos') acts.push('<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-pa-clore="' + esc(p.id) + '">Clôturer…</button>');
+          acts.push('<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-pa-edit="' + esc(p.id) + '">Ouvrir la fiche</button>');
+        }
+        var cpts = p ? comptesDuPoint(p.id) : [];
+        // mandat ou avance : ce qui autorise le débit, ou ce qui a été payé d'avance
+        var mdtTxt;
+        if (!r) mdtTxt = '<span class="meta">—</span>';
+        else if (D.techPaieParAvance(r)) { var av = D.avanceSolde('revendeur', r.id); mdtTxt = 'Avance ' + esc(D.eur(av.solde)) + '<div class="meta">garantie ' + (av.garantieVersee ? esc(D.eur(av.garantie)) + ' versée' : '<b style="color:var(--color-amber-text)">à verser</b>') + (av.bas ? ' · <b style="color:var(--color-amber-text)">sous le seuil</b>' : '') + '</div>'; }
+        else { var m = D.techSepaMandat('revendeur', r.id); mdtTxt = m ? 'Mandat ' + esc(m.typeLbl || m.type) + '<div class="meta">' + esc(m.rum) + ' · ' + esc(m.ibanMasque || '') + '</div>' : '<span class="pec-pill pec-pill--wait">mandat SEPA à signer</span>'; }
+        var enc = r ? D.techEncours(r.id) : null, tot = r ? D.techVentesTotaux({ revendeurId: r.id, mois: mois }) : null;
+        return '<tr><td class="who pec-cellule-identite">' + esc(nom) + '<div class="meta">' + esc((r && r.id) || '') + (r && p ? ' · ' : '') + esc((p && p.id) || '') + ((r && r.siret) || (p && p.siret) ? ' · SIRET ' + esc((r && r.siret) || p.siret) : ' · SIRET à compléter') + '</div>' +
+          '<div class="meta">' + (mobile ? '<b>' + esc(D.partenaireModeLbl(r || p)) + '</b> · se déplace à ' + esc(ville || 'toute ville') : esc(ville || '—') + (adresse ? ' · ' + esc(adresse) : '')) + '</div>' +
+          '<div class="meta">' + esc((r && r.tel) || (p && p.tel) || '—') + ' · ' + esc((r && r.email) || (p && p.email) || '—') + (cpts.length ? ' · compte ' + esc(cpts[0].identifiant) + (cpts[0].statut !== 'actif' ? ' (' + esc(D.STATUTS_COMPTE[cpts[0].statut] || cpts[0].statut) + ')' : '') : '') + '</div></td>' +
+          '<td>' + (p ? '<span class="pec-pill ' + D.partenaireStatutPill(p.statut) + '">' + esc(D.partenaireStatutLbl(p.statut)) + '</span><div style="margin-top:4px">' + (p.contratSigne ? '<span class="pec-pill pec-pill--done">contrat signé</span>' : '<span class="pec-pill pec-pill--wait">contrat à signer</span>') + ' ' + kybPill(p) + '</div>' +
+            (p.statut === 'suspendu' && p.motifSuspension ? '<div class="meta" style="max-width:200px;white-space:normal">' + esc(p.motifSuspension) + '</div>' : '') + (function () {
+            /* (24/09, fondatrice) l'impayé se traite en trois temps : suspendu → le manager APPELLE et note l'appel → il valide la représentation (45) */
+            if (!(r && r.statut === 'suspended') || !D.techRemises) return '';
+            var imp = []; D.techRemises({}).forEach(function (rm) { (rm.lignes || []).forEach(function (li) { if (li.debiteurId === r.id && li.statut === 'impaye' && !li.represente) imp.push(li); }); });
+            if (!imp.length) return '';
+            var sansAppel = imp.filter(function (li) { return !li.appel; }).length;
+            return '<div class="meta" style="max-width:200px;white-space:normal"><a href="45-solution-paiements.html" style="color:inherit">' + (sansAppel ? '<b style="color:var(--color-amber-text)">' + PEC_DATA.nb(sansAppel, 'prélèvement impayé', 'prélèvements impayés') + ' : appeler le commerce</b>' : 'appel noté — représentation à valider') + '</a></div>';
+          })() + (p.statut === 'refuse' && p.motifRefus ? '<div class="meta" style="max-width:200px;white-space:normal">' + esc(p.motifRefus) + '</div>' : '') + (p.statut === 'clos' && p.motifClos ? '<div class="meta" style="max-width:200px;white-space:normal">' + esc(p.motifClos) + '</div>' : '')
+            : '<span class="meta">aucun point rattaché</span>') + '</td>' +
+          '<td>' + (r ? '<span class="pec-pill ' + (r.statut === 'validated' ? 'pec-pill--done' : r.statut === 'suspended' ? 'pec-pill--off' : 'pec-pill--wait') + '">' + esc(D.techStatutLbl(r.statut)) + '</span>' + (r.suspenduMotif ? '<div class="meta" style="max-width:200px;white-space:normal">' + esc(r.suspenduMotif) + '</div>' : '') : '<span class="meta">pas encore inscrit — depuis son app</span>') + '</td>' +
+          '<td>' + mdtTxt + '</td>' +
+          '<td class="num">' + (enc ? (enc.montant ? '<b>' + esc(D.eur(enc.montant)) + '</b><div class="meta">plafond ' + esc(D.eur(enc.plafond)) + (enc.depasse ? ' · <b style="color:var(--color-danger)">dépassé</b>' : '') + '</div>' : '<span class="meta">0,00 €</span>') + (enc.impayes ? '<div class="meta"><b style="color:var(--color-danger)">' + pl(enc.prelevementsImpayes || 1, 'prélèvement') + ' impayé' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' · ' + esc(D.eur(enc.impayeMontant)) + '</b></div>' : '') : '<span class="meta">—</span>') + '</td>' +
+          '<td class="num">' + (tot && tot.ventes ? tot.ventes + ' · ' + esc(D.eur(tot.valeur)) + (tot.annulees ? '<div class="meta">' + PEC_DATA.nb(tot.annulees, 'annulée') + '</div>' : '') : '<span class="meta">aucune</span>') + '</td>' +
+          '<td>' + (acts.length ? '<div class="pec-actions-pile">' + acts.join('') + '</div>' : '<span class="meta">—</span>') + '</td></tr>';
+      }).join('') || '<tr><td colspan="7" class="meta" style="text-align:center;padding:18px">Aucun commerce — un commerce naît de son inscription dans l\'app partenaire, jamais d\'ici.</td></tr>';
+      if (editId) rafraichirFiche();
+    }
+    /* la fiche : les champs ne sont posés qu'à l'OUVERTURE (on ne clobber pas une saisie en cours) ; l'état, le contrat et les
+       acceptations, eux, se relisent à chaque événement du bus */
+    function ouvrirFiche(p) {
+      if (!p) return;
+      editId = p.id;
+      $('pa-form').hidden = false;
+      $('pa-form-titre').textContent = 'Fiche — ' + (p.enseigne || p.id);
+      $('paf-enseigne').value = p.enseigne || ''; $('paf-siret').value = p.siret || ''; $('paf-adresse').value = p.adresse || '';
+      $('paf-cp').value = p.cp || ''; $('paf-ville').value = p.ville || ''; $('paf-responsable').value = p.responsable || '';
+      $('paf-tel').value = p.tel || ''; $('paf-email').value = p.email || '';
+      $('paf-msg').textContent = '';
+      if (window.PEC_DOCS && PEC_DOCS.rendreDossier) PEC_DOCS.rendreDossier($('paf-dossier'), 'partenaire', p.id, { manager: true, par: acteur(), onChange: rendre });
+      else $('paf-dossier').innerHTML = '<span class="meta">Coffre indisponible sur cet appareil.</span>';
+      rafraichirFiche();
+      $('pa-form').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    function rafraichirFiche() {
+      var p = point(editId); if (!p) { $('pa-form').hidden = true; editId = null; return; }
+      var et = D.partenaireEtat(p);
+      $('paf-etat').innerHTML = 'Statut : <span class="pec-pill ' + D.partenaireStatutPill(p.statut) + '">' + esc(D.partenaireStatutLbl(p.statut)) + '</span>' +
+        (et.ok ? ' — point actif' + (p.activeAt ? ' depuis le ' + esc(new Date(p.activeAt).toLocaleDateString('fr-FR')) + (p.activePar ? ' (' + esc(p.activePar) + ')' : '') : '') : ' — ' + esc(et.titre) + ' : ' + esc(et.txt)) +
+        '<div>Le statut se change par son geste dans la liste (Activer · Suspendre · Réactiver · Clôturer), motivé et journalisé — jamais par un menu.</div>';
+      var doc = (window.PEC_DOCS && PEC_DOCS.get) ? PEC_DOCS.get('partenaire', p.id, 'contrat') : null;
+      var zc = $('paf-contrat');
+      if (doc && doc.signe) zc.innerHTML = '<span class="pec-pill pec-pill--done">Signé</span> par ' + esc(doc.signataire || p.responsable || '—') + ' le ' + esc(new Date(doc.signeAt || 0).toLocaleDateString('fr-FR')) + (doc.empreinte ? ' · empreinte ' + esc(doc.empreinte) : '') +
+        (doc.contresigne ? ' · <b>contresigné pour PayEnCash</b> le ' + esc(new Date(doc.contresigne.at).toLocaleDateString('fr-FR')) + (doc.contresigne.par ? ' par ' + esc(doc.contresigne.par) : '') : ' · <b style="color:var(--color-amber-text)">à contresigner par PayEnCash</b>');
+      else zc.innerHTML = '<span class="pec-pill pec-pill--wait">À signer</span> le gérant le signe depuis son app. Sans contrat signé, pas d\'activation.';
+      $('paf-contrat-lire').disabled = !(doc && doc.signe);
+      $('paf-contrat-cosigner').disabled = !(doc && doc.signe && !doc.contresigne);
+      var cpts = comptesDuPoint(p.id), za = $('paf-acceptations');
+      if (!cpts.length) za.textContent = 'Aucun compte gérant rattaché à ce point : les acceptations se posent à son inscription.';
+      else za.innerHTML = cpts.map(function (c) {
+        var accs = D.acceptationsGet('partenaire', c.identifiant), manq = D.acceptationsRequises('partenaire', c.identifiant);
+        return '<div><b>' + esc(c.identifiant) + '</b> (' + esc(D.STATUTS_COMPTE[c.statut] || c.statut) + ') — documents reconnus : ' + (accs.length ? accs.map(function (a) { return esc(a.texte) + ' <b>v' + esc(a.cgv_version) + '</b> (' + new Date(a.granted_at).toLocaleDateString('fr-FR') + ')'; }).join(' · ') : 'aucun') +
+          (manq.length ? ' — <b style="color:var(--color-danger)">en attente (la vente est fermée) : ' + manq.map(function (d) { return esc(d.titre) + ' (' + D.documentMots(d).aFaire + ')'; }).join(', ') + '</b>' : '') + '</div>';
+      }).join('');
+    }
+    // ── l'action motivée (refuser / suspendre / clôturer) se confirme dans un petit formulaire, jamais dans une boîte de dialogue muette ──
+    function ouvrirAction(kind, id) {
+      var p = point(id); if (!p) return;
+      action = { kind: kind, id: id };
+      $('pa-act-titre').textContent = (kind === 'suspendre' ? 'Suspendre ' : kind === 'refuser' ? 'Refuser la relation commerciale avec ' : 'Clôturer (résilier le contrat de distribution de) ') + (p.enseigne || id) + ' — motif obligatoire';
+      $('pa-act-motif').value = ''; $('pa-act-form').hidden = false;
+      $('pa-act-form').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('pa-act-motif').focus();
+    }
+    function fermerAction() { action = null; $('pa-act-form').hidden = true; }
+    $('pa-act-annuler').addEventListener('click', fermerAction);
+    $('pa-act-go').addEventListener('click', function () {
+      if (!action) return;
+      var m = $('pa-act-motif').value.trim(), r;
+      if (action.kind === 'suspendre') r = D.partenaireSuspendre(action.id, m, acteur());
+      else if (action.kind === 'refuser') r = D.partenaireRefuser(action.id, m, acteur());
+      else r = D.partenaireCloturer(action.id, m, acteur());
+      if (!r || r.ok === false) { message('✗ ' + esc((r && r.motif) || 'Action refusée.'), false); return; }
+      message('✓ ' + esc(r.partenaire.enseigne) + ' — ' + esc(D.partenaireStatutLbl(r.partenaire.statut)) + ' (motif : ' + esc(m) + '). Le compte du gérant suit.', true);
+      fermerAction(); rendre();
+    });
+    $('pa-rows').addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var id;
+      if ((id = b.getAttribute('data-pa-activer'))) {
+        var rA = D.partenaireActiver(id, acteur());
+        if (!rA.ok) { message('✗ Activation refusée — ' + esc(rA.motif), false); return; }
+        message('✓ ' + esc(rA.partenaire.enseigne) + ' est actif : il peut rejoindre le réseau des marques depuis son app et vendre leurs bons.', true); rendre(); return;
+      }
+      if ((id = b.getAttribute('data-pa-reactiver'))) {
+        var rR = D.partenaireReactiver(id, acteur());
+        if (!rR.ok) { message('✗ ' + esc(rR.motif), false); return; }
+        message('✓ ' + esc(rR.partenaire.enseigne) + ' — ' + esc(D.partenaireStatutLbl(rR.partenaire.statut)) + ' (l\'état d\'avant la suspension est rendu, jamais décrété « actif »).', true); rendre(); return;
+      }
+      if ((id = b.getAttribute('data-pa-refuser'))) { ouvrirAction('refuser', id); return; }
+      if ((id = b.getAttribute('data-pa-suspendre'))) { ouvrirAction('suspendre', id); return; }
+      if ((id = b.getAttribute('data-pa-clore'))) { ouvrirAction('clore', id); return; }
+      if ((id = b.getAttribute('data-pa-edit'))) ouvrirFiche(point(id));
+    });
+    $('paf-fermer').addEventListener('click', function () { $('pa-form').hidden = true; editId = null; });
+    $('paf-enregistrer').addEventListener('click', function () {
+      var enseigne = $('paf-enseigne').value.trim(), siret = $('paf-siret').value.replace(/[\s.]/g, ''), msg = $('paf-msg');
+      msg.style.color = 'var(--color-danger)';
+      if (!enseigne) { msg.textContent = 'L\'enseigne est requise — c\'est le nom du point.'; $('paf-enseigne').focus(); return; }
+      if (siret && !/^\d{14}$/.test(siret)) { msg.textContent = 'Le SIRET a 14 chiffres — c\'est lui qui identifie le distributeur au contrat.'; $('paf-siret').focus(); return; }
+      var patch = { id: editId, enseigne: enseigne, siret: siret || undefined, adresse: $('paf-adresse').value.trim(), cp: $('paf-cp').value.trim(), ville: $('paf-ville').value.trim(),
+        responsable: $('paf-responsable').value.trim(), tel: $('paf-tel').value.trim(), email: $('paf-email').value.trim() };
+      var r = D.partenaireEnregistrer(patch, acteur());
+      if (!r) { msg.textContent = 'La fiche n\'a PAS été enregistrée : le stockage de cet appareil a refusé l\'écriture.'; return; }
+      msg.style.color = 'var(--color-primary-dark)'; msg.textContent = '✓ Fiche enregistrée (journalisée à ton nom).';
+      rendre();
+    });
+    $('paf-contrat-lire').addEventListener('click', function () {
+      if (!editId || !window.PEC_DOCS) return;
+      if (!PEC_DOCS.ouvrir('partenaire', editId, 'contrat')) $('paf-msg').textContent = 'Le contrat signé n\'a pas de contenu ouvrable sur cet appareil.';
+    });
+    $('paf-contrat-cosigner').addEventListener('click', function () {
+      if (!editId || !window.PEC_DOCS || !PEC_DOCS.contresigner) return;
+      var r = PEC_DOCS.contresigner('partenaire', editId, 'contrat', acteur()), msg = $('paf-msg');
+      msg.style.color = r.ok ? 'var(--color-primary-dark)' : 'var(--color-danger)';
+      msg.textContent = r.ok ? (r.deja ? 'Contrat déjà contresigné.' : '✓ Contrat contresigné pour PayEnCash — la pièce est validée au coffre.') : '✗ ' + (r.motif || 'Contresignature refusée.');
+      rendre();
+    });
+    window.addEventListener('storage', rendre);
+    window.addEventListener('pec-bus', rendre);
+    rendre();
+  })();
+
+  /* CANDIDATURES — DÉRIVÉ de comptesAValider('partenaire') ; Valider / Refuser appellent compteValider / compteRefuser (journal
+     bus) : le motif exact du data-layer s'affiche, puis le réseau se re-dérive (pec-bus). */
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.comptesAValider) return;
+    var host = document.getElementById('pc-rows'), n = document.getElementById('pc-n'); if (!host) return;
+    function esc(s) { return D.esc(s); }
+    function acteur() { return (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)'; }
+    function dateFr(ts) { if (!ts) return '—'; var d = new Date(ts); return d.toLocaleDateString('fr-FR') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    function dossierTxt(c) {
+      var d = D.dossierCandidat ? D.dossierCandidat(c) : null;
+      if (!d || d.sansDossier) return '<span class="meta">—</span>';
+      if (d.ok) return '<span class="pec-pill pec-pill--done">complet — ' + PEC_DATA.nb(d.total, 'pièce validée', 'pièces validées') + '</span>';
+      return '<span class="pec-pill pec-pill--wait">incomplet</span><div class="meta" style="max-width:220px;white-space:normal">' +
+        (d.manquantes.length ? 'manque ' + esc(d.manquantes.join(', ')) : '') + (d.enAttente.length ? (d.manquantes.length ? ' · ' : '') + 'à contrôler : ' + esc(d.enAttente.join(', ')) : '') + (d.refusees.length ? (d.refusees.length > 1 ? ' · refusées : ' : ' · refusée : ') + esc(d.refusees.join(', ')) : '') + '</div>';
+    }
+    function render() {
+      var L = D.comptesAValider('partenaire');
+      if (n) n.textContent = String(L.length);
+      host.innerHTML = L.map(function (c) {
+        var p = c.profil || {}, modeLbl = (D.PARTENAIRE_MODES[p.mode] || D.PARTENAIRE_MODES.sedentaire || {}).lbl || '';
+        return '<tr data-cpt-row="' + esc(c.id) + '"><td class="who">' + esc(p.enseigne || p.nom || c.identifiant) + '<div class="meta">' + esc(c.identifiant) + '</div></td>' +
+          '<td>' + esc(modeLbl) + '<div class="meta">' + esc(p.ville || '—') + (p.adresse ? ' · ' + esc(p.adresse) : '') + (p.cp ? ' · ' + esc(p.cp) : '') + '</div></td>' +
+          '<td>' + esc(p.responsable || '—') + '<div class="meta">' + esc(p.tel || '') + (p.email ? ' · ' + esc(p.email) : '') + '</div></td>' +
+          '<td class="meta">' + (p.siret ? esc(p.siret) : '<span style="color:var(--color-amber-text)">à fournir</span>') + '</td>' +
+          '<td class="meta">' + dateFr(c.creeAt) + '</td><td>' + dossierTxt(c) + '</td>' +
+          '<td style="white-space:nowrap"><button class="pec-btn pec-btn--sm tap" data-cpt="valider" data-id="' + esc(c.id) + '">Valider → point à intégrer</button> ' +
+          '<input class="pec-search" data-motif-for="' + esc(c.id) + '" placeholder="motif de refus" aria-label="Motif de refus" style="width:140px;padding:5px 9px;font-size:11px"> ' +
+          '<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-cpt="refuser" data-id="' + esc(c.id) + '">Refuser</button></td></tr>';
+      }).join('') || '<tr><td colspan="7" class="meta" style="text-align:center;padding:16px">Aucune candidature en attente — elles arrivent de l\'app partenaire (création du compte, e-mail confirmé).</td></tr>';
+    }
+    host.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-cpt]'); if (!b) return;
+      var id = b.getAttribute('data-id'), rc;
+      if (b.getAttribute('data-cpt') === 'valider') rc = D.compteValider(id, acteur(), { kyb: true });
+      else { var m = host.querySelector('[data-motif-for="' + id + '"]'); rc = D.compteRefuser(id, m ? m.value.trim() : '', acteur()); }
+      var zc = document.getElementById('pc-msg');
+      if (zc) {
+        if (!rc) { zc.hidden = false; zc.textContent = 'Candidature introuvable — la liste vient d\'être rafraîchie.'; }
+        else if (rc.ok === false) { zc.hidden = false; zc.textContent = rc.motif || 'Action refusée.'; }
+        else { zc.hidden = true; zc.textContent = ''; }
+      }
+      render();
+      try { window.dispatchEvent(new CustomEvent('pec-bus')); } catch (e2) {}
+    });
+    render();
+    window.addEventListener('storage', render);
+    window.addEventListener('pec-bus', render);
+  })();
+
+  /* ══ LES RENCONTRES DES NOMADES, VUES DU MANAGER. Il les voit toutes, et il ne peut qu'UNE chose dessus : annuler, en
+     motivant. Il ne crée pas une rencontre, il n'en prend pas une à la place d'un nomade, et il ne touche pas à l'argent —
+     il n'y en a pas ici. TOUT EST DÉRIVÉ : l'état (l'expiration se calcule), la fenêtre du référentiel. ══ */
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.techRencontresGet) return;
+    var $ = function (i) { return document.getElementById(i); };
+    var esc = function (v) { return D.esc(v); };
+    var cible = null;
+    function dt(ms) { return ms ? new Date(ms).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
+    function rendreRdv() {
+      var l = D.techRencontresGet().map(function (r) { return D.techRencontre(r.id); }).filter(Boolean);
+      l.sort(function (a, b) { return (b.creeTs || 0) - (a.creeTs || 0); });
+      var par = function (st) { return l.filter(function (r) { return r.statut === st; }); };
+      var att = par('demandee'), pri = par('acceptee'), srv = par('servie'), exp = par('expiree');
+      if (!$('rc-k-att')) return;
+      $('rc-k-att').textContent = att.length;
+      $('rc-k-att-s').textContent = att.length ? D.eur(att.reduce(function (a, r) { return a + r.montant; }, 0)) + ' de bons demandés' : 'personne n\'attend';
+      $('rc-k-pri').textContent = pri.length;
+      $('rc-k-pri-s').textContent = pri.length ? 'un nomade est en route' : 'aucune en cours';
+      $('rc-k-srv').textContent = srv.length;
+      $('rc-k-srv-s').textContent = srv.length ? D.eur(srv.reduce(function (a, r) { return a + r.montant; }, 0)) + ' remis en bons' : '—';
+      $('rc-k-exp').textContent = exp.length;
+      $('rc-k-exp-s').textContent = exp.length ? 'tombées faute de preneur' : 'aucune perdue';
+      if ($('rc-fenetre') && D.rencontreFenetreMin) $('rc-fenetre').textContent = 'Fenêtre : ' + D.rencontreFenetreMin() + ' min';
+      $('rc-vide').hidden = l.length > 0;
+      $('rc-rows').innerHTML = l.map(function (r) {
+        var ou = '—';
+        if (r.statut === 'acceptee') ou = '<span class="meta">le nomade appelle l’utilisateur et vient — position non partagée</span>';
+        else if (r.statut === 'demandee') ou = '<span class="meta">expire ' + esc(dt(r.expireTs)) + '</span>';
+        else if (r.statut === 'servie') ou = '<span class="meta">' + PEC_DATA.nb((r.codes || []).length, 'bon remis', 'bons remis') + '</span>';
+        else if (r.motifAnnulation) ou = '<span class="meta">' + esc(r.motifAnnulation) + '</span>';
+        var vivante = r.statut === 'demandee' || r.statut === 'acceptee';
+        return '<tr><td><b>' + esc(r.ref) + '</b><div class="meta">' + esc(dt(r.creeTs)) + '</div></td>'
+          + '<td>' + esc(r.marchand || '—') + '</td>'
+          + '<td>' + esc(r.lieu) + '<div class="meta">' + esc(r.ville) + '</div>' + (r.aide ? '<div class="meta">' + esc(r.aide) + '</div>' : '') + '</td>'
+          + '<td>' + (r.revendeur ? esc(r.revendeur) : '<span class="meta">' + (r.joignables ? PEC_DATA.nb(r.joignables, 'joignable') : 'aucun sur la ville') + '</span>') + '</td>'
+          + '<td class="num">' + esc(D.eur(r.montant)) + '</td>'
+          + '<td><span class="pec-pill' + (r.statut === 'servie' ? ' pec-pill--done' : '') + '">' + esc(D.rencontreStatutLbl(r.statut)) + '</span></td>'
+          + '<td>' + ou + '</td>'
+          + '<td>' + (vivante ? '<button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" data-rc-ann="' + esc(r.id) + '">Annuler</button>' : '') + '</td></tr>';
+      }).join('');
+    }
+    $('rc-rows').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-rc-ann]') : null; if (!b) return;
+      cible = b.getAttribute('data-rc-ann');
+      var r = D.techRencontre(cible);
+      $('rc-act').hidden = false;
+      $('rc-act-t').textContent = 'Annuler la rencontre ' + (r ? r.ref + ' — ' + r.lieu + ' (' + r.ville + ')' : cible);
+      $('rc-act-motif').value = '';
+      $('rc-act-motif').focus();
+    });
+    $('rc-act-non').addEventListener('click', function () { $('rc-act').hidden = true; cible = null; });
+    $('rc-act-go').addEventListener('click', function () {
+      var motif = String($('rc-act-motif').value || '').trim(), z = $('rc-msg');
+      if (!motif) { z.hidden = false; z.textContent = 'Un motif est obligatoire — l’utilisateur et le nomade le liront.'; return; }
+      var par = (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager';
+      var r = D.techRencontreAnnuler(cible, motif, par);
+      z.hidden = false;
+      z.textContent = r && r.ok ? 'Rencontre annulée — le motif est journalisé.' : ((r && r.motif) || 'Annulation impossible.');
+      $('rc-act').hidden = true; cible = null;
+      rendreRdv();
+    });
+    rendreRdv();
+    window.addEventListener('pec-bus', rendreRdv);
+    window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) rendreRdv(); });
+  })();
+</script>
+</body>
+</html>

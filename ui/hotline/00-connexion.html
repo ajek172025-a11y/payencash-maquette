@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Hotline — Connexion</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  CONNEXION HOTLINE (audit 03/09 : l'espace hotline n'avait AUCUN écran de connexion — le compte
+  `hotline.op` du trousseau existait dans le protocole sans porte d'entrée).
+  Protocole unique des comptes : PEC_DATA.compteConnecter('hotline', identifiant, mdp) — compte de
+  démo (comptesDemo) et conseillers INVITÉS par le manager (40-comptes / 19-invitation, espace
+  `hotline`) passent par la MÊME fonction ; statut contrôlé (invité non activé, suspendu, refusé),
+  motif affiché tel quel, journal bus `connexion`. La session (pec-session : espace « Hotline »,
+  role = nom du conseiller) est lue par 01-pilotage (nom de l'hôte connecté, « Se déconnecter »).
+  `?invit=<id>` : activation d'une invitation hotline (compteActiverInvitation) → connexion immédiate.
+-->
+</head>
+<body style="display:flex;align-items:center;justify-content:center;min-height:100vh;background:var(--color-ink)">
+
+<div style="width:100%;max-width:380px;padding:32px;border-radius:var(--radius-card);background:var(--color-surface);box-shadow:var(--shadow-frame)">
+  <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;font-size:19px;font-weight:800;color:var(--color-ink)"><span data-pec-marque="hotline"></span><!-- (21/09) le P générique et le nom écrit --></div>
+  <p style="margin-bottom:24px;font-size:13.5px;color:var(--color-muted)" id="cx-sub">Espace hotline — accès réservé aux conseillers PayEnCash. Vos appels, vos demandes, votre planning.</p>
+
+  <form id="cx-form">
+    <div class="pec-card" style="margin-bottom:16px">
+      <div style="margin-bottom:14px">
+        <label class="pec-input-label" for="ident">Identifiant</label>
+        <input class="pec-input" id="ident" type="text" autocomplete="username" placeholder="prenom.n">
+      </div>
+      <div>
+        <label class="pec-input-label" for="mdp">Mot de passe</label>
+        <input class="pec-input" id="mdp" type="password" autocomplete="current-password" placeholder="••••••••">
+      </div>
+    </div>
+    <p id="cx-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="cx-err-txt"></span></p>
+    <button class="pec-btn tap" type="submit" style="width:100%" id="cx-go">Se connecter</button>
+    <p style="margin:10px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)">Pas encore d'accès ? Un manager vous invite depuis <b>Comptes</b> (écran 40) — vous créez votre mot de passe via le lien reçu.</p>
+    <p id="cx-demo" style="margin:6px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)">Compte de démo : voir <b>Accès &amp; comptes démo</b> (manager, écran 31).</p>
+  </form>
+
+  <!-- ACTIVATION D'UNE INVITATION hotline (?invit=<id>) — hors session : l'invité n'a pas encore de mot de passe -->
+  <form id="act-form" hidden>
+    <div class="pec-card" style="margin-bottom:16px">
+      <div class="pec-setting" style="padding-top:0">
+        <div><div class="t">Conseiller invité</div><div class="s" id="act-invite-par">—</div></div>
+        <div class="pec-setting-control"><span class="ref" id="act-nom" style="font-size:12.5px">—</span></div>
+      </div>
+      <div class="pec-setting">
+        <div><div class="t">Identifiant</div><div class="s">Défini par l'invitation</div></div>
+        <div class="pec-setting-control"><span class="ref" id="act-ident" style="font-family:var(--font-mono);font-size:12.5px">—</span></div>
+      </div>
+    </div>
+    <div class="pec-card" style="margin-bottom:16px">
+      <div style="margin-bottom:14px">
+        <label class="pec-input-label" for="act-mdp">Choisissez votre mot de passe</label>
+        <input class="pec-input" id="act-mdp" type="password" autocomplete="new-password" placeholder="Mot de passe">
+        <p id="act-aide" style="margin:6px 0 0;font-size:11.5px;color:var(--color-muted-2)">—</p>
+      </div>
+      <div>
+        <label class="pec-input-label" for="act-mdp2">Confirmez</label>
+        <input class="pec-input" id="act-mdp2" type="password" autocomplete="new-password" placeholder="Confirmez le mot de passe">
+      </div>
+    </div>
+    <p id="act-err" hidden style="margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:12.5px;font-weight:600;color:#B3372B"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg><span id="act-err-txt"></span></p>
+    <button class="pec-btn tap" type="submit" style="width:100%" id="act-go">Activer mon accès et me connecter</button>
+    <p style="margin:10px 0 0;text-align:center;font-size:11.5px;color:var(--color-muted-2)"><a href="00-connexion.html">J'ai déjà un accès — me connecter</a></p>
+  </form>
+
+  <script>
+    (function () {
+      var D = window.PEC_DATA; if (!D || !D.compteConnecter) return;
+      var CIBLE = '01-pilotage.html';
+      function err(id, txt) { var p = document.getElementById(id); p.hidden = !txt; document.getElementById(id + '-txt').textContent = txt || ''; }
+      function dateFr(ts) { var d = new Date(ts); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+
+      // session hotline déjà ouverte : on le dit (pas de redirection muette)
+      var s = D.session ? D.session() : null;
+      if (s && /^Hotline/.test(s.espace || '')) {
+        document.getElementById('cx-sub').innerHTML = 'Session ouverte : <b>' + (s.role || s.identifiant) + '</b> (' + s.identifiant + ') — <a href="' + CIBLE + '">ouvrir le pilotage</a> ou se reconnecter avec un autre compte.';
+      }
+
+      // CONNEXION RÉELLE : compteConnecter('hotline', …) — statut contrôlé, motif affiché
+      document.getElementById('cx-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var r = D.compteConnecter('hotline', document.getElementById('ident').value, document.getElementById('mdp').value);
+        if (!r.ok) {
+          var st = r.compte && r.compte.statut;
+          // (06/09) même impasse que côté manager : la maquette n'envoie aucun e-mail, donc le
+          // « lien d'activation reçu » n'existait nulle part. L'activation s'ouvre depuis l'écran.
+          if (st === 'invite') {
+            var exp = r.compte.inviteExpireAt, perime = exp && Date.now() > exp;
+            err('cx-err', perime
+              ? 'Invitation expirée — demande une nouvelle invitation à la direction.'
+              : 'Ce compte a été créé mais n\'est pas encore activé : choisis ton mot de passe pour l\'ouvrir.');
+            var z = document.getElementById('cx-err');
+            if (!perime && z && !z.querySelector('#cx-activer')) {
+              var a = document.createElement('a');
+              a.id = 'cx-activer'; a.className = 'pec-btn tap';
+              a.href = '00-connexion.html?invit=' + encodeURIComponent(r.compte.id);
+              a.textContent = 'Activer mon compte';
+              a.style.cssText = 'display:block;text-align:center;margin-top:9px;text-decoration:none';
+              z.appendChild(a);
+            }
+            return;
+          }
+          err('cx-err', r.motif);
+          return;
+        }
+        window.location = CIBLE;
+      });
+
+      // ACTIVATION D'INVITATION : ?invit=<id du compte invité> (espace hotline)
+      var invit = new URLSearchParams(location.search).get('invit');
+      if (!invit) return;
+      var c = D.compte ? D.compte(invit) : null;
+      document.getElementById('cx-form').hidden = true;
+      var f = document.getElementById('act-form'); f.hidden = false;
+      var min = (D.ref && D.ref.invitations && D.ref.invitations.motDePasseMin) || null;
+      if (min) { document.getElementById('act-mdp').minLength = min; document.getElementById('act-mdp2').minLength = min; document.getElementById('act-aide').textContent = min + ' caractères minimum (règle commune des accès PayEnCash).'; }
+      if (!c || c.espace !== 'hotline') {
+        document.getElementById('cx-sub').textContent = 'Activation d\'un accès hotline.';
+        err('act-err', 'Lien invalide ou expiré — demandez une nouvelle invitation à un manager.');
+        document.getElementById('act-go').disabled = true;
+        return;
+      }
+      var p = c.profil || {};
+      document.getElementById('cx-sub').textContent = 'Activation de votre accès hotline.';
+      document.getElementById('act-nom').textContent = p.nom || c.identifiant;
+      document.getElementById('act-ident').textContent = c.identifiant;
+      document.getElementById('act-invite-par').textContent = (c.invitePar ? 'Invité·e par ' + c.invitePar : '') + (c.inviteExpireAt ? ' · lien valable jusqu\'au ' + dateFr(c.inviteExpireAt) : '');
+      if (c.statut !== 'invite') { err('act-err', c.statut === 'actif' ? 'Invitation déjà utilisée — connectez-vous avec votre identifiant.' : 'Invitation indisponible (' + ((D.STATUTS_COMPTE || {})[c.statut] || c.statut) + ').'); document.getElementById('act-go').disabled = true; }
+      else if (c.inviteExpireAt && Date.now() > c.inviteExpireAt) { err('act-err', 'Invitation expirée — demandez une nouvelle invitation.'); document.getElementById('act-go').disabled = true; }
+      f.addEventListener('submit', function (e) {
+        e.preventDefault();
+        var m1 = document.getElementById('act-mdp').value, m2 = document.getElementById('act-mdp2').value;
+        if (m1 !== m2) { err('act-err', 'Les deux mots de passe ne correspondent pas.'); return; }
+        var r = D.compteActiverInvitation(c.id, m1);
+        if (!r.ok) { err('act-err', r.motif); return; }
+        var cx = D.compteConnecter('hotline', c.identifiant, m1);
+        if (!cx.ok) { err('act-err', cx.motif); return; }
+        window.location = CIBLE;
+      });
+    })();
+  </script>
+</div>
+</body>
+</html>

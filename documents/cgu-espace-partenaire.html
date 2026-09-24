@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CGU de l'espace partenaire — commerces sédentaires et distributeurs nomades · AJEK / PayEnCash</title>
+<style>
+  :root{
+    --ajek:#10A06A; --ajek-d:#0C7F54; --ink:#1a1f1c; --muted:#5b675f;
+    --line:#d9e5dd; --bg:#f4f7f5; --card:#ffffff; --chip:#e8f3ec;
+    --amber:#E39A2E; --amberink:#8a5a00; --amberbg:#FDF1E7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ink:#e8efe9; --muted:#9fb0a6; --line:#254034; --bg:#0d1512; --card:#121d18; --chip:#173026; --amberink:#e8c37a; --amberbg:#2a2410; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .sheet{max-width:860px;margin:28px auto;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,.06)}
+  header{background:linear-gradient(115deg,#0F2A24 0%,var(--ajek-d) 55%,var(--ajek) 100%);color:#fff;padding:26px 44px}
+  .brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
+  header h1{margin:6px 0 2px;font-size:22px;line-height:1.25}
+  .doc-id{display:inline-block;margin-top:10px;background:rgba(255,255,255,.18);
+    padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.04em}
+  .body{padding:26px 44px 44px}
+  .note{background:var(--chip);border:1px solid var(--line);border-left:3px solid var(--ajek);
+    border-radius:8px;padding:12px 14px;font-size:13.5px;color:var(--muted);margin:0 0 16px}
+  .warn{background:var(--amberbg);border:1px solid var(--amber);border-left:4px solid var(--amber);
+    border-radius:8px;padding:12px 14px;font-size:13px;color:var(--amberink);margin:0 0 20px}
+  h2{font-size:15.5px;margin:26px 0 8px;color:var(--ajek-d);border-bottom:2px solid var(--line);padding-bottom:6px}
+  h3{font-size:14px;margin:16px 0 6px}
+  @media (prefers-color-scheme: dark){ h2{color:#5fd39a} }
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border:1px solid var(--line);vertical-align:top}
+  th{background:var(--chip);font-weight:600;color:var(--ink)}
+  ul,ol{margin:6px 0 6px 2px;padding-left:20px} li{margin:5px 0} p{margin:7px 0}
+  .cl{margin:6px 0}
+  .cl b{color:var(--ajek-d)} @media (prefers-color-scheme: dark){ .cl b{color:#5fd39a} }
+  .src{font-size:12px;color:var(--muted);background:var(--chip);border-radius:6px;padding:6px 10px;margin:4px 0 10px}
+  .src a{color:inherit}
+  .toc{columns:2;column-gap:26px;font-size:13px;margin:6px 0 4px;padding:12px 16px;background:var(--chip);border:1px solid var(--line);border-radius:8px}
+  .toc a{display:block;color:var(--ink);text-decoration:none;margin:3px 0;break-inside:avoid}
+  .toc a:hover{color:var(--ajek);text-decoration:underline}
+  .foot{margin-top:26px;padding-top:14px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+  .toolbar{max-width:860px;margin:16px auto 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:0 8px}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;text-decoration:none}
+  .btn.p{background:var(--ajek);color:#fff;border-color:var(--ajek)}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+  @media print{ body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;border:none;margin:0} h2{break-after:avoid} .cl{break-inside:avoid} .src{display:none} }
+</style>
+</head>
+<body>
+<div class="toolbar">
+  <a class="btn" href="../index.html">← payencash.fr</a>
+  <a class="btn" href="contrat-distribution-bons.html">Contrat de distribution</a>
+  <a class="btn" href="conditions-bons-de-marque.html">Conditions des bons de marque</a>
+  <a class="btn p" href="#" onclick="window.print();return false">Imprimer / PDF</a>
+</div>
+
+<div class="sheet">
+  <header>
+    <div class="brand">AJEK · marque PayEnCash</div>
+    <h1>Conditions générales d'utilisation<br><span style="font-size:15px;font-weight:400;opacity:.92">Espace partenaire — commerces sédentaires et distributeurs nomades du réseau PayEnCash Solution</span></h1>
+    <span class="doc-id">Version 2026-09-24 · en vigueur · acceptées à l'inscription du point (<code style="background:rgba(255,255,255,.18);color:#fff">ref.documents.partenaire</code>)</span>
+  </header>
+
+  <div class="body">
+<!-- (23/09, soir) LE TEXTE EST RÉÉCRIT PARCE QUE L'OBJET VENDU A CHANGÉ. La v2 du 18/09 régissait la vente du « Bon d'achat
+     PayEnCash » (titre émis par AJEK, dépensé sur ses propres applications) avec une carte du commerce débitée à chaque vente.
+     Ce titre n'a plus d'accepteur : les applications sur lesquelles il se dépensait sont sorties du périmètre. Le commerce
+     partenaire ne vend plus que les BONS DES MARQUES — ceux que PayEnCash Solution, grossiste, achète aux marques et
+     distribue par son réseau. Deux modes d'exercice, deux qualifications, deux façons de nous régler (arbitrage fondatrice
+     du 23/09 : « prélèvement SEPA pour tabac etc., et avance pour micro ») : le COMMERCE SÉDENTAIRE nous achète le bon
+     qu'il vend et nous le prélevons après l'arrêté du soir ; le DISTRIBUTEUR NOMADE est commissionnaire, il paie d'avance la
+     valeur des bons à revendre. Ce texte dit ce que l'application dit à l'écran (onglet Marques) —
+     les mêmes mots, les mêmes règles. Les nombres cités le sont « à la date de la présente version » : la source vive est
+     `ref.tech` du data-layer, et l'application fait foi.
+     (24/09 — relecture juridique) VERSION 2026-09-24 : contrat de commission (plus de « mandat » pour le nomade, art. 1993/1999
+     retirés), paiement anticipé imputé sur chaque bon édité, prix de revente libre du sédentaire (valeur faciale = prix
+     conseillé, L442-6), marge = prestation de distribution autofacturée en BUM (art. 4.3), tarif de déplacement affiché et
+     convenu (plus de « propositions »), « vigilance » → « prévention de la fraude », art. 6 : bases 6.1.b / 6.1.f / 6.1.c
+     comptable, durées L110-4, vidéo regardée puis supprimée, renvoi à la politique de confidentialité des partenaires. -->
+    <p class="warn"><strong>Rédaction de maquette — version 2026-09-24 — à faire relire par un avocat avant mise en ligne réelle.</strong> Ces conditions régissent l'usage de l'<strong>application partenaire</strong> (le compte, le dossier, la vente d'un bon de marque au comptoir, le mandat de prélèvement ou l'avance, les relevés). Elles ne remplacent pas le <a href="contrat-distribution-bons.html" style="color:inherit">contrat de distribution des bons d'achat de marque</a>, qui est la pièce contractuelle : en cas de contradiction, <strong>le contrat prime</strong>.</p>
+
+    <div class="note"><b>Ce que fait le partenaire, en une phrase.</b> Il vend au comptoir, au client qui le lui demande, un <b>bon d'achat émis par une marque</b> partenaire de PayEnCash Solution, utilisable exclusivement sur le site de cette marque depuis l'application « Mes bons ». AJEK, sous la marque PayEnCash, est <b>grossiste</b> : elle achète ce bon à la marque à l'instant où le partenaire le vend, et le partenaire lui règle son achat — par prélèvement après l'arrêté du soir s'il est un commerce sédentaire, d'avance s'il est un distributeur nomade. Le partenaire <b>n'encaisse jamais une commande</b>, ne manipule aucun fonds de règlement et ne rend aucun service de paiement.</div>
+
+    <h2>Sommaire</h2>
+    <nav class="toc">
+      <a href="#a1">Art. 1 — Qui peut ouvrir un compte, et les deux modes d'exercice</a>
+      <a href="#a2">Art. 2 — Le compte et sa sécurité</a>
+      <a href="#a3">Art. 3 — Ce que l'application permet, et ce qu'elle ne permet pas</a>
+      <a href="#a4">Art. 4 — Deux modes d'exercice, deux façons de régler ses achats</a>
+      <a href="#a5">Art. 5 — Le comptoir : règlement du client, plafonds et prévention de la fraude</a>
+      <a href="#a6">Art. 6 — Données</a>
+      <a href="#a7">Art. 7 — Suspension, clôture, résiliation</a>
+      <a href="#a8">Art. 8 — Responsabilité</a>
+      <a href="#a9">Art. 9 — Évolution de ces conditions</a>
+      <a href="#a10">Art. 10 — Loi applicable et litiges</a>
+    </nav>
+
+    <!-- ART 1 -->
+    <h2 id="a1">Article 1 — Qui peut ouvrir un compte, et les deux modes d'exercice</h2>
+    <p class="cl"><b>1.1</b> L'espace partenaire est réservé à un <strong>professionnel immatriculé</strong>, identifié par son <strong>SIRET</strong>, qui exerce selon l'un des deux modes suivants — et un seul, celui de son point :</p>
+    <ul>
+      <li><b>le commerce sédentaire</b> : un commerce ouvert au public (tabac, presse, épicerie, tout commerce de proximité), avec une adresse où le client vient acheter son bon ;</li>
+      <li><b>le distributeur nomade</b> : un professionnel indépendant, sans établissement recevant du public, qui se déplace pour remettre le bon à ses clients dans la <strong>zone qu'il définit lui-même</strong>.</li>
+    </ul>
+    <p class="cl"><b>1.2</b> L'inscription demande les coordonnées du point (enseigne ou raison sociale, adresse, téléphone, e-mail, responsable, SIRET), l'identité du gérant (nom, prénom, date et lieu de naissance — demandés au titre de la prévention de la fraude et de la sécurité de la signature), la déclaration des bénéficiaires effectifs (une fiche par personne détenant plus de 25 %, avec attestation), la confirmation de l'adresse e-mail par code, et le dépôt d'un dossier de vérification : <strong>extrait Kbis ou extrait d'immatriculation</strong> de moins de trois mois, <strong>pièce d'identité du gérant</strong> (carte nationale d'identité, passeport ou permis de conduire français), <strong>vidéo de vérification</strong> — regardée par une personne de PayEnCash, puis supprimée ; elle ne sert à aucune reconnaissance automatique (article 6) —, et le <strong>relevé d'identité bancaire du compte professionnel</strong> — il porte le mandat de prélèvement du commerce sédentaire, et reçoit la restitution de la garantie du distributeur nomade.</p>
+    <p class="cl"><b>1.3</b> PayEnCash contrôle le dossier <strong>pièce par pièce</strong>. La vente n'est ouverte qu'après : le dossier validé, le <strong>contrat de distribution signé</strong> par le gérant (depuis Mon point, avec un code qu'il reçoit), l'<strong>activation du point</strong> par PayEnCash, puis — selon le mode d'exercice — le <strong>mandat de prélèvement SEPA signé</strong> (commerce sédentaire) ou la <strong>garantie versée et une avance disponible</strong> (distributeur nomade). Tant qu'une étape manque, l'application le dit à l'écran et refuse la vente.</p>
+    <p class="cl"><b>1.4</b> Un compte est <strong>celui du point</strong> : il appartient au gérant ou à la personne qu'il a expressément désignée. Il ne se partage pas, ne se cède pas et ne se revend pas. Un même SIRET ne porte qu'un seul point, et une même entreprise n'est pas sédentaire ici et nomade là : le mode d'exercice est celui du point.</p>
+
+    <!-- ART 2 -->
+    <h2 id="a2">Article 2 — Le compte et sa sécurité</h2>
+    <p class="cl"><b>2.1</b> L'identifiant et le mot de passe sont personnels. Le partenaire les garde confidentiels et informe PayEnCash sans délai de toute utilisation qu'il n'a pas autorisée. Toute opération réalisée depuis le compte — notamment <strong>toute vente</strong> — est réputée faite par lui, sauf preuve contraire.</p>
+    <p class="cl"><b>2.2</b> PayEnCash peut exiger la confirmation d'un code envoyé par SMS ou par e-mail pour certains gestes — notamment la <strong>signature du contrat de distribution</strong> et du mandat de prélèvement par le gérant, et la modification des coordonnées ou du compte bancaire.</p>
+    <p class="cl"><b>2.3</b> Les journaux et horodatages de l'application (vente, annulation, arrêté, ordre de prélèvement et retour de la banque, mouvement d'avance, relevés) font foi entre les parties jusqu'à preuve contraire (convention de preuve — art. 1368 du code civil).</p>
+
+    <!-- ART 3 -->
+    <h2 id="a3">Article 3 — Ce que l'application permet, et ce qu'elle ne permet pas</h2>
+    <p class="cl"><b>3.1 Vendre un bon de marque.</b> L'application présente les <strong>marques sous contrat</strong> avec PayEnCash Solution dont le dossier est validé. Le bon naît <strong>à la vente</strong>, au montant que le client demande — ou au montant porté par l'<strong>ordre de vente</strong> que le client présente (un bon proposé par la marque, avec son flashcode) —, <strong>après que le partenaire a confirmé avoir reçu le prix de son client</strong>. Le distributeur nomade vend au prix fixé par PayEnCash : la <strong>valeur faciale</strong> du bon, sans frais ; le commerce sédentaire fixe librement son prix de revente, la valeur faciale étant le prix conseillé. L'application imprime le <strong>ticket</strong> qui porte le code, le montant, la marque et son site, la date d'expiration et les conditions d'utilisation, et permet de le réimprimer. Les plafonds du réseau — par bon, par client et par jour, par client sur trente jours glissants — sont lus dans l'application, qui fait foi : une vente qui les dépasserait n'a pas lieu.</p>
+    <p class="cl"><b>3.2 Annuler dans le délai.</b> Une vente faite par erreur peut être annulée par le partenaire dans le délai prévu par l'application (trente minutes à la date de la présente version), avec un motif, à condition que le bon n'ait pas servi. Le bon est alors annulé ; le commerce sédentaire n'est pas prélevé pour cette vente et l'avance du distributeur nomade est recréditée. Au-delà, l'annulation relève de PayEnCash et de la marque.</p>
+    <p class="cl"><b>3.3 Les relevés.</b> L'application tient, pour le point, la liste des bons vendus avec leur état, et — selon le mode d'exercice — l'état de chaque vente au regard du prélèvement (à prélever, prélèvement remis, réglé, impayé, annulée) ou les mouvements de l'avance (versements, débits à la vente, recrédits). Le relevé de chaque arrêté fait foi entre les parties (article 4).</p>
+    <p class="cl"><b>3.4 Ce qu'elle ne permet pas.</b> L'application ne sert <strong>jamais à encaisser une commande</strong> pour le compte d'un tiers, ni à lire ou saisir un code de paiement, ni à rendre de la monnaie sur un bon, ni à rembourser un bon, ni à l'utiliser : l'usage d'un bon se fait chez sa marque, depuis l'application « Mes bons », par son porteur. Le distributeur nomade ne fixe pas le prix du bon ; le commerce sédentaire reste libre de son prix de revente (la valeur faciale est conseillée). Aucun des deux ne fixe la valeur ni les conditions du bon, ne conclut de contrat avec le client au nom d'une marque ni de PayEnCash, ni ne prend d'engagement pour elles. Sont interdits : l'usage du compte pour un autre établissement ou une autre personne que ceux déclarés, la vente sans paiement ou à crédit, le fractionnement d'un montant pour contourner un plafond, l'extraction automatisée des données affichées et toute tentative de contourner les contrôles.</p>
+
+    <!-- ART 4 -->
+    <h2 id="a4">Article 4 — Deux modes d'exercice, deux façons de régler ses achats</h2>
+    <h3>4.1 Le commerce sédentaire — revendeur pour son propre compte</h3>
+    <p class="cl"><b>a)</b> Le commerce sédentaire <strong>achète le bon à PayEnCash à l'instant où il le vend</strong>, à la valeur faciale diminuée de <strong>sa part</strong>, et le revend à son client au prix qu'il fixe librement, la valeur faciale étant un prix conseillé (art. L442-6 du code de commerce : aucun prix de revente minimal n'est imposé). Le prix qu'il reçoit de son client lui appartient ; <strong>sa marge lui appartient</strong> : PayEnCash n'y prélève rien. Lorsque le bon est à usages multiples, cette marge rémunère une prestation de distribution facturée à PayEnCash par autofacturation (article 4.3). Ce qu'il doit à PayEnCash est une <strong>créance commerciale ordinaire</strong> — pas un encaissement pour le compte d'autrui.</p>
+    <p class="cl"><b>b)</b> Sa part est celle attachée à l'<strong>offre de paiement choisie par la marque</strong> dont le bon est vendu ; elle est affichée dans l'application avant chaque vente et <strong>figée sur la vente</strong>. À la date de la présente version : 3 % de la valeur faciale pour une marque en « Paiement sous 24 heures », 2,5 % en « Paiement sous 7 jours ouvrés », 2 % en « Paiement sous 10 jours » — l'application fait foi.</p>
+    <p class="cl"><b>c)</b> Il règle ses achats par <strong>prélèvement SEPA interentreprises</strong>, sur le mandat qu'il signe une fois dans l'application et qu'il fait <strong>enregistrer auprès de sa banque avant le premier prélèvement</strong>. Ce mandat ne donne pas lieu à remboursement sur simple demande ; le partenaire s'interdit de contester un prélèvement correspondant à une vente régulièrement enregistrée et maintient son compte provisionné.</p>
+    <p class="cl"><b>d)</b> Les ventes sont arrêtées chaque jour à l'heure de l'<strong>arrêté</strong> (20 h 00 à la date de la présente version). Le relevé de l'arrêté, mis à disposition dans l'application, vaut <strong>pré-notification</strong> de chaque prélèvement, dans ce délai convenu au contrat, plus court que celui du schéma SEPA. L'ordre de prélèvement est remis à la banque après l'arrêté, avec une échéance qui suit le rythme de l'offre de paiement de la marque ; <strong>la date d'échéance de chaque vente est affichée dans l'application</strong> avant la vente et sur le relevé.</p>
+    <p class="cl"><b>e)</b> L'<strong>encours</strong> du point — les bons vendus, pas encore prélevés — est plafonné (1 500 € à la date de la présente version) : l'application refuse une vente qui le dépasserait. <strong>Un prélèvement impayé suspend immédiatement la vente</strong> jusqu'à régularisation ; PayEnCash prend contact avec le commerce, le prélèvement n'est représenté qu'après cet échange, sur validation de PayEnCash, et une pénalité forfaitaire, dont le montant figure au contrat, est due par impayé.</p>
+    <h3>4.2 Le distributeur nomade — commissionnaire qui paie d'avance</h3>
+    <p class="cl"><b>a)</b> Le distributeur nomade est <strong>commissionnaire</strong> au sens de l'article L132-1 du code de commerce : il vend en son nom, mais <strong>pour le compte de PayEnCash</strong>, en exécution d'un contrat de commission écrit et préalable — le contrat de distribution. Il informe son client que le bon est émis par la marque et vendu par le réseau PayEnCash : le ticket le dit.</p>
+    <p class="cl"><b>b)</b> Il <strong>paie d'avance</strong> : une <strong>garantie</strong> versée une fois à l'entrée (200 € à la date de la présente version), qui est un dépôt restituable intégralement dans les trente jours de la fin du contrat sur décompte écrit — jamais une sanction —, puis un <strong>paiement anticipé</strong> de la valeur des bons à revendre, qu'il alimente par virement (entre 50 € et 3 000 € par virement à la date de la présente version) et qui est <strong>imputé, sans intérêt, sur chaque bon édité</strong>, à hauteur du prix réseau. Sans paiement anticipé suffisant, l'application refuse la vente : il ne vend que ce qu'il a déjà payé.</p>
+    <p class="cl"><b>c)</b> Le paiement anticipé de la valeur des bons est imputé sur chaque bon édité, sans intérêt ; le solde non imputé lui est restitué à la fin du contrat, sur décompte écrit (les articles 1999 à 2001 du code civil sont écartés). Il ne détient donc <strong>jamais de fonds d'autrui</strong>. Aucun prélèvement, aucun encours, aucun impayé possible de son côté.</p>
+    <p class="cl"><b>d)</b> Sa rémunération est une <strong>commission</strong> : la différence entre le prix public (la valeur faciale) et le prix réseau imputé sur son paiement anticipé — le même pourcentage que la part du commerce sédentaire, attaché à l'offre de paiement de la marque et affiché avant la vente. Elle lui est acquise à chaque vente ; elle est forfaitaire et couvre l'ensemble de ses frais ; l'application en tient le compte opération par opération. Il ne supporte aucun risque de mévente.</p>
+    <p class="cl"><b>e)</b> Il reste <strong>indépendant</strong> : il fixe librement le tarif de son déplacement, l'affiche dans l'application et le convient avec son client, au cas par cas — PayEnCash ne fixe ni plancher, ni plafond, ni tarif conseillé —, il le facture lui-même, en son nom, il définit sa zone, il accepte ou refuse toute rencontre sans motif ni conséquence, il travaille pour qui il veut, avec ses propres moyens, et personne ne lui donne d'ordre. Les seules sanctions sont celles du contrat, pour des manquements objectifs, après mise en demeure.</p>
+    <h3>4.3 Factures et autofactures</h3>
+    <p class="cl"><b>a)</b> PayEnCash émet, par arrêté, la <strong>facture des bons achetés</strong> par le commerce sédentaire ; le relevé en est le détail. Le régime de TVA des bons (art. 256 ter du CGI) résulte des conditions d'utilisation de chaque marque (conditions des bons de marque, article 6) : bon à usage unique, la vente au commerce est une livraison taxable au taux des biens ; bon à usages multiples, la vente est hors champ de TVA en tant que telle, et la part du commerce comme la commission du distributeur nomade sont des prestations de distribution taxables (20 %, ou franchise en base, art. 293 B du CGI).</p>
+    <p class="cl"><b>b)</b> Ces prestations sont facturées par <strong>autofacturation</strong> : le partenaire donne mandat à PayEnCash, au contrat (articles 5.7 et 6.8), d'établir en son nom et pour son compte les factures de sa part (bon à usages multiples) ou de sa commission. Chaque facture porte la mention « Autofacturation », est mise à disposition dans l'application et vaut acceptée à défaut de contestation écrite dans le délai fixé au contrat. Le partenaire reste seul redevable de sa TVA et déclare son régime ; le mandat est révocable par écrit.</p>
+    <p class="cl"><b>c)</b> Les factures et autofactures sont émises et reçues sous forme électronique par la plateforme agréée qu'utilise AJEK (Odoo, immatriculée le 15/04/2026) — réception obligatoire depuis le 1<sup>er</sup> septembre 2026, émission obligatoire au 1<sup>er</sup> septembre 2027 pour les PME (art. 289 bis du CGI).</p>
+    <p class="src">Sources : art. L132-1 du code de commerce (le commissionnaire agit en son propre nom pour le compte d'un commettant) ; art. L442-6 du code de commerce (prix de revente minimal) ; art. 256 ter, 289 I-2 et 289 bis du CGI ; art. 242 nonies A de l'annexe II au CGI. Les articles 1999 à 2001 du code civil sont écartés au contrat : le distributeur nomade n'est pas un mandataire. La qualification de chacun des deux modes, et notamment l'assiette des cotisations du distributeur nomade, sont <strong>à faire valider par un avocat</strong> — voir l'analyse juridique du 23/09 (document interne, non publié) (consultation datée, lire d'abord sa note de mise à jour du 24/09).</p>
+
+    <!-- ART 5 -->
+    <h2 id="a5">Article 5 — Le comptoir : règlement du client, plafonds et prévention de la fraude</h2>
+    <p class="cl"><b>5.1</b> Le bon se paie <strong>au comptant</strong>, au comptoir ou à la rencontre ; <strong>le client règle le partenaire par les moyens que celui-ci accepte</strong> — cette vente est celle du partenaire, PayEnCash n'en fixe pas le moyen de règlement. S'il est réglé en espèces, c'est le plafond légal des paiements en espèces qui s'impose au partenaire : 1 000 € pour un débiteur domicilié fiscalement en France (art. L112-6 et D112-3 du code monétaire et financier).</p>
+    <p class="cl"><b>5.2</b> Le réseau applique en outre <strong>ses propres plafonds</strong>, plus stricts — par bon, par client et par jour, par client sur trente jours glissants —, lus dans l'application, qui fait foi. Le fractionnement d'une opération destiné à contourner un plafond est interdit.</p>
+    <p class="cl"><b>5.3</b> Le partenaire applique les règles de prévention de la fraude du réseau (et, le cas échéant, celles qui s'imposent à lui en sa qualité de commerçant) : refus d'une vente manifestement anormale (achats répétés pour contourner un plafond, règlement manifestement douteux), identification en cas de doute, signalement immédiat à PayEnCash de toute opération inhabituelle. Il ne conserve aucune pièce d'identité de client sur son appareil.</p>
+    <p class="cl"><b>5.4</b> <strong>Aucun remboursement d'un bon n'est effectué en espèces</strong>, ni par le partenaire, ni par PayEnCash, et un bon ne donne lieu à aucun rendu de monnaie ; le remboursement d'une commande couverte par un bon relève de la marque, selon ses propres conditions (<a href="conditions-bons-de-marque.html">conditions des bons de marque</a>). Seule exception, au bénéfice du partenaire : l'annulation d'une vente dans le délai de l'article 3.2.</p>
+    <p class="src">Sources : art. L112-6 CMF — cité uniquement pour dire que le règlement au comptoir relève du commerçant et des moyens qu'il accepte ; les plafonds du réseau sont des règles internes, lues dans l'application ; les conditions du bon lui-même : <a href="conditions-bons-de-marque.html">conditions des bons de marque</a> (annexe 1 du contrat).</p>
+
+    <!-- ART 6 -->
+    <h2 id="a6">Article 6 — Données</h2>
+    <p class="cl"><b>6.1</b> PayEnCash traite les données du compte et du dossier de vérification (identité du gérant — dont sa date et son lieu de naissance —, Kbis, bénéficiaires effectifs déclarés, vidéo), les ventes, le mandat de prélèvement et l'IBAN du compte professionnel (commerce sédentaire), les mouvements du paiement anticipé et le compte de restitution (distributeur nomade), la zone déclarée et le tarif de déplacement affiché par le distributeur nomade, les relevés, factures et autofactures, pour l'exécution du contrat, la facturation et la comptabilité, la prévention de la fraude et la sécurité de la relation — bases légales : exécution du contrat (art. 6.1.b RGPD) ; intérêt légitime pour la prévention de la fraude (art. 6.1.f) ; obligation légale (art. 6.1.c) pour la seule comptabilité et le fiscal. PayEnCash n'est pas assujettie à la lutte contre le blanchiment (art. L561-2 du code monétaire et financier) : ses vérifications sont une politique de prévention de la fraude. Durées de conservation : dossier de vérification, la durée de la relation puis cinq ans (art. L110-4 du code de commerce) ; copie de la pièce d'identité, six ans au plus, filigranée ; vidéo de vérification, regardée par une personne habilitée puis supprimée, sans comparaison automatique ; pièces comptables, dix ans (art. L123-22 du code de commerce) ; mandat SEPA, treize mois après le dernier prélèvement (art. L133-24 du code monétaire et financier) ; journal des opérations, la durée de la relation puis cinq ans ; compte inactif, supprimé après deux ans sans connexion. Droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité : demande écrite au siège, réponse sous trente jours ; réclamation possible auprès de la CNIL. La <a href="politique-confidentialite-partenaire.html">politique de confidentialité des commerces et distributeurs nomades</a> et le contrat de distribution, article 13, complètent le présent article.</p>
+    <p class="cl"><b>6.2</b> Le partenaire ne collecte <strong>aucune donnée du client</strong> pour la vente d'un bon : le ticket est anonyme, le client n'est identifié qu'à l'usage, dans l'application « Mes bons ». Le partenaire s'interdit de relever ou de conserver les codes des bons vendus à d'autres fins que l'enregistrement du ticket. Le distributeur nomade n'utilise l'adresse d'une rencontre que pour cette rencontre, et ne la conserve pas.</p>
+
+    <!-- ART 7 -->
+    <h2 id="a7">Article 7 — Suspension, clôture, résiliation</h2>
+    <p class="cl"><b>7.1</b> PayEnCash peut <strong>suspendre</strong> l'accès, avec un motif communiqué au partenaire, en cas de manquement à ces conditions ou au contrat, de prélèvement impayé (jusqu'à régularisation), de contestation abusive d'un prélèvement, de soupçon fondé de fraude, ou d'obligation légale. Un point suspendu ne vend plus ; les bons déjà vendus restent valables chez leur marque. Un mandat de prélèvement manquant ou une avance insuffisante ne sont pas des sanctions : ils ferment simplement la vente jusqu'à ce que le partenaire y remédie.</p>
+    <p class="cl"><b>7.2</b> La <strong>résiliation du contrat de distribution</strong> clôt le point et ferme le compte. Le partenaire cesse toute vente et restitue les supports ; les documents du dossier sont conservés selon les durées de la politique de confidentialité (durée de la relation puis cinq ans ; pièces comptables dix ans). Le commerce sédentaire reste prélevé des ventes déjà enregistrées, à leur échéance ; le distributeur nomade reçoit la restitution de sa garantie et du solde non imputé de son paiement anticipé, sur décompte écrit, dans les trente jours.</p>
+    <p class="cl"><b>7.3</b> Toute mesure est notifiée avec ses motifs ; le partenaire peut présenter ses observations au support (réponse sous quinze jours).</p>
+
+    <!-- ART 8 -->
+    <h2 id="a8">Article 8 — Responsabilité</h2>
+    <p class="cl"><b>8.1</b> PayEnCash répond de l'exactitude des relevés, des prélèvements et des mouvements de l'avance, et du fonctionnement de l'application, fournie en l'état d'un service en ligne : une interruption pour maintenance, une panne réseau ou un incident d'impression n'engagent pas sa responsabilité au-delà de ce que la loi impose. Un bon régulièrement vendu est un bon que PayEnCash a acheté à sa marque, laquelle s'est engagée à l'honorer jusqu'à son terme. <strong>Toute somme prélevée ou débitée pour une vente annulée est restituée sans délai.</strong></p>
+    <p class="cl"><b>8.2</b> Le partenaire répond de l'usage de son compte, de toute vente faite sans avoir reçu le prix, du provisionnement du compte prélevé (commerce sédentaire) ou de son avance (distributeur nomade), et, pour le distributeur nomade, de ses déplacements et de ses propres prestations. Il justifie d'une assurance de responsabilité civile professionnelle en cours de validité.</p>
+    <p class="cl"><b>8.3</b> Sauf faute lourde ou dolosive, la responsabilité de PayEnCash au titre des présentes est plafonnée aux sommes acquises au partenaire — parts ou commissions — au titre des douze derniers mois.</p>
+
+    <!-- ART 9 -->
+    <h2 id="a9">Article 9 — Évolution de ces conditions</h2>
+    <p class="cl"><b>9.1</b> Ces conditions portent une <strong>version datée</strong>. Une nouvelle version est présentée à l'acceptation du partenaire à sa connexion suivante ; l'acceptation est <strong>horodatée et conservée</strong> avec sa version.</p>
+    <p class="cl"><b>9.2</b> Une modification des réglages du réseau (parts, plafonds, encours, heure de l'arrêté, garantie, montants de l'avance) est notifiée avec un préavis d'un mois (contrat, article 8) ; un contrat signé sous d'anciennes valeurs affiche l'écart dans l'application.</p>
+
+    <!-- ART 10 -->
+    <h2 id="a10">Article 10 — Loi applicable et litiges</h2>
+    <p class="cl"><b>10.1</b> Ces conditions sont soumises au <strong>droit français</strong>. Les parties recherchent d'abord une solution amiable ; à défaut d'accord dans un délai de trente jours, le litige relève du tribunal de commerce d'Aix-en-Provence (contrat, article 16) — s'agissant de deux professionnels, aucune médiation de la consommation n'est applicable.</p>
+
+    <p class="note"><b>Ce document est référencé par l'application</b> (<code>PEC_DATA.ref.documents.partenaire</code>, clé <code>cgu-partenaire</code>, version 2026-09-24) : il est présenté à l'inscription du point et son acceptation est enregistrée avec sa version (miroir table <code>consents</code>).</p>
+
+    <p class="foot"><strong>AJEK · marque PayEnCash</strong> — CGU de l'espace partenaire, version 2026-09-24. Documents liés : <a href="contrat-distribution-bons.html">contrat de distribution des bons d'achat de marque</a> · <a href="conditions-bons-de-marque.html">conditions des bons de marque</a> · <a href="politique-confidentialite-partenaire.html">politique de confidentialité des partenaires</a> · analyse juridique du réseau (document interne, non publié) (datée) · écrans <code>ui/partenaire/</code>. Modèle non figé — à faire relire par un avocat avant publication.</p>
+  </div>
+</div>
+</body>
+</html>

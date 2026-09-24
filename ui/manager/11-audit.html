@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Journal d’audit</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · filtres · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  JOURNAL D'AUDIT — route `/audit`.
+  Chaque ligne est RÉDIGÉE : l'action vient du libellé du référentiel (ref.auditLibelles), l'acteur est nommé,
+  les détails sont mis en phrase. C'est ce qu'un contrôle ACPR ouvrirait en premier (UC-14).
+  (23/09 — pivot grossiste) les acteurs se lisent sur l'identifiant qui signe l'événement : une marque (MCH-…), un
+  commerce du réseau (RVD-…), un compte de l'un des espaces (ESPACES_COMPTE), le manager, la hotline, la banque
+  (retour importé) ou « système ». Un journal d'audit ne se réécrit pas : les entrées restent, seul le libellé évolue.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `audit_log`, `event_log` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Journal d’audit <span style="color:var(--color-muted)" id="au-count">(0)</span></h1>
+        <p class="sub">Toutes les modifications sensibles (réglages, validations, remises, paiements, annulations…) sont tracées.</p>
+      </div>
+      <div class="pec-topbar-actions"></div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-body" style="padding-top:20px">
+        <div class="pec-controlbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:0 0 12px">
+          <input class="pec-search" type="search" id="au-q" data-fsearch="#au-rows tr" placeholder="Réf, action, acteur, détail…" aria-label="Rechercher dans le journal" style="flex:1 1 240px">
+          <select class="pec-search" data-fsort="#au-rows" aria-label="Trier le journal" style="max-width:200px">
+            <option value="at:desc">Tri : plus récent d’abord</option><option value="at">Tri : plus ancien d’abord</option><option value="evt">Tri : action</option><option value="qui">Tri : acteur</option>
+          </select>
+        </div>
+        <div class="meta" data-fvide="#au-rows tr" data-fvide-txt="Aucun événement ne correspond à « %q »." style="display:none;padding:12px 0"></div>
+        <table class="pec-table">
+          <thead><tr><th>Date</th><th>Action</th><th>Entité</th><th>Acteur</th><th>Détails</th></tr></thead>
+          <tbody id="au-rows" data-fpage="20"><tr data-fvide-row><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucun événement enregistré.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Chaque ligne est rédigée, pas brute.</b> L’action vient du libellé du référentiel (<code>auditLibelles</code>), l’acteur est nommé (marque, commerce du réseau, utilisateur Mes bons, manager, hotline, banque — ou « système »), les détails sont mis en phrase. Un événement dont le type n’a pas encore de libellé s’affiche par son code technique : c’est le signal qu’il faut l’ajouter au référentiel. <b>Ce qu’il manque encore : un filtre de période.</b></div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-top:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div><b>Un journal d’audit ne se réécrit pas.</b> Les entrées restent au journal même quand la fonctionnalité qui les a produites disparaît : seul le libellé du référentiel évolue, jamais la ligne écrite.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // LE JOURNAL RÉEL : PEC_BUS.journal() — evt, ref, at + données de l'événement.
+  // Libellé = D.ref.auditLibelles[evt] (sinon le code), acteur = par / declarePar / « système ».
+  (function () {
+    if (!window.PEC_BUS) return;
+    var D = window.PEC_DATA || null;
+    var LIB = (D && D.ref && D.ref.auditLibelles) || {};
+    function esc(x) { return D ? D.esc(x) : String(x == null ? '' : x); }
+    /* L'ACTEUR, NOMMÉ : le libellé de session de son espace quand l'identifiant est un espace du protocole, la marque ou le
+       commerce quand c'est leur identifiant qui signe, sinon l'identifiant tel quel (un manager signe par son identifiant). */
+    var ESP = (D && D.ESPACES_COMPTE) || {};
+    var FIXES = { systeme: 'système', manager: 'Manager', hotline: 'Hotline', banque: 'Banque (retour importé)', banc: 'Banc d’essai' };
+    function acteur(qui) {
+      qui = String(qui == null ? '' : qui);
+      if (FIXES[qui]) return FIXES[qui];
+      if (ESP[qui]) return ESP[qui].sessionLabel || ESP[qui].label || qui;
+      if (/^MCH-/.test(qui) && D && D.techMarchand) { var m = D.techMarchand(qui); return m ? 'Marque · ' + m.raisonSociale : 'Marque ' + qui; }
+      if (/^RVD-/.test(qui) && D && D.techRevendeur) { var r = D.techRevendeur(qui); return r ? 'Commerce · ' + r.raisonSociale : 'Commerce ' + qui; }
+      return qui || 'système';
+    }
+    function quand(t) {
+      var d = new Date(t);
+      return ('0' + d.getDate()).slice(-2) + '/' + ('0' + (d.getMonth() + 1)).slice(-2) + '/' + d.getFullYear() + ' ' + ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+    }
+    var SKIP = { evt: 1, ref: 1, at: 1, par: 1, declarePar: 1, data: 1 };
+    var EUROS = { montant: 1, prixPoint: 1, prixMarque: 1, marge: 1, total: 1, cout: 1, pris: 1, reste: 1, ht: 1, ttc: 1, montantHT: 1 };
+    function details(e) {
+      var d = Object.assign({}, e.data || {}, e);
+      var out = [];
+      Object.keys(d).forEach(function (k) {
+        if (SKIP[k] || d[k] === null || d[k] === undefined || d[k] === '') return;
+        var v = d[k];
+        if (typeof v === 'object') { try { v = JSON.stringify(v); } catch (x) { v = String(v); } }
+        if (EUROS[k] && typeof v === 'number') v = v.toFixed(2).replace('.', ',') + ' €';
+        out.push(k + ' : ' + esc(v));
+      });
+      return out.join(' · ') || '—';
+    }
+    function maj() {
+      var j = PEC_BUS.journal(), cap = PEC_BUS.JOURNAL_MAX || 0;
+      document.getElementById('au-count').textContent = '(' + j.length + (cap && j.length >= cap ? ' — plafond de la trace atteint : les plus anciens sortent' : '') + ')';
+      document.getElementById('au-rows').innerHTML = j.length ? j.map(function (e) {
+        var data = e.data || {};
+        var qui = acteur(e.par || data.par || e.declarePar || data.declarePar || 'systeme');
+        return '<tr data-s-at="' + (e.at || 0) + '" data-s-evt="' + esc(LIB[e.evt] || e.evt) + '" data-s-qui="' + esc(qui) + '"><td class="meta">' + quand(e.at) + '</td><td class="who">' + esc(LIB[e.evt] || e.evt) + '</td>' +
+          '<td class="ref">' + esc(e.ref || '—') + '</td><td>' + esc(qui) + '</td><td class="meta">' + details(e) + '</td></tr>';
+      }).join('') : '<tr data-fvide-row><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucun événement enregistré.</td></tr>';
+    }
+    maj();
+    window.addEventListener('pec-bus', maj);
+    window.addEventListener('storage', maj);
+  })();
+</script>
+</body>
+</html>

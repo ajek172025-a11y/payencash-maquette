@@ -1,0 +1,146 @@
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════
+   PAYENCASH SOLUTION — LE LOOK DE L'ESPACE DES MARQUES (23/09, fondatrice : « modifie le visuel de chaque page,
+   adapte au contenu ; “de quoi faire parler tes bons” : bonne idée mais design froid, pas de logique ; on doit
+   faire comprendre à la cible facilement, et l'usage doit être facile » — puis, le soir : « ton design de haut de
+   page est trop lourd, où sont les onglets »).
+   UNE SEULE FEUILLE POUR TOUS LES ÉCRANS : un en-tête léger (icône teintée, titre, promesse), « comment ça marche »
+   replié derrière un mot, la sous-navigation des pages à sections (retour + onglets), les grands nombres, les états
+   vides qui disent quoi faire. Rien ici ne porte de texte : les mots viennent des pages, qui les lisent du référentiel.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+.tk-hero{padding:6px 16px 0;display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px}
+.tk-hero .tx{min-width:0;flex:1 1 260px}
+/* (24/09, soir) l'action principale de la page, dans l'en-tête : sous le titre sur téléphone, à sa droite sur bureau */
+.tk-hero-actions{flex:none;display:flex;flex-wrap:wrap;gap:8px}
+.tk-hero-actions .pec-cta{width:auto;height:44px;padding:0 18px;font-size:14px;min-width:0}
+.tk-hero h1{margin:0;font-size:24px;line-height:1.15;font-weight:800;letter-spacing:-.6px;color:var(--color-ink);text-wrap:balance;overflow-wrap:anywhere}
+.tk-hero .sub{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--color-muted);max-width:42ch}
+/* « comment ça marche » : un lien texte, discret, qui déplie trois pas numérotés */
+.tk-pas{margin:6px 16px 0;font-size:11.5px}
+.tk-pas summary{display:inline-flex;align-items:center;gap:3px;list-style:none;cursor:pointer;padding:4px 0;font-weight:800;color:var(--color-primary-dark)}
+.tk-pas summary::-webkit-details-marker{display:none}
+.tk-pas summary svg{width:14px;height:14px;transition:transform .18s ease}
+.tk-pas[open] summary svg{transform:rotate(90deg)}
+.tk-pas ol{margin:4px 0 0;padding:0;list-style:none;counter-reset:pas;display:grid;gap:6px}
+.tk-pas li{counter-increment:pas;display:flex;gap:8px;align-items:flex-start;line-height:1.4;font-weight:600;color:var(--color-ink)}
+.tk-pas li::before{content:counter(pas);flex:none;width:19px;height:19px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;
+  background:var(--tk-teinte-fond,#E3F3EA);color:var(--tk-teinte,#164A3C);font-size:10.5px;font-weight:800}
+@media (prefers-reduced-motion:reduce){.tk-pas summary svg{transition:none}}
+/* la sous-navigation d'une page à sections : le retour rond de la maison (.pec-back), le titre, puis les onglets */
+.tk-sousnav{display:flex;align-items:center;gap:12px;padding:8px 16px 0}
+.tk-sousnav .retour{display:flex;align-items:center;justify-content:center;flex:none;width:38px;height:38px;border-radius:999px;background:var(--color-card);box-shadow:var(--shadow-card);color:var(--color-ink);text-decoration:none}
+.tk-sousnav .retour svg{width:18px;height:18px}
+.tk-sousnav .retour span{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.tk-sousnav .tx{min-width:0;flex:1}
+.tk-sousnav .titre{margin:0;font-size:17px;line-height:1.2;font-weight:800;letter-spacing:-.3px;color:var(--color-ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-sousnav .sous{margin:2px 0 0;font-size:11.5px;line-height:1.4;color:var(--color-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tk-onglets{display:flex;gap:6px;overflow-x:auto;padding:12px 16px 2px;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.tk-onglets::-webkit-scrollbar{display:none}
+.tk-onglets a{flex:none;border-radius:999px;padding:6px 11px;font-size:11.5px;font-weight:800;text-decoration:none;
+  background:var(--color-card);box-shadow:var(--shadow-card);color:var(--color-muted)}
+.tk-onglets a[aria-current]{background:var(--color-ink);color:#fff}
+/* une carte visée par un lien « régler › » : on y arrive, elle se signale */
+.tc-cible{animation:tkCible 1.6s ease-out 1}
+@keyframes tkCible{0%{box-shadow:0 0 0 3px var(--color-primary)}100%{box-shadow:var(--shadow-card)}}
+/* les grands nombres, chaleureux */
+.tk-kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.tk-kpi{border-radius:16px;background:var(--color-card);box-shadow:var(--shadow-card);padding:12px 13px;position:relative;overflow:hidden}
+.tk-kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--tk-teinte-2,#1E7A50);border-radius:4px 0 0 4px}
+.tk-kpi .k{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-muted)}
+.tk-kpi .v{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--color-ink);margin-top:2px;font-variant-numeric:tabular-nums}
+.tk-kpi .s{font-size:10.5px;line-height:1.4;color:var(--color-muted);margin-top:1px}
+/* un état vide dit quoi faire, il ne laisse pas un blanc */
+.tk-vide{display:flex;gap:11px;align-items:flex-start;border-radius:14px;background:var(--color-mint);padding:12px 13px;font-size:12px;line-height:1.55;color:var(--color-mint-ink)}
+.tk-vide svg{flex:none;width:20px;height:20px;color:var(--color-primary-dark);margin-top:1px}
+.tk-vide b{color:var(--color-ink)}
+/* les teintes par page : chaque écran a la sienne, la marque reste la même */
+[data-tk="bons"]{--tk-teinte:#164A3C;--tk-teinte-2:#1E7A50;--tk-teinte-fond:#E3F3EA}
+[data-tk="paiement"]{--tk-teinte:#1C3F5A;--tk-teinte-2:#2C6E9E;--tk-teinte-fond:#E4EEF6}
+[data-tk="outils"]{--tk-teinte:#4A2E5A;--tk-teinte-2:#8A4FA6;--tk-teinte-fond:#EFE6F4}
+[data-tk="compte"]{--tk-teinte:#5A4A1E;--tk-teinte-2:#8A7A2E;--tk-teinte-fond:#F3EEDC}
+[data-tk="demandes"]{--tk-teinte:#5A3A22;--tk-teinte-2:#A6633A;--tk-teinte-fond:#F5E9E0}
+[data-tk="porte"]{--tk-teinte:#164A3C;--tk-teinte-2:#3FD99B;--tk-teinte-fond:#E3F3EA}
+/* ══ (23/09, soir — audit) LES BRIQUES QUE TROIS ÉCRANS RÉÉCRIVAIENT CHACUN ══════════════════════════════════════
+   Bon d'achat, Paiement et Outils portaient chacun leur ligne de liste, leur jauge, leur refus, leur alerte, leur
+   « régler › » et leurs états vides — trois copies, trois dérives possibles (une hauteur de jauge à 6 px ici, 7 là).
+   Une seule écriture ; les pages n'ont plus de <style> pour ces briques-là. */
+.tk-sec{margin:18px 0 6px}
+.tk-row{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;padding:9px 0;border-bottom:1px solid var(--color-sep)}
+.tk-row:last-child{border-bottom:none}
+.tk-row .tx{min-width:0;flex:1}
+.tk-row .nm{font-size:12.5px;font-weight:800;color:var(--color-ink)}
+.tk-row .sb{display:block;font-size:11px;line-height:1.45;color:var(--color-muted);margin-top:1px}
+.tk-row .mt{font-size:13px;font-weight:800;color:var(--color-ink);white-space:nowrap;flex:none}
+.tk-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px}
+.tk-jauge{height:6px;border-radius:99px;background:var(--color-bg);overflow:hidden;margin-top:8px}
+.tk-jauge i{display:block;height:100%;background:var(--color-ink)}
+.tk-jauge i.warn{background:var(--color-amber-text)}
+/* un refus du data-layer, tel quel ; une alerte qui prévient avant ; une note qui explique après */
+.tk-err{margin:9px 0 0;font-size:11.5px;font-weight:700;line-height:1.45;color:var(--color-danger)}
+.tk-alerte{margin:9px 0 0;font-size:11.5px;font-weight:700;line-height:1.5;color:var(--color-amber-text)}
+.tk-note{margin:9px 0 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+.tk-note b{color:var(--color-ink)}
+/* « régler › », « changer › » : le lien qui mène à l'endroit exact où agir (23/09, soir) */
+.tk-go{font-weight:800;color:var(--color-primary-dark);text-decoration:none;white-space:nowrap}
+/* ce qui reste à faire, en ambre, chaque ligne étant un lien vers la carte du compte qui manque */
+.tk-todo{border-radius:14px;border:1.5px solid var(--color-amber-text);background:var(--color-amber-well);padding:12px 14px;margin-top:12px}
+.tk-todo > b{color:var(--color-amber-text)}
+.tk-todo ul{margin:7px 0 0;padding-left:17px;font-size:12px;line-height:1.6;color:var(--color-amber-text)}
+.tk-todo a{color:inherit;font-weight:700;text-decoration:none}
+.tk-todo a b{color:var(--color-primary-dark)}
+/* les pastilles de partage (WhatsApp, Snapchat…) : des boutons secondaires de même largeur */
+.tk-part{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.tk-part .pp{flex:1 1 auto;min-width:96px;text-align:center;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-card);padding:9px 10px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer;text-decoration:none}
+/* une adresse à copier : monospace, sur fond de page, coupée où il faut */
+.tk-snip{border-radius:12px;background:var(--color-bg);border:1px solid var(--color-sep);padding:10px 11px;margin-top:9px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;color:var(--color-ink);word-break:break-all}
+/* la pagination d'une liste longue */
+.tk-pag{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--color-sep)}
+.tk-pag .pp{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-card);padding:7px 11px;font:inherit;font-size:11.5px;font-weight:800;color:var(--color-ink);cursor:pointer}
+.tk-pag .pp[disabled]{opacity:.4;cursor:default}
+.tk-pag .pl{font-size:11px;font-weight:700;color:var(--color-muted);text-align:center}
+/* la somme qui ouvre une carte d'argent (Paiement) : le grand nombre, puis ce qui le date — pas une rangée de
+   compteurs qui répéterait le même montant deux lignes plus bas */
+.tk-somme{padding:2px 0 8px;border-bottom:1px solid var(--color-sep);margin-bottom:2px}
+.tk-somme .v{font-size:24px;font-weight:800;letter-spacing:-.02em;color:var(--color-ink);font-variant-numeric:tabular-nums;line-height:1.1}
+.tk-somme .s{font-size:11px;line-height:1.4;color:var(--color-muted);margin-top:3px}
+/* (24/09) SUR BUREAU, les grands nombres tiennent sur une ligne : quatre colonnes au lieu de deux */
+@media (min-width:1024px){ .tk-kpis{grid-template-columns:repeat(4,minmax(0,1fr))} }
+/* ══ (24/09, soir) L'ÉCHELLE DE BUREAU DES ÉCRANS DE SOLUTION — les mêmes briques, lues à 60 cm ══════════════════════
+   Le héros devient l'en-tête de page (le logo vit dans la colonne de navigation), les grands nombres tiennent sur une ligne,
+   les lignes de liste et les notes passent à 13–15 px. Rien de nouveau : chaque règle ci-dessus garde sa forme. */
+@media (min-width:1024px){
+  .tk-hero{padding:0 0 2px}
+  .tk-hero-actions .pec-cta{height:46px;padding:0 22px}
+  .tk-hero h1{font-size:30px;letter-spacing:-.8px}
+  .tk-hero .sub{margin-top:6px;font-size:14.5px;max-width:64ch}
+  .tk-pas{margin:10px 0 0;font-size:13px}
+  .tk-pas li::before{width:22px;height:22px;font-size:11.5px}
+  .tk-sousnav{padding:0;gap:14px}
+  .tk-sousnav .retour{width:42px;height:42px}
+  .tk-sousnav .titre{font-size:24px}
+  .tk-sousnav .sous{font-size:13.5px}
+  .tk-onglets{padding:14px 0 4px;gap:8px}
+  .tk-onglets a{font-size:13px;padding:8px 14px}
+  .tk-kpis{gap:14px;margin-top:18px}
+  .tk-kpi{padding:18px 20px;border-radius:18px}
+  .tk-kpi .k{font-size:11.5px}
+  .tk-kpi .v{font-size:30px;margin-top:4px}
+  .tk-kpi .s{font-size:12.5px;margin-top:3px}
+  .tk-vide{gap:14px;padding:16px 18px;font-size:13.5px;border-radius:16px}
+  .tk-vide svg{width:22px;height:22px}
+  .tk-sec{margin:26px 0 10px}
+  .tk-row{gap:14px;padding:12px 0}
+  .tk-row .nm{font-size:15px}
+  .tk-row .sb{font-size:13px;margin-top:2px}
+  .tk-row .mt{font-size:15px}
+  .tk-mono{font-size:12.5px}
+  .tk-err,.tk-alerte,.tk-note{font-size:13px}
+  .tk-go{font-size:13.5px}
+  .tk-todo{padding:16px 18px;border-radius:16px}
+  .tk-todo ul{font-size:13.5px}
+  .tk-part .pp{font-size:13px;padding:10px 14px}
+  .tk-snip{font-size:12.5px;padding:12px 14px}
+  .tk-pag .pp{font-size:13px}
+  .tk-pag .pl{font-size:12.5px}
+  .tk-somme .v{font-size:30px}
+  .tk-somme .s{font-size:13px}
+}

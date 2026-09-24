@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Conditions générales de vente du logiciel d’édition des bons — PayEnCash Solution</title>
+<style>
+  :root{
+    --ajek:#10A06A; --ajek-d:#0C7F54; --ink:#1a1f1c; --muted:#5b675f;
+    --line:#d9e5dd; --bg:#f4f7f5; --card:#ffffff; --chip:#e8f3ec;
+    --amber:#E39A2E; --amberink:#8a5a00; --amberbg:#FDF1E7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ink:#e8efe9; --muted:#9fb0a6; --line:#254034; --bg:#0d1512; --card:#121d18; --chip:#173026; --amberink:#e8c37a; --amberbg:#2a2410; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .sheet{max-width:860px;margin:28px auto;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,.06)}
+  header{background:linear-gradient(115deg,#0F2A24 0%,var(--ajek-d) 55%,var(--ajek) 100%);color:#fff;padding:26px 44px}
+  .brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
+  header h1{margin:6px 0 2px;font-size:22px;line-height:1.25}
+  .doc-id{display:inline-block;margin-top:10px;background:rgba(255,255,255,.18);
+    padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.04em}
+  .body{padding:26px 44px 44px}
+  .note{background:var(--chip);border:1px solid var(--line);border-left:3px solid var(--ajek);
+    border-radius:8px;padding:12px 14px;font-size:13.5px;color:var(--muted);margin:0 0 16px}
+  .warn{background:var(--amberbg);border:1px solid var(--amber);border-left:4px solid var(--amber);
+    border-radius:8px;padding:12px 14px;font-size:13px;color:var(--amberink);margin:0 0 20px}
+  h2{font-size:15.5px;margin:26px 0 8px;color:var(--ajek-d);border-bottom:2px solid var(--line);padding-bottom:6px}
+  h2 .art{font-weight:400;color:var(--muted);font-size:12px}
+  @media (prefers-color-scheme: dark){ h2{color:#5fd39a} }
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border:1px solid var(--line);vertical-align:top}
+  th{background:var(--chip);font-weight:600;color:var(--ink)}
+  ul,ol{margin:6px 0 6px 2px;padding-left:20px} li{margin:5px 0} p{margin:7px 0}
+  .fill{color:var(--muted);font-style:italic}
+  .cl{margin:6px 0}
+  .cl b{color:var(--ajek-d)} @media (prefers-color-scheme: dark){ .cl b{color:#5fd39a} }
+  .toc{columns:2;column-gap:26px;font-size:13px;margin:6px 0 4px;padding:12px 16px;background:var(--chip);border:1px solid var(--line);border-radius:8px}
+  .toc a{display:block;color:var(--ink);text-decoration:none;margin:3px 0;break-inside:avoid}
+  .toc a:hover{color:var(--ajek);text-decoration:underline}
+  .foot{margin-top:26px;padding-top:14px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+  .toolbar{max-width:860px;margin:16px auto 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:0 8px}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;text-decoration:none}
+  .btn.p{background:var(--ajek);color:#fff;border-color:var(--ajek)}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+  @media print{ body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;border:none;margin:0} h2{break-after:avoid} .cl{break-inside:avoid} }
+</style>
+<style>
+  .sev{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em}
+  .s1{background:#FDECEC;color:#B3261E}.s2{background:#FDF1E7;color:#8a5a00}.s3{background:#E8F3EC;color:#0C7F54}
+  .ok{color:#0C7F54;font-weight:700}.ko{color:#B3261E;font-weight:700}.pa{color:#8a5a00;font-weight:700}
+  .toc a{display:block;padding:3px 0;color:var(--ajek-d);text-decoration:none}
+  h3{font-size:14px;margin:16px 0 6px}
+  .ref{font-size:12px;color:var(--muted)}
+</style>
+<script src="../ui/assets/payencash-icons.js"></script>
+<script src="../ui/assets/payencash-data.js"></script>
+</head>
+<body>
+<div class="toolbar"><a class="btn" href="../index.html">← payencash.fr</a><a class="btn" href="cgu-espace-solution.html">CGU de l'espace</a><a class="btn" href="conditions-bons-de-marque.html">Annexe 1 · Conditions des bons</a><a class="btn" href="charte-communication-solution.html">Annexe 3 · Communication</a><button class="btn p" onclick="window.print()">Imprimer / PDF</button></div>
+<div class="sheet">
+<header>
+  <div class="brand">AJEK · marque PayEnCash</div>
+  <h1>Conditions générales de vente du logiciel d’édition des bons<br><span style="font-weight:400;font-size:16px">annexe 2 au contrat-cadre d’achat et de distribution des bons d’achat</span></h1>
+  <span class="doc-id">Version 2026-09-24 · en vigueur</span>
+</header>
+<div class="body">
+<!-- (23/09, fondatrice : « gestion abonnement : édition de bons gratuite pour 10 bons ; dépassé 10, abonnement pour la
+     gestion et l'émission des bons — service technologique, attention ACPR ; 50 bons 5,90 € ; illimité* maximum
+     1 million d'euros, procédure ACPR dépassé ; PayEnCash Solution vous aide dans vos démarches » ; le soir : « ce n'est pas
+     1 million de bons le maximum, c'est la valeur ») LES CONDITIONS DU LOGICIEL, À PART : ce document est l'annexe
+     tarifaire du contrat-cadre.
+     (23/09, soir) LE TEXTE ACCEPTÉ EST LE TEXTE ÉCRIT. Le lecteur de Compte › Documents charge ce fichier, garde
+     `.sheet .body` et RETIRE les scripts : un tarif qui n'existait que par un script s'affichait « — » à la marque au
+     moment même où elle l'acceptait. Les formules sont donc ÉCRITES ici, « à la date de la présente version » ; le
+     script, quand la page est ouverte seule, relit `techFormules()` et signale une différence au lieu de réécrire le
+     texte en silence — c'est la version qui fait foi, et une version qui change se relève dans `ref.documents.marchand`. -->
+
+<div class="note"><b>Ce que fixe cette annexe.</b> Le logiciel que la Marque utilise pour éditer ses bons, ses trois formules, leurs prix et leurs quotas, ce que veut dire l'astérisque de la formule illimitée, et comment l'abonnement se facture. Elle est lue jusqu'au bout et acceptée dans l'Espace, avant le choix d'une formule.</div>
+
+<h2>1 · Ce que le logiciel est, et ce qu’il n’est pas</h2>
+<p><b>1.1</b> Le logiciel permet à la Marque d’<b>éditer</b> ses bons d’achat (un bon naît à chaque vente, au comptoir d'un commerce du réseau, au montant que le client demande ou que la Marque a proposé), de les <b>suivre</b> (édités, vendus, utilisés) et d’en <b>décompter</b> l’usage. C’est une prestation technologique, facturée pour elle-même et soumise à la TVA.</p>
+<p><b>1.2</b> Le logiciel n’est ni un service de paiement, ni une détention de fonds ; il ne donne aucun droit sur la valeur des bons. Il ne conditionne ni le prix auquel <span data-societe="nom">AJEK</span> achète les bons de la Marque, ni le délai de son règlement, qui relèvent du contrat-cadre et de l’offre de paiement choisie.</p>
+
+<h2>2 · Les formules</h2>
+<p>Trois formules, selon le nombre de bons édités par mois civil. À la date de la présente version :</p>
+<table>
+<tr><th style="width:22%">Formule</th><th style="width:22%">Prix</th><th>Ce qu'elle comprend</th></tr>
+<tr><td><b>Offert</b></td><td>sans abonnement</td><td>Les 10 premiers bons du mois : de quoi commencer. Vente dans tout le réseau, suivi des ventes et des règlements.</td></tr>
+<tr><td><b>50 bons</b></td><td><b>5,90 € HT</b> par mois</td><td>L'édition de 50 bons par mois — le logiciel de gestion et d'émission ; le lien de vente et les visuels ; l'historique complet et les exports.</td></tr>
+<tr><td><b>Illimité*</b></td><td><b>19,00 € HT</b> par mois</td><td>L'édition <b>sans limite de nombre</b>* ; le <b>site web de la Marque sur son nom de domaine</b>, tourné vers sa marque, ses articles et ses bons, sans rien coder ; tout le forfait 50 bons ; l'accompagnement de la déclaration à l'ACPR à l'approche du seuil (article 3).</td></tr>
+</table>
+<div id="formules-vives" class="note" hidden></div>
+<p>Le décompte est mensuel et repart à zéro le premier jour de chaque mois ; une vente compte pour une édition. Au-delà du quota de sa formule, la Marque ne peut plus éditer de bon tant qu’elle n’a pas souscrit une formule supérieure ; les bons déjà vendus ne sont pas affectés. La formule offerte ne conditionne pas l'offre de paiement : une Marque sans abonnement choisit son offre comme les autres.</p>
+
+<h2>3 · L’astérisque de la formule illimitée</h2>
+<p><b>3.1</b> « Illimité » désigne l’absence de limite de <b>nombre</b> de bons édités. La limite qui demeure est une limite de <b>valeur</b>, et elle est légale : <b>1 000 000 € de bons vendus sur douze mois glissants</b>. Au-delà, l'exclusion « réseau limité » impose à la Marque, en sa qualité d'émetteur, une déclaration à l'Autorité de contrôle prudentiel et de résolution (art. <b>L521-3 II</b> du code monétaire et financier : déclaration contenant une description des services proposés, actualisée chaque année ; le silence de l'Autorité vaut approbation). Ce n'est jamais « un million de bons ».</p>
+<p><b>3.2</b> L'Espace affiche la valeur vendue sur douze mois et prévient <b>avant</b> le seuil. <span data-societe="nom">AJEK</span> accompagne la Marque dans la préparation de cette déclaration et de son actualisation annuelle ; la Marque signe et reste responsable de son contenu. Au-delà du seuil, l’édition est suspendue tant que la déclaration n’est pas faite.</p>
+
+<h2>4 · Facturation et règlement</h2>
+<p>La formule est facturée mensuellement, hors taxes, majorée de la TVA au taux en vigueur (20 % à la date de la présente version), et réglée <b>par carte bancaire</b>, enregistrée dans l'Espace auprès du prestataire de paiement de la plateforme de facturation d'<span data-societe="nom">AJEK</span>, le <b>1<sup>er</sup></b> de chaque mois — jamais par prélèvement. La facture est émise et reçue sous forme électronique par la plateforme agréée qu'utilise <span data-societe="nom">AJEK</span> (Odoo, immatriculée le 15/04/2026) — réception obligatoire depuis le 1<sup>er</sup> septembre 2026, émission obligatoire au 1<sup>er</sup> septembre 2027 pour les PME (art. 289 bis du CGI) — et disponible dans l’Espace. Un paiement refusé suspend la formule payante ; la formule offerte reste acquise.</p>
+
+<h2>5 · Changement, résiliation</h2>
+<p>La Marque change de formule à tout moment depuis son Espace ; la nouvelle formule s’applique au mois en cours. Elle peut y renoncer sans préavis ni pénalité : elle retombe sur la formule offerte. Le site web compris dans la formule illimitée cesse d'être servi avec elle.</p>
+
+<h2>6 · Lecture et acceptation</h2>
+<p>Le présent document est <b>consulté dans l’Espace jusqu'à sa fin</b>, puis reconnu « lu et accepté » dans sa version en vigueur, avec la date et l'identifiant du compte. Une nouvelle version est présentée à nouveau à la lecture et soumise à une nouvelle acceptation avant toute édition.</p>
+
+<div class="foot"><b>Version 2026-09-24.</b> Annexe de travail au contrat-cadre — <b>à faire relire par un avocat avant tout emploi réel</b>. Les prix et quotas ci-dessus sont ceux de la présente version ; l'Espace affiche les valeurs en vigueur au moment du choix, et une évolution donne lieu à une nouvelle version, présentée à nouveau à l'acceptation.</div>
+</div></div>
+<script>
+/* Page ouverte seule : on relit le référentiel et on SIGNALE une différence avec le texte — on ne réécrit pas un texte
+   versionné en silence (le lecteur de l'app retire ce script : la marque accepte ce qui est écrit). */
+(function () {
+  var D = window.PEC_DATA; if (!D || !D.techFormules) return;
+  var e = function (v) { return D.esc(v); };
+  var texte = { gratuit: { prix: 0, bonsMax: 10 }, cinquante: { prix: 5.90, bonsMax: 50 }, illimite: { prix: 19.00, bonsMax: null } };
+  var vives = D.techFormules(), ecart = vives.some(function (f) { var t = texte[f.id]; return !t || +t.prix !== +f.prix || (t.bonsMax == null) !== (f.bonsMax == null) || (t.bonsMax != null && +t.bonsMax !== +f.bonsMax); }) || vives.length !== 3;
+  var z = document.getElementById('formules-vives'); if (!z) return;
+  if (ecart) {
+    z.hidden = false;
+    z.innerHTML = '<b>Les formules en vigueur dans l’Espace ne sont plus celles de cette version :</b> ' + vives.map(function (f) {
+      return e(f.nom) + ' — ' + (f.prix > 0 ? e(D.eur(f.prix)) + ' HT par mois' : 'sans abonnement') + ' · ' + (f.bonsMax == null ? 'aucune limite de nombre' : f.bonsMax + ' bons par mois');
+    }).join(' ; ') + '. Une nouvelle version de cette annexe doit être publiée et présentée à l’acceptation.';
+  }
+  if (D.societeAppliquer) D.societeAppliquer(document);
+})();
+</script>
+</body>
+</html>

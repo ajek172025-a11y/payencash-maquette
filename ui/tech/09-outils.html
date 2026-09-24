@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Outils</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css"><!-- (23/09, soir) le look de l’espace des marques : héros léger, trois pas repliés, états vides, briques de liste -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : la signature du contrat-cadre lit la pièce d’identité du dirigeant (KYC) -->
+<script src="../assets/payencash-tech.js"></script><!-- (23/09, audit) LE SOCLE : session, menu, entête, héros. Sans lui, `var T = window.PEC_TECH` est undefined et le script SORT en silence — l'écran reste aux tirets. -->
+<script src="../assets/payencash-qr.js"></script><!-- l'encodeur du flashcode, dessiné dans le visuel -->
+<script src="../assets/payencash-visuel-solution.js"></script><!-- PEC_VSOL : le visuel, la vidéo et la légende d'un article -->
+<!-- (23/09, soir — fondatrice : « ton design de haut de page est trop lourd ») LE BLOC SOMBRE PLEIN CADRE EST PARTI :
+     cette page était la dernière à le porter. Le haut de page est celui du socle (PEC_TECH.hero) : un titre, une
+     promesse, « comment ça marche » replié — le geste utile (publier) arrive tout de suite. -->
+<!-- PAYENCASH SOLUTION — OUTILS : PUBLIER, FAIRE PARLER, SUIVRE (23/09, fondatrice : la marque crée ses articles avec
+     une modale de publication pas à pas, puis elle gère ses articles — visuel, vidéo, partage vers les réseaux reliés
+     en Configuration — et suit les paiements par bon, reliés à l'article ; « revois le design de Outils »).
+     À QUI PARLE CET ÉCRAN. À une MARQUE. Elle se sert de notre technologie pour émettre ses bons d'achat, et de notre
+     réseau de commerces pour les vendre, contre une remise sur le prix d'achat de ses bons. Nous sommes GROSSISTE :
+     nous lui achetons ses bons et nous les revendons à travers le réseau. Nous ne gérons aucune marchandise, aucune
+     expédition : seulement le STOCK DE BONS.
+     LA MODALE : un stepper labellisé, « Étape N / 6 », les écrans un par un, la barre d'action collante (Retour /
+     Continuer, Continuer grisé tant que l'étape n'est pas valide). Une marque vend SES produits neufs dans SA
+     boutique, sous SA responsabilité : elle DÉCLARE l'état et passe à la suite — aucune provenance, aucune facture
+     d'origine, aucun cédant, aucune certification, aucun poids, aucune expédition, aucune étape « soumis ».
+     « Continuer » est un guide, pas un juge : `ed-publier` existe dès l'ouverture et un clic dessus publie quel
+     que soit l'écran — c'est le data-layer qui refuse ce qui manque, et il nomme le champ.
+     LA PAGE, ELLE, SERT À REGARDER SES ARTICLES : une carte par article — vignette, prix, stock en pastille,
+     tailles en chips, les gestes en pastilles — les paiements repliés, les réseaux, le lien. Le stock se DÉRIVE
+     (techArticleStock) : quantités déclarées moins les bons que le réseau a vendus sur CET article. Les paiements
+     sont RELIÉS à l'article : les demandes nées de son lien, les bons qui les ont réglées, la vente derrière
+     chaque bon et où en est NOTRE règlement — tout est lu, rien n'est recopié.
+     (23/09) LES CLÉS D'API ET LES RÉSEAUX SOCIAUX VIVENT DANS COMPTE (section « Intégration et réseaux »).
+     (23/09, soir — audit) UN POINT DE VENTE N'A PAS D'OUTILS ICI : ils sont dans son app, qui a sa propre connexion. Ce que la page demande (relier un réseau, déposer une clé) est un lien vers la carte exacte de
+     Compte ; ce qu'elle dit deux fois ne le dit plus qu'une (le prix annoncé par le visuel, le stock déclaré). -->
+<style>
+  /* LE CADRE PORTE LA MODALE : sans `position:relative`, un voile en `inset:0` s'accrocherait à la page entière,
+     pas au téléphone. Le socle ne le pose pas — chaque écran qui ouvre une modale le fait pour lui. */
+  .pec-device{position:relative}
+  .lien{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--color-sep);text-decoration:none}
+  .lien:last-child{border-bottom:none}
+  .lien .nm{font-size:12.5px;font-weight:800;color:var(--color-ink)}
+  .lien .sb{display:block;font-size:11px;line-height:1.45;color:var(--color-muted);margin-top:1px}
+
+  /* ══ LA PAGE — UNE CARTE PAR ARTICLE (23/09, fondatrice : « revois le design de Outils ») ══════════════════
+     Une carte de stock : vignette, nom et prix en tête, pastilles pour ce qui
+     se lit d'un coup d'œil, chips pour les tailles, une seule rangée de gestes ; ce qui est long (les paiements)
+     se replie. Le cadre juridique tient en une ligne discrète, en bas — il ne fait pas la page. ══ */
+  .carte{background:var(--color-surface);border-radius:16px;box-shadow:var(--shadow-card);padding:12px 14px 11px}
+  .tete{display:flex;gap:11px;align-items:flex-start}
+  .vig{flex:none;width:52px;height:66px;border-radius:10px;object-fit:cover;background:var(--color-bg)}
+  .vig.ph{display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:800;color:var(--color-primary-dark);background:var(--color-mint)}
+  .nom{flex:1;min-width:0}
+  .nom .m{font-size:13.5px;font-weight:800;color:var(--color-ink);letter-spacing:-.01em;line-height:1.25}
+  .nom .s{font-size:11px;line-height:1.4;color:var(--color-muted);margin-top:2px}
+  .px{flex:none;text-align:right}
+  .px b{display:block;font-size:16px;font-weight:800;color:var(--color-ink);font-variant-numeric:tabular-nums;line-height:1.1}
+  .px s{display:block;font-size:10.5px;color:var(--color-muted);margin-top:2px}
+  .px em{display:block;font-style:normal;font-size:9.5px;color:var(--color-muted-2);margin-top:2px;white-space:nowrap}
+  .etats{display:flex;flex-wrap:wrap;align-items:center;gap:5px;margin-top:8px}
+  .et{display:inline-flex;align-items:center;border-radius:999px;padding:3px 8px;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;white-space:nowrap}
+  .et--ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .et--attente{background:var(--color-sep);color:var(--color-muted)}
+  .et--stop{background:var(--color-danger-well);color:var(--color-danger)}
+  .tailles{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+  .tch{display:inline-flex;align-items:center;gap:3px;border-radius:999px;background:var(--color-bg);padding:4px 9px;font-size:10.5px;font-weight:700;color:var(--color-ink)}
+  .tch b{font-variant-numeric:tabular-nums;color:var(--color-muted)}
+  /* Les gestes d'un article : des pastilles alignées, qui se voient. Le socle laisse `.pec-pill` sans fond hors
+     variante de statut — sur un bouton, ce serait du texte nu. */
+  .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+  .acts .pec-pill{background:var(--color-segment);color:var(--color-ink);padding:7px 11px;font-size:11px;font-weight:800;text-decoration:none}
+  .acts .pec-pill--fort{background:var(--color-mint);color:var(--color-primary-dark)}
+  .acts .pec-pill--doux{color:var(--color-muted)}
+  .acts .pec-pill:disabled{opacity:.55;cursor:default}
+  /* Le bloc long se replie (le motif `.traces` de 08-stock) : il existe, il n'occupe pas la carte. */
+  .pli{margin-top:10px;border-top:1px solid var(--color-sep)}
+  .pli > summary{list-style:none;cursor:pointer;padding:9px 0 3px;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;color:var(--color-muted);display:flex;align-items:center;gap:6px}
+  .pli > summary::-webkit-details-marker{display:none}
+  .pli > summary::after{content:"";width:6px;height:6px;border-right:1.6px solid currentColor;border-bottom:1.6px solid currentColor;transform:rotate(45deg);margin-left:2px;transition:transform .18s}
+  .pli[open] > summary::after{transform:rotate(-135deg)}
+  .pli > summary b{font-weight:800;color:var(--color-ink);text-transform:none;letter-spacing:0;font-size:10.5px}
+  .pli .tot{font-size:12px;font-weight:800;line-height:1.45;color:var(--color-ink);margin-top:4px}
+  .pli .sb{display:block;font-size:11px;line-height:1.45;color:var(--color-muted);margin-top:2px}
+  .payl{padding-top:7px;border-top:1px solid var(--color-sep);margin-top:7px}
+  .payl .nm{font-size:12px;font-weight:800;color:var(--color-ink)}
+  .reseaux{margin-top:9px;padding-top:9px;border-top:1px solid var(--color-sep);font-size:11px;line-height:1.5;color:var(--color-muted)}
+  .reseaux .acts{margin-top:0}
+  .reseaux a{font-weight:800;color:var(--color-primary-dark)}
+  /* l'adresse de la page de l'article : un lien, monospace, coupé où il faut — une image ne se clique pas, l'adresse si */
+  .lienart{display:block;margin-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:10.5px;color:var(--color-muted-2);word-break:break-all;text-decoration:none}
+  .lienart b{font-family:inherit;font-weight:800;color:var(--color-primary-dark)}
+  .note-art{margin-top:5px;font-size:11px;line-height:1.45;font-weight:700;color:var(--color-primary-dark)}
+  .note-art:empty{display:none}
+  .cadre{margin:14px 2px 0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  .cadre b{color:var(--color-muted);font-weight:700}
+  /* L'édition du stock s'ouvre DANS la carte, sur le fond de page : un champ « creusé » y serait invisible, on le
+     remonte en surface. */
+  .stock-ed{margin-top:9px;border-radius:14px;background:var(--color-bg);padding:10px 12px}
+  .stock-ed .aide{margin:3px 0 0;font-size:11px;line-height:1.5;color:var(--color-muted)}
+  .stock-ed .pec-input{background:var(--color-surface)}
+  .ed-tl{display:flex;gap:8px;align-items:center;margin-top:7px}
+  .x{width:34px;height:34px;border-radius:999px;background:var(--color-segment);color:var(--color-ink);font-size:18px;font-weight:800;line-height:1;flex:none;display:flex;align-items:center;justify-content:center}
+
+  /* ══ LA MODALE — LE VOILE, ET LA FEUILLE DE PUBLICATION ═══════════════════════════════════════════════════════
+     L'animation est celle de toute la maison (pecVoile / pecModale, socle du 20/09 : « ça doit être TOUJOURS LA
+     MÊME ANIMATION »). z-index 60 : au-dessus du dock (20), comme les autres feuilles du produit. La feuille
+     prend tout le téléphone : en-tête, stepper, l'écran de l'étape, la barre d'action. ══ */
+  .scrim{position:absolute;inset:0;z-index:60;background:rgba(15,42,36,.48);animation:pecVoile .18s ease-out both}
+  .feuille{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--color-bg);animation:pecModale .24s cubic-bezier(.22,.8,.3,1) both}
+  .ed-haut{display:flex;align-items:center;justify-content:space-between;padding:12px 16px 0;flex:none}
+  .ed-back{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:999px;background:var(--color-mint);color:var(--color-primary-dark)}
+  #ed-wtop{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted)}
+  #ed-dots{flex:none}
+  .ed-corps{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  #ed-actionbar{flex:none}
+  #ed-precedent{flex:none;border:none;background:var(--color-segment);color:var(--color-ink);font-weight:800;font-size:14px;border-radius:14px;padding:0 18px;cursor:pointer}
+
+  /* ── LA MODALE DE PUBLICATION : écrans, titres, options, chips, champs, grille de tailles, grille de photos,
+     lignes de récap, stepper labellisé, aide. ── */
+  .wstep{display:none}
+  .wstep.active{display:block}
+  .wt{font-size:19px;font-weight:800;color:var(--color-ink);margin:8px 0 2px}
+  .ws{font-size:12px;color:var(--color-muted);margin-bottom:14px}
+  .opt{display:flex;align-items:center;gap:11px;width:100%;text-align:left;font:inherit;color:var(--color-ink);background:var(--color-surface);border-radius:14px;padding:13px 14px;margin-bottom:8px;box-shadow:var(--shadow-card);cursor:pointer}
+  .opt.on{box-shadow:var(--shadow-selected)}
+  .opt b{font-size:13.5px;flex:1}
+  .opt small{font-size:11px;color:var(--color-muted)}
+  .chip{display:inline-flex;align-items:center;border-radius:999px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:8px 14px;font:inherit;font-size:12.5px;font-weight:700;color:var(--color-ink);margin:0 6px 8px 0;cursor:pointer}
+  .chip.on{background:var(--color-ink);color:#fff}
+  .frow{margin-bottom:10px}
+  .frow .fl{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--color-muted);margin-bottom:5px}
+  .frow input,.feuille .ed-tl input{width:100%;border:none;outline:none;background:var(--color-surface);border-radius:13px;padding:12px 13px;font-size:13.5px;font-weight:600;font-family:inherit;color:var(--color-ink);box-shadow:var(--shadow-card)}
+  .sizegrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .szc{background:var(--color-surface);border-radius:12px;padding:8px 6px;text-align:center;box-shadow:var(--shadow-card)}
+  .szc .sz{font-size:12.5px;font-weight:800}
+  .szc .stp{display:flex;align-items:center;justify-content:center;gap:7px;margin-top:5px}
+  .szc .stp button{width:22px;height:22px;border-radius:999px;background:var(--color-segment);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;cursor:pointer;user-select:none;color:var(--color-ink)}
+  .szc .stp b{min-width:14px;font-size:12.5px}
+  .szc.has{box-shadow:var(--shadow-selected)}
+  .phgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .phc{position:relative;overflow:hidden;aspect-ratio:1;border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-card);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:9px;font-weight:700;color:var(--color-muted);text-transform:uppercase;letter-spacing:.05em;cursor:pointer}
+  .phc.ok{box-shadow:var(--shadow-selected);color:var(--color-primary-dark)}
+  .phc em{display:block;max-width:100%;font-style:normal;font-size:8px;font-weight:600;letter-spacing:0;text-transform:none;color:var(--color-muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px}
+  .phc img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .phc.ok em{position:absolute;left:0;right:0;bottom:0;padding:3px 4px;background:rgba(15,42,36,.72);color:#fff;font-weight:700}
+  .recl{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--color-sep)}
+  .recl span{color:var(--color-muted)}
+  .recl b{text-align:right;color:var(--color-ink)}
+  .wsub{font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted);margin:14px 0 6px}
+  .stepper{display:flex;justify-content:space-between;gap:3px;padding:10px 4px 4px}
+  .stp2{display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;min-width:0;cursor:default;padding:0;font:inherit;background:none;border:none}
+  .stp2 i{width:25px;height:25px;border-radius:999px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;font-style:normal;background:var(--color-segment);color:var(--color-muted);transition:.15s}
+  .stp2.on i{background:var(--color-primary);color:#fff;box-shadow:0 0 0 4px rgba(16,160,106,.16)}
+  .stp2.done i{background:var(--color-primary);color:#fff}
+  .stp2.done{cursor:pointer}
+  .stp2 span{font-size:8.5px;font-weight:700;color:var(--color-muted);text-align:center;line-height:1.1;letter-spacing:.01em}
+  .stp2.on span{color:var(--color-primary-dark)}
+  .hint{font-size:10px;color:var(--color-muted);margin-top:6px;line-height:1.5}
+  .sugg{box-shadow:var(--shadow-card),inset 0 0 0 1.5px var(--color-primary) !important;background:var(--color-mint) !important}
+  .sugg-note{display:flex;align-items:flex-start;gap:7px;margin:0 0 8px;font-size:10.5px;line-height:1.5;color:var(--color-muted)}
+  .sugg-note b{color:var(--color-primary-dark)}
+  /* (24/09, soir) SUR BUREAU : les cartes d'articles en grille de trois, à l'échelle de lecture d'un écran ; la feuille de
+     publication devient une fenêtre centrée (elle couvrait toute la page, colonne comprise). */
+  @media (min-width:1024px){
+    .carte{padding:18px 20px 16px;border-radius:18px}
+    .vig{width:64px;height:80px}
+    .nom .m{font-size:16px} .nom .s{font-size:12.5px}
+    .px b{font-size:20px} .px s{font-size:12px} .px em{font-size:11px}
+    .et{font-size:10px} .tch{font-size:12px;padding:5px 10px}
+    .acts .pec-pill{font-size:12.5px;padding:8px 13px}
+    .pli > summary{font-size:11px} .pli .tot{font-size:13.5px} .pli .sb,.reseaux{font-size:12.5px} .payl .nm{font-size:13.5px}
+    .lienart{font-size:11.5px} .note-art{font-size:12.5px} .cadre{font-size:12px}
+    .lien .nm{font-size:14.5px} .lien .sb{font-size:12.5px}
+    .scrim{position:fixed;display:flex;align-items:center;justify-content:center}
+    .feuille{position:relative;inset:auto;width:min(720px,94vw);height:min(880px,92vh);border-radius:22px;overflow:hidden;box-shadow:var(--shadow-frame)}
+    .wt{font-size:22px} .ws{font-size:13.5px} .opt b{font-size:15px} .opt small{font-size:12.5px} .chip{font-size:13.5px}
+    .frow .fl{font-size:11.5px} .frow input,.feuille .ed-tl input{font-size:14.5px} .hint{font-size:12px} .recl{font-size:13.5px} .stp2 span{font-size:10px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+
+    <div class="pec-info-body">
+      <div class="pec-card" id="to-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace demande une session</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)">Connecte-toi avec l’identifiant de ton compte.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px">Aller à la connexion</a>
+      </div>
+
+      <div id="to-corps" hidden>
+
+        <div id="to-marque" hidden>
+          <!-- ══ LE GESTE RARE : publier — le bouton vit dans l'en-tête de page (PEC_TECH.hero, `actions`) depuis le 24/09. ══ -->
+          <!-- ══ LA CHOSE FRÉQUENTE : ses articles — le stock de bons qui bouge à chaque bon que nous lui achetons,
+               les gestes, les paiements reliés, les réseaux. Sur bureau, une grille de cartes. ══ -->
+          <p class="pec-section-label" style="margin:6px 0 2px" id="ed-liste-titre">Mes articles</p>
+          <div id="ed-liste" class="pec-grille-cartes"></div>
+          <p class="cadre" id="ed-cadre">—</p>
+        </div>
+
+        <!-- LES AUTRES OUTILS DE LA MARQUE — chacun vit sur sa page (bon proposé, lien de vente, intégration) : ici, la
+             porte, avec ce qu'on y trouve. -->
+        <p class="pec-section-label" style="margin:22px 0 6px">Mes outils</p>
+        <div class="pec-card" style="padding:4px 15px 8px"><div id="to-liens"></div></div>
+
+      </div>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+
+  <!-- ══ LA MODALE DE PUBLICATION, sans dépôt ni justificatif de provenance : en-tête « Étape N / 6 », stepper
+       labellisé, un écran par étape, barre d'action collante.
+       TOUS les écrans existent dès l'ouverture (cachés par display:none), et `ed-publier` aussi. ══ -->
+  <div class="scrim" id="ed-modal" hidden>
+    <div class="feuille" role="dialog" aria-modal="true" aria-labelledby="ed-wtop">
+      <div class="ed-haut">
+        <button type="button" class="ed-back tap" id="ed-fermer" aria-label="Fermer"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-chevron-left"/></svg></button>
+        <span id="ed-wtop">Publier un article</span>
+        <span style="width:32px"></span>
+      </div>
+      <div id="ed-dots"></div>
+
+      <div class="ed-corps" id="ed-corps">
+        <div style="padding:4px 16px 20px">
+
+          <!-- ÉTAPE 1 · Catégorie → sous-catégorie → pour qui (mode.categoriesArbre · mode.genres) -->
+          <div class="wstep active" id="ed-w1">
+            <div class="wt">Catégorie</div>
+            <div class="ws">Elle détermine la grille des tailles et les matières proposées.</div>
+            <div id="ed-cats"></div>
+            <div class="wt" style="font-size:14px;margin-top:14px">Sous-catégorie</div>
+            <div id="ed-subs" style="margin-top:8px"><span class="ws">Choisis d’abord une catégorie.</span></div>
+            <div class="wt" style="font-size:14px;margin-top:14px">Pour qui ?</div>
+            <div id="ed-genres" style="margin-top:8px"></div>
+          </div>
+
+          <!-- ÉTAPE 2 · Identité & caractéristiques.
+               (23/09, fondatrice : « choix de marque, sinon sans marque, sinon autre marque ») LA MARQUE SE CHOISIT : la
+               sienne en premier (une boutique vend d'abord sa marque), puis le catalogue des marques de la catégorie,
+               « Sans marque », ou « Autre marque » à écrire. Le champ `ed-marque` (caché) porte la valeur retenue : c'est lui que lit la publication. -->
+          <div class="wstep" id="ed-w2">
+            <div class="wt">Identité &amp; caractéristiques</div>
+            <div class="ws">Les infos qui identifient ton article — et l’esprit de ta marque, écrit sur le visuel.</div>
+            <div class="wsub">Identité</div>
+            <div class="frow"><div class="fl">Marque de l’article</div>
+              <input type="hidden" id="ed-marque">
+              <div id="ed-marques" style="display:flex;flex-wrap:wrap;gap:7px"></div>
+              <input id="ed-marque-q" placeholder="Rechercher une marque (ex. Levi’s, Sézane)…" autocomplete="off" spellcheck="false" style="margin-top:8px">
+              <div id="ed-marque-autre-z" hidden style="margin-top:8px"><input id="ed-marque-autre" placeholder="Le nom de la marque, tel qu’il s’écrit" autocomplete="off" spellcheck="false"></div>
+              <div class="hint" id="ed-marque-aide">Ta marque est proposée en premier ; pour une autre marque, cherche-la dans la liste ou écris-la.</div></div>
+            <div class="sugg-note" id="ed-sugg-note" hidden><svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;width:14px;height:14px;color:var(--color-primary-dark)"><use href="#i-check"/></svg><span><b>Pré-rempli</b> d’après la catégorie, le type et la marque — modifie ce qui ne colle pas, rien n’est imposé.</span></div>
+            <div class="frow"><div class="fl">Modèle / nom de l’article</div><input id="ed-modele" placeholder="ex. Top côtelé manches longues" autocomplete="off" spellcheck="false"></div>
+            <div class="frow"><div class="fl">Description / argument de vente <span style="text-transform:none;font-weight:600;color:var(--color-muted-2)">(optionnel)</span></div>
+              <textarea id="ed-desc" rows="2" placeholder="ex. Coupe droite, col rond, à porter sur tout." style="width:100%;border:none;outline:none;background:var(--color-surface);border-radius:13px;padding:12px 13px;font:inherit;font-size:12.5px;font-weight:600;color:var(--color-ink);box-shadow:var(--shadow-card);resize:none" autocomplete="off"></textarea>
+              <div class="hint">Un argument court, honnête — il apparaît sur la fiche pour aider à vendre.</div></div>
+            <div class="frow"><div class="fl">L’esprit de ta marque <span style="text-transform:none;font-weight:600;color:var(--color-muted-2)">(une phrase, facultative)</span></div><input id="ed-esprit" placeholder="ex. Coupé et cousu à Marseille, en séries courtes." autocomplete="off"></div>
+            <div class="wsub">Caractéristiques de l’article</div>
+            <div class="frow"><div class="fl">Couleur(s) — une ou plusieurs</div><div id="ed-couleurs" style="display:flex;flex-wrap:wrap;gap:9px"></div></div>
+            <div class="frow"><div class="fl">Matière(s) — proposées selon la catégorie</div><div id="ed-matieres" style="display:flex;flex-wrap:wrap;gap:7px"></div></div>
+          </div>
+
+          <!-- ÉTAPE 3 · État — la marque DÉCLARE, et passe à la suite -->
+          <div class="wstep" id="ed-w3">
+            <div class="wt">État</div>
+            <div class="ws">Tu déclares l’état de ton article, et tu passes à la suite.</div>
+            <div id="ed-etats"></div>
+            <div id="ed-defbloc" hidden>
+              <div class="frow" style="margin-top:10px"><div class="fl">Défaut(s) à signaler — sélectionne (obligatoire hors neuf)</div>
+                <div id="ed-defauts" style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:8px"></div>
+                <input id="ed-defaut" placeholder="autre défaut à préciser…" autocomplete="off" spellcheck="false"></div>
+            </div>
+          </div>
+
+          <!-- ÉTAPE 4 · Tailles & stock — la grille de la catégorie (− / +), et une taille hors grille -->
+          <div class="wstep" id="ed-w4">
+            <div class="wt">Tailles &amp; stock</div>
+            <div class="ws">Le stock de bons de cet article : à chaque bon que nous t’achetons, une unité se déduit.</div>
+            <div class="sizegrid" id="ed-grille"></div>
+            <div class="ws" id="ed-grille-vide" style="margin:0">Choisis une catégorie pour avoir sa grille de tailles — ou ajoute une taille ci-dessous.</div>
+            <div style="font-size:11px;color:var(--color-muted);margin-top:10px" id="ed-stock-note">Total : 0 unité</div>
+            <div id="ed-taille-sys" style="display:none;margin-top:8px;border-radius:11px;background:var(--color-surface);padding:9px 11px;font-size:10.5px;line-height:1.6;color:var(--color-muted)"></div>
+            <div class="wsub">Une taille hors grille</div>
+            <div id="ed-tailles"></div>
+            <button type="button" class="pec-btn-secondary tap" id="ed-taille-plus" style="width:100%;margin-top:8px">Ajouter une taille</button>
+          </div>
+
+          <!-- ÉTAPE 5 · Photos — la grille de vues, un vrai sélecteur de fichier, une adresse en secours -->
+          <div class="wstep" id="ed-w5">
+            <div class="wt">Photos</div>
+            <div class="ws">Jusqu’à quatre — la première fait le visuel. Elles restent sur ton appareil.</div>
+            <div class="phgrid" id="ed-photos"></div>
+            <input type="file" id="ed-fichier" accept="image/*" multiple style="display:none" aria-hidden="true" tabindex="-1">
+            <div id="ed-ph-etat" style="font-size:11px;color:var(--color-muted);margin-top:10px"></div>
+            <div class="frow" style="margin-top:12px"><div class="fl">Ou l’adresse d’une image <span style="text-transform:none;font-weight:600;color:var(--color-muted-2)">(en secours, si tu n’as pas de fichier)</span></div><input id="ed-photo" placeholder="https://…" autocomplete="off" spellcheck="false"></div>
+          </div>
+
+          <!-- ÉTAPE 6 · Prix & remise, l'aperçu du visuel, le récapitulatif -->
+          <div class="wstep" id="ed-w6">
+            <div class="wt">Prix &amp; remise</div>
+            <div class="ws">Tu fixes <b>ton</b> prix — et, si tu le veux, une remise avec ton bon d’achat. L’aperçu montre le visuel tel qu’il sera téléchargé.</div>
+            <div style="display:flex;gap:8px">
+              <div class="frow" style="flex:1"><div class="fl">Prix de l’article (€)</div><input id="ed-prix" inputmode="decimal" placeholder="49,90" autocomplete="off" spellcheck="false"></div>
+              <div class="frow" style="flex:1"><div class="fl">Remise (€, facultative)</div><input id="ed-remise" inputmode="decimal" placeholder="0" autocomplete="off" spellcheck="false"></div>
+            </div>
+            <div class="pec-mint-banner" style="margin:2px 0 12px"><div style="font-size:12px;line-height:1.5" id="ed-estim">Renseigne ton prix pour voir ce que le visuel annonce.</div></div>
+            <div class="wt" style="font-size:14px">Aperçu du visuel</div>
+            <div style="border-radius:14px;overflow:hidden;background:var(--color-ink);margin-top:6px"><canvas id="ed-apercu" style="display:block;width:100%;height:auto"></canvas></div>
+            <div class="hint" id="ed-apercu-txt">—</div>
+            <div class="wt" style="font-size:14px;margin-top:14px">Récapitulatif</div>
+            <div id="ed-recap" style="margin-top:6px"></div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- Barre d'action — Retour / Continuer, et Publier à la dernière étape (présent dès l'ouverture) -->
+      <div class="pec-sticky" id="ed-actionbar">
+        <p class="tk-err" id="ed-err" hidden style="margin:0 0 9px"></p>
+        <div style="display:flex;gap:10px">
+          <button type="button" class="tap" id="ed-precedent" style="display:none">Retour</button>
+          <button type="button" class="pec-cta tap" id="ed-suivant" disabled style="opacity:.5;flex:1">Continuer</button>
+          <button type="button" class="pec-cta tap" id="ed-publier" hidden style="flex:1">Publier et générer le visuel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, V = window.PEC_VSOL, $ = function (i) { return document.getElementById(i); };
+  /* LE HAUT DE PAGE EST POSÉ AVANT LA GARDE : sans session, la page garde son titre et sa promesse — pas un tiret. */
+  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '09-outils.html'); T.hero('tk-hero', { teinte: 'outils', titre: 'Fais parler de tes bons', idTitre: 'to-titre', idSub: 'to-sub',
+    actions: '<button type="button" class="pec-cta tap" id="ed-ouvrir" hidden><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:18px"><use href="#i-plus"/></svg>Publier un article</button>',
+    promesse: 'Publie un article, génère son visuel et sa vidéo — et suis les bons que le réseau t’achète dessus.',
+    etapes: ['Tu publies un article : tailles, prix, photo — et une remise si tu veux', 'Le visuel et la vidéo se génèrent, tu les postes avec la légende', 'Chaque bon acheté par le réseau sur cet article se déduit de son stock'] }); }
+  if (!D || !D.techRef || !T) return;
+  var esc = function (v) { return D.esc(v); };
+  var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+
+  var s = T.session('marchand');
+  if (!s || !D.techMarchand(s.id)) { $('to-garde').hidden = false; return; }
+  $('to-corps').hidden = false;
+  $('to-marque').hidden = false;
+  if ($('ed-ouvrir')) $('ed-ouvrir').hidden = false;   // le geste n'apparaît qu'à une marque connectée
+
+  /* LES AUTRES OUTILS — chacun sur sa page ; le sous-titre dit ce qu'on y trouve, la validité vient du référentiel. */
+  function liens() {
+    var R = D.techRef();
+    return [
+      /* (23/09, soir — fondatrice : « enlève "ton client reçoit un lien" : c'est du partage, on fait savoir que tu as un réseau de vente de bons ») */
+      ['06-demandes.html', 'i-ticket', 'Proposer un bon d’un montant précis', 'Pour une commande, un devis : un lien et son flashcode à partager — tes clients savent où acheter ton bon. Valable ' + R.lienValiditeJours + ' jours.'],
+      ['08-paiement.html#tp-lien', 'i-share', 'Mon lien de vente à partager', 'Le lien permanent à poster sur tes réseaux, et ce qu’il a produit.'],
+      ['10-compte.html?s=integration#api', 'i-file', 'Intégrer le bon d’achat à ton site', 'Ta clé d’API et le bouton « bon d’achat » de ta page de commande — dans Compte › Intégration.']
+    ];
+  }
+
+  /* ══ LES RÉFÉRENTIELS DE PUBLICATION — ceux du catalogue (PEC_DATA.mode.*), lus, jamais recopiés ═══════════════
+     Catégories et sous-catégories (mode.categoriesArbre), « pour qui » (mode.genres sans « Tout »), états
+     (mode.etatsPiece), couleurs (la palette de la maison), matières / défauts / grille de tailles / guide par
+     (catégorie, type). Un référentiel absent donne une liste vide, jamais une liste inventée ici. */
+  var CATS = (D.mode && D.mode.categoriesArbre) || {};
+  var GENRES = ((D.mode && D.mode.genres) || []).filter(function (g) { return g.id !== 'tout'; });
+  var ETATS = (D.mode && D.mode.etatsPiece) || [];
+  var COULEURS = (D.ref && D.ref.couleurs) || (D.mode && D.mode.couleurs) || [];
+  var SYS = (D.mode && D.mode.systemesTailles) || {};
+  var TOTAL = 6, STEP_LABELS = ['Catégorie', 'Identité', 'État', 'Stock', 'Photos', 'Prix'];
+  var PHOTOS_MAX = 4, PHOTO_COTE = 1200;
+  /* LA DURÉE DE LA VIDÉO est celle du module qui l'enregistre (fondatrice : « une vidéo courte de 10 secondes ») :
+     le bouton et la note la lisent là, ils ne l'écrivent pas une seconde fois. */
+  var VIDEO_S = (V && V.VIDEO_SECONDES) || 10;
+  function genreNom(id) { var g = GENRES.filter(function (x) { return x.id === id; })[0]; return g ? g.nom : (id || ''); }
+  function etatNom(k) { var e = ETATS.filter(function (x) { return x.k === k || x.n === k; })[0]; return e ? e.n : (k || ''); }
+  function estNeufK(k) { var e = ETATS.filter(function (x) { return x.k === k; })[0]; return !!(e && e.neuf); }
+  function matieres() { return D.matieresPour ? D.matieresPour(S.cat, S.sub) : ((D.mode && D.mode.matieresListe) || []); }
+  function defauts() { return D.defautsPour ? D.defautsPour(S.cat, S.sub) : ((D.mode && D.mode.defautsTypes) || []); }
+  function grille() { return (S.cat && D.taillesPour) ? D.taillesPour(S.cat, S.sub) : []; }
+
+  /* ══ LE BROUILLON — `S` ═════════════════════════════════════════════════════════════════════════════════════
+     Il vit ici, le temps de l'écran : il n'est écrit nulle part tant qu'elle n'a pas publié. Il survit à la
+     fermeture de la modale (une fiche qu'on ferme par mégarde ne doit pas coûter quatre photos), pas à la
+     publication. Les champs texte gardent leur valeur dans le DOM (les écrans ne sont jamais recréés) ; les choix
+     et les quantités vivent ici. L'aperçu est le MÊME dessin que le fichier téléchargé (PEC_VSOL.dessiner). */
+  var S = neuf(), step = 1, photoIm = null, apercuTimer = null, photoTimer = null;
+  /* Ce que la page a à dire sur UN article (visuel téléchargé, vidéo en cours, stock mis à jour, refus) vit par
+     identifiant, comme l'état replié/déplié des paiements : la liste est repeinte à chaque événement du bus. */
+  var notes = {}, enreg = {}, plis = {}, stockEdit = null;
+
+  function neuf() { S_PROP = ''; return { cat: null, sub: null, genre: null, marque: null, marqueQ: '', marquesTout: false, marqueAutre: '', couleurs: [], matiereSel: [], etat: null, defautSel: [], defautLibre: '', stock: {}, tailles: [{ taille: '', qte: '' }], photos: [], touche: {}, _prop: {} }; }
+  function val(id) { return String($(id).value || '').trim(); }
+  function nombre(v) { return parseFloat(String(v == null ? '' : v).replace(',', '.')) || 0; }
+  function bascule(l, v) { var i = l.indexOf(v); if (i === -1) l.push(v); else l.splice(i, 1); }
+  function defautTxt() { var p = S.defautSel.slice(); if (S.defautLibre && S.defautLibre.trim()) p.push(S.defautLibre.trim()); return p.join(' · '); }
+  /* LE REFUS DU DATA-LAYER, TEL QUEL : `motif` porte la règle ; un refus d'écriture (stockage plein) met la
+     phrase lisible dans `message` et un code dans `motif`. On montre ce qui se lit, on n'invente rien. */
+  function refus(r) { return (r && (r.message || r.motif)) || 'Refusé.'; }
+  function dire(el, txt) { if (!el) return; el.hidden = !txt; el.textContent = txt || ''; }
+  function note(id, txt) { notes[id] = txt; var z = $('ed-etat-' + id); if (z) z.textContent = txt; }
+
+  /* LES TAILLES SAISIES — la grille de la catégorie ET les tailles hors grille, fondues : une même taille écrite
+     deux fois devient UNE ligne, quantités additionnées. Une ligne sans quantité est gardée à zéro : c'est le
+     data-layer qui la filtre, et lui qui refuse s'il ne reste rien. */
+  function taillesSaisies() {
+    var out = [], idx = {};
+    var pousse = function (t, q) {
+      t = String(t || '').trim(); q = parseInt(q, 10) || 0; if (!t) return;
+      var k = t.toLowerCase();
+      if (idx[k] == null) { idx[k] = out.length; out.push({ taille: t, qte: q }); } else out[idx[k]].qte += q;
+    };
+    grille().forEach(function (t) { if (S.stock[t] > 0) pousse(t, S.stock[t]); });
+    S.tailles.forEach(function (r) { pousse(r.taille, r.qte); });
+    return out;
+  }
+  function totStock() { return taillesSaisies().reduce(function (n, t) { return n + t.qte; }, 0); }
+
+  function lireForm() {
+    var m = D.techMarchand(s.id) || {};
+    var url = val('ed-photo');
+    /* LES FICHIERS CHOISIS FONT FOI ; l'adresse n'est lue que s'il n'y en a aucun — et l'écran le dit sur le champ. */
+    var photos = S.photos.length ? S.photos.slice() : (url ? [url] : []);
+    return { id: 'TAR-brouillon', marchandId: s.id, slug: 'apercu',
+      marque: val('ed-marque') || m.raisonSociale, modele: val('ed-modele') || 'Ton article',
+      esprit: val('ed-esprit') || null, description: val('ed-desc') || null,
+      categorie: S.cat, sous: S.sub, genre: S.genre, couleurs: S.couleurs.slice(), matiere: S.matiereSel.join(' · '), etat: S.etat, defaut: defautTxt() || null,
+      photo: photos[0] || null, photos: photos,
+      prix: nombre($('ed-prix').value), remise: nombre($('ed-remise').value),
+      tailles: taillesSaisies().filter(function (t) { return t.qte > 0; }) };
+  }
+
+  /* ══ LE RENDU DE L'ÉTAPE — le stepper, l'écran courant, et chaque bloc de choix
+     repeint depuis `S`. Les champs texte ne sont pas touchés. ══ */
+  var COCHE = '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-primary)"><use href="#i-check"/></svg>';
+  function chip(attr, v, lbl, on) {
+    return '<button type="button" class="chip tap' + (on ? ' on' : '') + '" ' + attr + '="' + esc(v) + '" aria-pressed="' + (on ? 'true' : 'false') + '">' + esc(lbl) + '</button>';
+  }
+  function render() {
+    /* STEPPER labellisé : les 6 étapes visibles ; les étapes faites sont cliquables (retour) */
+    var sh = '';
+    for (var i = 1; i <= TOTAL; i++) {
+      var cls = i < step ? 'done' : i === step ? 'on' : '';
+      sh += i < step
+        ? '<button type="button" class="stp2 ' + cls + ' tap" data-etape="' + i + '"><i>✓</i><span>' + STEP_LABELS[i - 1] + '</span></button>'
+        : '<div class="stp2 ' + cls + '"><i>' + i + '</i><span>' + STEP_LABELS[i - 1] + '</span></div>';
+    }
+    $('ed-dots').innerHTML = '<div class="stepper">' + sh + '</div>';
+    $('ed-wtop').textContent = 'Étape ' + step + ' / ' + TOTAL;
+    $('ed-precedent').style.display = step > 1 ? '' : 'none';
+    for (var k = 1; k <= TOTAL; k++) { var w = $('ed-w' + k); if (k === step) w.classList.add('active'); else w.classList.remove('active'); }
+
+    /* ① catégories · sous-catégories · pour qui */
+    $('ed-cats').innerHTML = Object.keys(CATS).map(function (c) {
+      var on = S.cat === c;
+      return '<button type="button" class="opt tap' + (on ? ' on' : '') + '" data-cat="' + esc(c) + '" aria-pressed="' + (on ? 'true' : 'false') + '">'
+        + '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;font-size:17px;color:var(--color-primary)"><use href="#' + esc((CATS[c] && CATS[c].ico) || 'i-tag') + '"/></svg><b>' + esc(c) + '</b>' + (on ? COCHE : '') + '</button>';
+    }).join('') || '<span class="ws">Référentiel des catégories indisponible.</span>';
+    $('ed-subs').innerHTML = S.cat
+      ? ((CATS[S.cat] && CATS[S.cat].subs) || []).map(function (x) { return chip('data-sub', x, x, S.sub === x); }).join('')
+      : '<span class="ws">Choisis d’abord une catégorie.</span>';
+    $('ed-genres').innerHTML = GENRES.map(function (g) { return chip('data-genre', g.id, g.nom, S.genre === g.id); }).join('');
+
+    /* ② couleurs à sélectionner (pastilles, multi) — jamais de texte libre ; matières de la catégorie */
+    rendreMarques();
+    $('ed-couleurs').innerHTML = COULEURS.map(function (c) {
+      var on = S.couleurs.indexOf(c.nom) !== -1;
+      return '<button type="button" class="tap" data-couleur="' + esc(c.nom) + '" title="' + esc(c.nom) + '" aria-pressed="' + (on ? 'true' : 'false') + '" style="display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 11px 5px 6px;cursor:pointer;font:inherit;font-size:12px;font-weight:700;border:2px solid ' + (on ? 'var(--color-primary)' : 'var(--color-sep)') + ';background:' + (on ? 'var(--color-mint)' : 'var(--color-surface)') + ';color:' + (on ? 'var(--color-primary-dark)' : 'var(--color-ink)') + '">'
+        + '<span style="width:16px;height:16px;border-radius:999px;border:1px solid rgba(0,0,0,.12);background:' + esc(c.hex) + '"></span>' + esc(c.nom) + (on ? ' ✓' : '') + '</button>';
+    }).join('');
+    $('ed-matieres').innerHTML = matieres().map(function (m) { return chip('data-matiere', m, m, S.matiereSel.indexOf(m) !== -1); }).join('')
+      || '<span class="hint">Aucune matière proposée pour cette catégorie.</span>';
+
+    /* ③ états, et les défauts à signaler hors neuf */
+    $('ed-etats').innerHTML = ETATS.map(function (e) {
+      var on = S.etat === e.k;
+      return '<button type="button" class="opt tap' + (on ? ' on' : '') + '" data-etat="' + esc(e.k) + '" aria-pressed="' + (on ? 'true' : 'false') + '"><b>' + esc(e.n) + '</b><small>' + esc(e.d) + '</small></button>';
+    }).join('') || '<span class="ws">Référentiel des états indisponible.</span>';
+    var neuf = estNeufK(S.etat);
+    $('ed-defbloc').hidden = !S.etat || neuf;
+    $('ed-defauts').innerHTML = defauts().map(function (m) { return chip('data-defaut', m, m, S.defautSel.indexOf(m) !== -1); }).join('');
+
+    /* ④ grille DÉRIVÉE de la table (par catégorie ET sous-catégorie) — zéro dur ; conversions UK/US : chaussures seulement */
+    var g = grille();
+    $('ed-grille').innerHTML = g.map(function (t) {
+      var q = S.stock[t] || 0, sy = (D._grilleKey && D._grilleKey(S.cat, S.sub) === 'chaussures') ? SYS[t] : null;
+      return '<div class="szc' + (q > 0 ? ' has' : '') + '" data-t="' + esc(t) + '"><div class="sz">' + esc(t) + '</div>'
+        + (sy ? '<div style="font-size:9px;color:var(--color-muted);margin-top:1px">UK ' + esc(sy.uk) + ' · US ' + esc(sy.us) + '</div>' : '')
+        + '<div class="stp"><button type="button" class="tap" data-qmoins="' + esc(t) + '" aria-label="Une de moins en ' + esc(t) + '">−</button>'
+        + '<b data-q="' + esc(t) + '">' + q + '</b>'
+        + '<button type="button" class="tap" data-qplus="' + esc(t) + '" aria-label="Une de plus en ' + esc(t) + '">+</button></div></div>';
+    }).join('');
+    $('ed-grille-vide').hidden = g.length > 0;
+    var ts = $('ed-taille-sys'), gd = (S.cat && D.guideTaillesPour) ? D.guideTaillesPour(S.cat, S.sub) : null;
+    if (gd) { ts.style.display = 'block'; ts.innerHTML = '<b style="color:var(--color-ink)">Guide des tailles</b> — ' + esc(gd); } else ts.style.display = 'none';
+    var tot = totStock();
+    $('ed-stock-note').innerHTML = 'Total : <b>' + tot + ' unité' + (tot > 1 ? 's' : '') + '</b> — le stock de bons que le réseau peut t’acheter sur cet article.';
+
+    /* ⑤ la grille de vues : une case par photo, la première fait le visuel ; re-toucher une case = la retirer */
+    $('ed-photos').innerHTML = [0, 1, 2, 3].map(function (i) {
+      var p = S.photos[i], on = !!p;
+      return '<div class="phc' + (on ? ' ok' : '') + ' tap" data-ph="' + i + '" title="' + (on ? 'Retirer cette photo' : 'Ajouter une photo') + '">'
+        + (on ? '<img src="' + esc(p) + '" alt="Photo ' + (i + 1) + '">' : '<svg class="pec-ico" viewBox="0 0 24 24" style="font-size:17px"><use href="#i-camera"/></svg>')
+        + '<em>' + (i === 0 ? 'visuel' : 'vue ' + (i + 1)) + '</em></div>';
+    }).join('');
+    var f = lireForm();
+    $('ed-ph-etat').innerHTML = S.photos.length
+      ? S.photos.length + ' photo' + (S.photos.length > 1 ? 's' : '') + ' sur ' + PHOTOS_MAX + ' — <b style="color:var(--color-primary-dark)">la première fait le visuel</b>.'
+      : (f.photo ? 'Aucun fichier : <b style="color:var(--color-primary-dark)">l’adresse en secours</b> fera le visuel.'
+                 : 'Aucune photo — touche une case pour en ajouter, ou colle une adresse en secours.');
+
+    /* ⑥ ce que le visuel annonce, l'aperçu, le récap */
+    var p = V ? V.prix(f) : null;
+    $('ed-estim').innerHTML = f.prix > 0
+      ? (p && p.remise > 0
+          ? 'Ton prix <b>' + esc(p.pleinTxt) + '</b> → le visuel annonce <b>' + esc(p.netTxt) + ' avec ce bon d’achat</b>, le prix d’origine barré (remise ' + esc(p.remiseTxt) + ').'
+          : 'Ton prix <b>' + esc(D.eur(f.prix)) + '</b> → sans remise, le visuel ne barre rien : il propose le bon d’achat comme un cadeau.')
+      : 'Renseigne ton prix pour voir ce que le visuel annonce.';
+    var e = ETATS.filter(function (x) { return x.k === S.etat; })[0];
+    $('ed-recap').innerHTML = [
+      ['Catégorie', (S.cat || '—') + ' · ' + (S.sub || '—')],
+      ['Marque · modèle', f.marque + ' · ' + f.modele],
+      ['Pour qui', genreNom(S.genre) || 'à préciser'],
+      ['Couleur(s) · matière', (S.couleurs.join(', ') || '—') + ' · ' + (f.matiere || '—')],
+      ['Description', f.description || '—'],
+      ['L’esprit de la marque', f.esprit || '—'],
+      ['État', (e ? e.n : '—') + (f.defaut ? ' · ' + f.defaut : '')],
+      ['Stock', tot + ' unité(s)' + (f.tailles.length ? ' · ' + f.tailles.map(function (t) { return t.taille + '×' + t.qte; }).join(' · ') : '')],
+      ['Photos', f.photos.length + ' / ' + PHOTOS_MAX + (S.photos.length ? '' : (f.photo ? ' (adresse)' : ''))],
+      ['Prix', f.prix > 0 ? (p && p.remise > 0 ? p.netTxt + ' avec ce bon d’achat (au lieu de ' + p.pleinTxt + ')' : D.eur(f.prix) + ' — sans remise') : '—']
+    ].map(function (r) { return '<div class="recl"><span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b></div>'; }).join('');
+    valid();
+  }
+
+  function rendreTailles() {
+    $('ed-tailles').innerHTML = S.tailles.map(function (t, i) {
+      return '<div class="ed-tl">'
+        + '<span style="flex:1"><input data-t="' + i + '" value="' + esc(t.taille) + '" placeholder="Taille (ex. 46, XL, Unique)" aria-label="Taille" autocomplete="off"></span>'
+        + '<span style="flex:0 0 88px"><input data-q="' + i + '" inputmode="numeric" value="' + esc(t.qte) + '" placeholder="qté" aria-label="Quantité" autocomplete="off"></span>'
+        + (S.tailles.length > 1 ? '<button type="button" class="x tap" data-tsupp="' + i + '" aria-label="Retirer cette taille">−</button>' : '')
+        + '</div>';
+    }).join('');
+  }
+
+  /* ══ CONTINUER / RETOUR — la règle de l'étape : « Continuer » se grise tant que
+     l'étape n'est pas valide. Ce n'est qu'un guide : `ed-publier` publie de n'importe où, et le data-layer
+     tranche. ══ */
+  function okStep() {
+    switch (step) {
+      case 1: return !!(S.cat && S.sub && S.genre);
+      case 2: return !!(val('ed-marque') && val('ed-modele') && S.couleurs.length && S.matiereSel.length);
+      case 3: if (!S.etat) return false; return estNeufK(S.etat) || !!defautTxt();
+      case 4: return totStock() > 0;
+      case 5: return lireForm().photos.length > 0;
+      case 6: return lireForm().prix > 0;
+    }
+    return false;
+  }
+  function valid() {
+    var b = $('ed-suivant'), ok = okStep();
+    b.disabled = !ok; b.style.opacity = ok ? '1' : '.5';
+    b.hidden = step === TOTAL;               // à la dernière étape, « Continuer » laisse la place à « Publier »
+    $('ed-publier').hidden = step !== TOTAL;
+  }
+  /* ══ LA MARQUE DE L'ARTICLE — le sélecteur, aux mots de Solution ═════════════════════════════════════════════════
+     `S.marque` = la marque choisie ; '__sans__' = sans marque ; '__autre__' = écrite dans `ed-marque-autre`. La valeur
+     RETENUE est recopiée dans le champ caché `ed-marque`, seul lu par la publication et par le visuel. La liste vient
+     du référentiel des marques par catégorie (D.marquesPour) : la sienne en tête, la recherche filtre, huit visibles. */
+  var MARQUES_VOIR = 8;
+  function marqueMienne() { var m = D.techMarchand(s.id); return m ? m.raisonSociale : ''; }
+  function marqueRetenue() {
+    if (S.marque === '__autre__') return String(S.marqueAutre || '').trim();
+    if (S.marque === '__sans__') { var cm = (D.mode || {}).catalogueMarques || {}; return cm.sansMarque || 'Sans marque'; }
+    return S.marque || marqueMienne();
+  }
+  function syncMarque() { $('ed-marque').value = marqueRetenue(); var za = $('ed-marque-autre-z'); if (za) za.hidden = S.marque !== '__autre__'; }
+  function rendreMarques() {
+    var host = $('ed-marques'); if (!host) return;
+    if (!S.marque) S.marque = marqueMienne() || null;
+    var mienne = marqueMienne(), q = String(S.marqueQ || '').toLowerCase().trim();
+    var cm = (D.mode || {}).catalogueMarques || {};
+    var toutes = (D.marquesPour ? D.marquesPour(S.cat, S.sub) : []).filter(function (x) { return x !== cm.sansMarque && x !== cm.proposition && x !== mienne; });
+    var liste = q ? toutes.filter(function (x) { return x.toLowerCase().indexOf(q) !== -1; }) : toutes;
+    var visibles = (q || S.marquesTout) ? liste : liste.slice(0, MARQUES_VOIR);
+    if (!q && !S.marquesTout && S.marque && toutes.indexOf(S.marque) >= MARQUES_VOIR) visibles = [S.marque].concat(visibles);
+    var chip = function (val, lbl, on) { return '<span class="chip tap' + (on ? ' on' : '') + '" data-marque="' + esc(val) + '">' + esc(lbl) + '</span>'; };
+    var h = (mienne && !q ? chip(mienne, 'Ma marque · ' + mienne, S.marque === mienne) : '')
+      + visibles.map(function (x) { return chip(x, x, S.marque === x); }).join('');
+    if (q && !visibles.length) h += '<span class="hint">Aucune marque du catalogue ne correspond à « ' + esc(S.marqueQ) + ' » — écris-la avec « Autre marque ».</span>';
+    if (!q && !S.marquesTout && liste.length > visibles.length) h += '<span class="chip tap" data-marque="__plus__" style="background:none;box-shadow:none;border:1px dashed var(--color-sep);color:var(--color-primary-dark)">+ ' + (liste.length - visibles.length) + ' autres</span>';
+    h += '<div style="flex-basis:100%;display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">'
+      + '<a class="tap" href="#" data-marque="__sans__" style="font-size:11.5px;font-weight:700;color:' + (S.marque === '__sans__' ? 'var(--color-primary-dark)' : 'var(--color-muted)') + ';text-decoration:underline">' + (S.marque === '__sans__' ? '✓ ' : '') + 'Sans marque</a>'
+      + '<a class="tap" href="#" data-marque="__autre__" style="font-size:11.5px;font-weight:700;color:' + (S.marque === '__autre__' ? 'var(--color-primary-dark)' : 'var(--color-muted)') + ';text-decoration:underline">' + (S.marque === '__autre__' ? '✓ ' : '') + 'Autre marque…</a>'
+      + '</div>';
+    host.innerHTML = h;
+    syncMarque();
+  }
+  $('ed-marques').addEventListener('click', function (e) {
+    var z = e.target.closest && e.target.closest('[data-marque]'); if (!z) return;
+    e.preventDefault();
+    var v = z.getAttribute('data-marque');
+    if (v === '__plus__') { S.marquesTout = true; rendreMarques(); return; }
+    S.marque = v; rendreMarques(); proposer();
+    if (v === '__autre__') { var ia = $('ed-marque-autre'); if (ia) ia.focus(); }
+    majSuivant();
+  });
+  $('ed-marque-q').addEventListener('input', function () { S.marqueQ = this.value; rendreMarques(); });
+  $('ed-marque-autre').addEventListener('input', function () { S.marqueAutre = this.value; syncMarque(); majSuivant(); });
+
+  /* ══ L'AIDE À LA SAISIE (23/09, soir — fondatrice : « la suggestion des champs pré-remplis pour gagner du temps ») ═════
+     Dès que la catégorie, le type, la marque ou l'état changent, on PROPOSE ce que le référentiel sait déjà
+     (D.brouillonPiece : le modèle, l'argument de vente, les matières) ; on ne touche JAMAIS un champ que la marque a
+     modifié — `S.touche` en garde la trace — et ce qui est proposé se voit (.sugg) jusqu'à ce qu'elle y touche. */
+  var S_PROP = '';
+  function poser(id, valeur, cleS) {
+    var e = $(id); if (!e || !valeur) return;
+    S.touche = S.touche || {}; S._prop = S._prop || {};
+    if (S.touche[id]) return;                                     // écrit par la marque : on n'y touche pas
+    if (e.value && e.value !== S._prop[id]) { S.touche[id] = true; return; }
+    e.value = valeur; S._prop[id] = valeur;
+    if (cleS) S[cleS] = valeur;
+    e.classList.add('sugg');
+  }
+  function proposer() {
+    if (!D.brouillonPiece || !S.cat) return;
+    var sig = [S.cat, S.sub, marqueRetenue(), S.etat].join('|');
+    if (sig === S_PROP) return; S_PROP = sig;
+    var b = D.brouillonPiece({ cat: S.cat, sub: S.sub, marque: marqueRetenue(), etat: S.etat });
+    poser('ed-modele', b.modele);
+    poser('ed-desc', b.description);
+    if (!S.matiereSel.length && b.matiere && b.matiere.length) S.matiereSel = b.matiere.slice();
+    var note = $('ed-sugg-note'); if (note) note.hidden = !document.querySelector('#ed-modal .sugg');
+  }
+  document.addEventListener('input', function (e) {
+    var id = e.target && e.target.id;
+    if (id === 'ed-modele' || id === 'ed-desc') { S.touche = S.touche || {}; S.touche[id] = true; e.target.classList.remove('sugg'); var n0 = $('ed-sugg-note'); if (n0) n0.hidden = !document.querySelector('#ed-modal .sugg'); }
+  });
+
+  function goStep(n) {
+    if (n < 1 || n > TOTAL) return;
+    step = n; render();
+    $('ed-corps').scrollTop = 0;
+    if (step === TOTAL) apercu();
+  }
+  function next() { if (!okStep()) return; goStep(step + 1); }
+  function prev() { goStep(step - 1); }
+
+  /* LA PHOTO EST RÉDUITE AVANT D'ÊTRE GARDÉE. Une photo de téléphone pèse 3 à 8 Mo en base64 ; quatre d'entre
+     elles et le stockage de l'appareil refuse l'écriture — la créa marketing nous l'a appris (lot 8). Le visuel
+     fait 1080 px de large : au-delà de 1200 px de côté, on ne garde que du poids. Si l'image ne se décode pas,
+     on la garde telle quelle : mieux vaut un refus d'écriture lisible qu'une photo perdue en silence. */
+  function reduire(dataUrl, cb) {
+    var im = new Image();
+    im.onload = function () {
+      var w = im.width, h = im.height, k = Math.min(1, PHOTO_COTE / Math.max(w, h));
+      if (k >= 1) { cb(dataUrl); return; }
+      try {
+        var cv = document.createElement('canvas'); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+        cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+        cb(cv.toDataURL('image/jpeg', 0.85));
+      } catch (e) { cb(dataUrl); }
+    };
+    im.onerror = function () { cb(dataUrl); };
+    im.src = dataUrl;
+  }
+
+  /* LA PHOTO DU VISUEL — chargée pour l'aperçu. Une adresse tapée lettre à lettre ne relance pas une image par
+     touche : on attend que la frappe se calme. Une image arrivée en retard pour une photo déjà remplacée est jetée. */
+  function chargerPhoto(toutDeSuite) {
+    clearTimeout(photoTimer);
+    photoTimer = setTimeout(function () {
+      var src = T.photo(lireForm().photo);   // déposée (embarquée) ou donnée par son adresse — un nom de fichier nu ne s'affiche pas
+      if (!src) { photoIm = null; apercu(); return; }
+      var im = new Image(); im.crossOrigin = 'anonymous';
+      im.onload = function () { if (T.photo(lireForm().photo) === src) { photoIm = im; apercu(); } };
+      im.onerror = function () { if (T.photo(lireForm().photo) === src) { photoIm = null; apercu(); } };
+      im.src = src;
+    }, toutDeSuite ? 0 : 300);
+  }
+
+  /* L'APERÇU — il ne se redessine pas à chaque touche : on attend que la frappe se calme. */
+  function apercu() {
+    if (!V) return;
+    clearTimeout(apercuTimer);
+    apercuTimer = setTimeout(dessinerApercu, 220);
+  }
+  function dessinerApercu() {
+    var a = lireForm(), cv = $('ed-apercu');
+    cv.width = V.LARGEUR; cv.height = V.HAUTEUR;
+    var x = cv.getContext('2d');
+    /* LE STOCK D'UN BROUILLON N'EXISTE PAS ENCORE : on le simule à partir des quantités saisies, le temps du
+       dessin, et on rend la vraie fonction quoi qu'il arrive. Le dessin, lui, est exactement celui d'un article publié. */
+    var vraiStock = D.techArticleStock;
+    D.techArticleStock = function (art) {
+      if (art && art.slug === 'apercu') {
+        var tot = (art.tailles || []).reduce(function (n, t) { return n + t.qte; }, 0);
+        return { total: tot, vendus: 0, dispo: tot, epuise: tot <= 0, tailles: art.tailles || [] };
+      }
+      return vraiStock.call(D, art);
+    };
+    try { V.dessiner(x, a, photoIm, 1); } catch (e) {} finally { D.techArticleStock = vraiStock; }
+    /* SOUS L'APERÇU, SEULEMENT CE QUE LE BANDEAU DU PRIX NE DIT PAS DÉJÀ : l'état de la photo. Le prix annoncé
+       (barré ou non) est écrit une fois, au-dessus, dans `ed-estim`. */
+    $('ed-apercu-txt').textContent = photoIm ? 'L’aperçu est le fichier tel qu’il sera téléchargé.'
+      : (a.photo ? 'La photo n’a pas pu être chargée pour l’aperçu — le fichier téléchargé la portera si le navigateur l’accepte.'
+                 : 'Sans photo, le visuel garde son fond uni : ajoute-en une à l’étape Photos.');
+  }
+
+  /* LE CHAMP FAUTIF PREND LE FOCUS — celui que le data-layer nomme (`champ`), pas celui qu'on suppose : on ouvre
+     l'étape qui le porte, puis on focalise s'il y a un champ ; un choix (catégorie, état…) n'a rien à focaliser. */
+  function focaliser(champ) {
+    var ou = { modele: [2, 'ed-modele'], marque: [2, 'ed-marque-q'], esprit: [2, 'ed-esprit'], description: [2, 'ed-desc'],
+      categorie: [1], sous: [1], genre: [1], couleurs: [2], matiere: [2], etat: [3], defaut: [3, 'ed-defaut'], tailles: [4],
+      photo: [5, 'ed-photo'], photos: [5], prix: [6, 'ed-prix'], remise: [6, 'ed-remise'] }[champ];
+    if (!ou) return;
+    goStep(ou[0]);
+    var el = ou[1] ? $(ou[1]) : null;
+    if (champ === 'tailles') {
+      var rangs = $('ed-tailles').querySelectorAll('.ed-tl');
+      for (var i = 0; i < rangs.length && !el; i++) {
+        var ti = rangs[i].querySelector('[data-t]'), qi = rangs[i].querySelector('[data-q]');
+        if ((ti.value || '').trim() && !(parseInt(qi.value, 10) > 0)) el = qi;
+      }
+      if (!el) el = $('ed-grille').querySelector('[data-qplus]') || (rangs[0] && rangs[0].querySelector('[data-t]'));
+    }
+    if (!el) return;
+    try { el.scrollIntoView({ block: 'center' }); } catch (e) {}
+    el.focus();
+  }
+
+  /* ══ OUVRIR, FERMER ═══════════════════════════════════════════════════════════════════════════════════════
+     La marque affichée est préremplie avec sa raison sociale ; le reste est le brouillon tel qu'elle l'a laissé,
+     à l'étape où elle l'a laissé. */
+  function ouvrir() {
+    var m = D.techMarchand(s.id);
+    if (!S.marque && m) S.marque = m.raisonSociale;
+    syncMarque();
+    $('ed-err').hidden = true;
+    $('ed-modal').hidden = false;
+    rendreTailles(); chargerPhoto(true);
+    goStep(step);
+  }
+  function fermer() { $('ed-modal').hidden = true; }
+
+  /* ══ PUBLIER — le data-layer décide ; l'écran ne refait pas ses règles ═══════════════════════════════════
+     Si ok : la modale se ferme, la liste se repeint (le bus l'a déjà fait), et le visuel se télécharge dans la
+     foulée — c'est ce qu'elle est venue chercher. Si la photo n'a pas pu être exportée, on le DIT sous l'article. */
+  function publier() {
+    var z = $('ed-err'); z.hidden = true;
+    var f = lireForm();
+    var r = D.techArticleCreer({ marchandId: s.id, marque: f.marque, modele: val('ed-modele'), esprit: f.esprit, description: f.description,
+      categorie: S.cat, sous: S.sub, genre: S.genre, couleurs: S.couleurs.slice(), matiere: f.matiere || null, etat: S.etat, defaut: f.defaut,
+      photo: f.photo, photos: f.photos, prix: $('ed-prix').value, remise: $('ed-remise').value,
+      tailles: taillesSaisies(), par: s.id });
+    if (!r.ok) { z.hidden = false; z.textContent = refus(r); focaliser(r.champ); return; }
+    var art = r.article;
+    S = neuf(); step = 1; photoIm = null;
+    ['ed-modele', 'ed-esprit', 'ed-desc', 'ed-defaut', 'ed-photo', 'ed-prix', 'ed-remise'].forEach(function (i2) { $(i2).value = ''; });
+    rendreTailles(); render(); fermer(); peindre();
+    note(art.id, 'Publié — le visuel se prépare…');
+    if (!V) { note(art.id, 'Publié. Le module de visuel n’est pas chargé : rien à télécharger.'); return; }
+    V.composer(art, {}, function (url, avecPhoto) {
+      if (!url) { note(art.id, 'Publié, mais le navigateur a refusé d’exporter l’image — réessaie avec « Visuel ».'); return; }
+      V.telecharger(url, V.nomFichier(art, 'png'));
+      note(art.id, (avecPhoto || !art.photo)
+        ? 'Publié — visuel téléchargé.'
+        : 'Publié — visuel téléchargé SANS la photo : le navigateur a refusé de l’exporter (elle vient d’un autre domaine). Une image choisie depuis l’appareil passe toujours.');
+    });
+  }
+
+  /* ══ LES RÉSEAUX DE LA MARQUE — reliés dans Compte, lus ici ════════════════════════════════════════════════
+     La légende est celle du module (PEC_VSOL.legende), SIGNÉE des pseudos reliés ; « Poster sur … » ouvre la page
+     de la marque sur chaque réseau. Sans réseau relié, la carte le dit et mène à Compte — elle ne signe pas
+     d'un @ inventé. */
+  function signature(rs) {
+    return rs.filter(function (r) { return r.pseudo; }).map(function (r) { return (r.arobase ? '@' : '') + r.pseudo; }).join(' · ');
+  }
+  function legendeSignee(a, rs) {
+    var txt = V ? V.legende(a) : '', sig = signature(rs);
+    return sig ? txt + ' — ' + sig : txt;
+  }
+  function partage(rs) {
+    if (!rs.length) return 'Relie tes réseaux — <a class="tk-go" href="10-compte.html?s=integration#reseaux">Compte › Intégration et réseaux ›</a> — et la légende sera signée de ton pseudo, « Poster sur… » ouvrira ta page sur chaque réseau.';
+    return '<div class="acts">' + rs.map(function (r) {
+        return '<a class="pec-pill tap" target="_blank" rel="noopener" href="' + esc(r.url) + '">Poster sur ' + esc(r.lbl) + '</a>';
+      }).join('') + '</div>'
+      + '<div style="margin-top:6px">Légende signée <b style="color:var(--color-ink)">' + esc(signature(rs)) + '</b> — copie-la, puis poste-la avec l’image : c’est elle qui porte le lien cliquable.</div>';
+  }
+
+  /* OÙ EN EST NOTRE PAIEMENT D'UNE VENTE — DÉRIVÉ des champs de la vente (marqueStatut, echeanceMarque, reglementRef),
+     comme sur Paiement : une date d'échéance ou une référence de virement, pas un libellé. */
+  function etatPaiement(v) {
+    if (v.statut === 'annulee' || v.marqueStatut === 'annule') return 'achat annulé';
+    if (v.marqueStatut === 'paye') return 'payé' + (v.reglementRef ? ' — virement ' + v.reglementRef : '');
+    return v.echeanceMarque ? 'nous te le payons le ' + D.dateHeure(v.echeanceMarque) : 'nous te le payons après l’arrêté de ' + D.techRef().paiement.arreteHeure;
+  }
+
+  /* ══ LES BONS PROPOSÉS NÉS DE L'ARTICLE — DÉRIVÉS, JAMAIS RECOPIÉS ═══════════════════════════════════════════
+     Les bons proposés nés de SON lien (origineLien = son slug), pour chacun : référence, montant, état, et les bons
+     qui l'ont couvert ; derrière chaque bon, l'achat du réseau (quel commerce l'a vendu, ce que nous l'achetons) et où en
+     est NOTRE paiement à la marque. Un même bon qui couvre deux propositions n'est compté qu'une fois dans les totaux. */
+  function paiementsDe(a) {
+    var dem = D.techLiensGet().filter(function (x) { return x.origineLien === a.slug; })
+      .sort(function (x, y) { return (y.creeLe || 0) - (x.creeLe || 0); });
+    var vus = {}, o = { dem: dem, nb: 0, valeur: 0, du: 0, paye: 0, html: '' };
+    var corps = dem.map(function (x) {
+      var bons = (x.paiements || []).map(function (pm) {
+        var b = D.techBon(pm.code); if (!b) return null;
+        var v = b.venteRef ? D.techVente(b.venteRef) : null;
+        if (!vus[b.code]) {
+          vus[b.code] = 1; o.nb++; o.valeur += b.montant || 0;
+          if (v && v.marqueStatut === 'a_payer') o.du += v.prixMarque || 0;
+          if (v && v.marqueStatut === 'paye') o.paye += v.prixMarque || 0;
+        }
+        return '<span class="sb">Bon ' + esc(b.code) + ' · ' + esc(D.eur(b.montant))
+          + (pm.pris != null && Math.abs(pm.pris - b.montant) > 0.004 ? ' (' + esc(D.eur(pm.pris)) + ' sur cette proposition)' : '')
+          + (v ? ' · acheté par ' + esc(v.revendeur || '—') + ' · acheté à toi ' + esc(D.eur(v.prixMarque)) + ' · ' + esc(etatPaiement(v)) : '') + '</span>';
+      }).filter(Boolean).join('');
+      return '<div class="payl"><div class="nm">' + esc(x.reference || x.id) + ' · ' + esc(D.eur(x.montant)) + '</div>'
+        + '<span class="sb">' + esc(D.techLienEtatLbl(x.etat)) + (x.creeLe ? ' · ' + esc(D.dateHeure(x.creeLe)) : '') + (x.client ? ' · ' + esc(x.client) : '') + '</span>'
+        + (bons || '<span class="sb">Aucun bon présenté pour l’instant.</span>') + '</div>';
+    }).join('');
+    o.html = dem.length
+      ? '<div class="tot">' + esc(pl(o.nb, 'bon')) + ' · ' + esc(D.eur(o.valeur)) + ' de valeur faciale · ' + esc(D.eur(o.du)) + ' que nous te devons · ' + esc(D.eur(o.paye)) + ' payés</div>'
+        + '<span class="sb">' + esc(pl(dem.length, 'bon proposé')) + ' né' + (dem.length > 1 ? 's' : '') + ' du lien de ce visuel.</span>' + corps
+      : '<span class="sb">Rien pour l’instant. Dès qu’un client ouvre ce visuel et choisit un bon, sa proposition apparaît ici — avec le bon que nous t’avons acheté pour la couvrir, et où en est notre paiement.</span>';
+    return o;
+  }
+
+  /* ══ LA LISTE — UNE CARTE PAR ARTICLE, AVEC L'APERÇU DE STOCK ═════════════════════════════════════════════
+     « Lorsque nous lui achetons un bon, ça se déduit du stock » : le disponible est DÉRIVÉ (quantités déclarées
+     − bons vendus par le réseau sur cet article). Épuisé, la pastille le dit. Les tailles sont celles qu'elle a
+     déclarées, avec leur quantité : le data-layer ne sait pas sur quelle taille un bon a été vendu, on ne
+     l'invente pas. */
+  function rendreListe() {
+    var l = D.techArticles({ marchandId: s.id }), rs = D.techMarchandReseauxGet ? D.techMarchandReseauxGet(s.id) : [];
+    $('ed-liste-titre').textContent = 'Mes articles' + (l.length ? ' · ' + l.length : '');
+    $('ed-liste').innerHTML = l.length ? l.map(function (a) { return carte(a, rs); }).join('')
+      : '<div class="tk-vide" style="margin-top:8px"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shirt"/></svg><div><b>Aucun article publié.</b> « Publier un article » ouvre la fiche, étape par étape — l’aperçu du visuel se dessine à la fin.</div></div>';
+  }
+  function carte(a, rs) {
+    var st = D.techArticleStock(a);
+    var p = V ? V.prix(a) : { remise: 0, netTxt: D.eur(a.prix), pleinTxt: D.eur(a.prix), remiseTxt: '' };
+    var part = st.total ? Math.round(st.dispo / st.total * 100) : 0;
+    var edite = !!(stockEdit && stockEdit.id === a.id);
+    var fiche = [a.categorie, a.sous, genreNom(a.genre), etatNom(a.etat)].filter(Boolean).join(' · ');
+    var pay = paiementsDe(a);
+    var ph = T.photo(a.photo), vig = ph
+      ? '<img class="vig" src="' + esc(ph) + '" alt="" loading="lazy">'
+      : '<span class="vig ph" aria-hidden="true">' + esc(String(a.modele || '?').charAt(0).toUpperCase()) + '</span>';
+    return '<div class="carte">'
+      + '<div class="tete">' + vig
+      + '<div class="nom"><div class="m">' + esc(a.modele) + '</div>'
+      + '<div class="s">' + esc(a.marque) + (fiche ? ' · ' + esc(fiche) : '') + '</div>'
+      /* LE STOCK EN PASTILLES, SANS REDITE : « 5 en stock » suffit tant que rien n'est vendu ; dès qu'un bon est acheté,
+         la pastille des achats et la jauge (disponible sur déclaré) disent ce qui a bougé. */
+      + '<div class="etats">'
+      /* la pastille du stock porte `data-stock` : la toucher ouvre l'éditeur, comme le bouton « Stock » — et c'est elle que
+         le banc lit pour le disponible */
+      + (st.epuise ? '<span class="et et--stop tap" data-stock="' + esc(a.id) + '" title="Gérer le stock">Épuisé · 0 en stock</span>'
+                   : '<span class="et et--ok tap" data-stock="' + esc(a.id) + '" title="Gérer le stock">' + st.dispo + ' en stock</span>')
+      + (st.vendus ? '<span class="et et--attente">' + esc(pl(st.vendus, 'bon')) + ' acheté' + (st.vendus > 1 ? 's' : '') + ' par nous · ' + st.total + ' déclaré' + (st.total > 1 ? 's' : '') + '</span>' : '')
+      + '</div></div>'
+      + '<div class="px"><b>' + esc(p.remise > 0 ? p.netTxt : p.pleinTxt) + '</b>'
+      + (p.remise > 0 ? '<s>' + esc(p.pleinTxt) + '</s><em>avec ce bon d’achat</em>' : '<em>sans remise</em>') + '</div>'
+      + '</div>'
+      + (st.vendus ? '<div class="tk-jauge"><i style="width:' + part + '%"></i></div>' : '')
+      + (st.tailles.length ? '<div class="tailles">' + st.tailles.map(function (t) { return '<span class="tch">' + esc(t.taille) + ' <b>×' + t.qte + '</b></span>'; }).join('') + '</div>' : '')
+      + (edite ? editeurStock(a) : '')
+      + '<div class="acts">'
+      + '<button type="button" class="pec-pill pec-pill--fort tap" data-visuel="' + esc(a.id) + '">Visuel</button>'
+      + (enreg[a.id]
+          ? '<button type="button" class="pec-pill tap" data-video="' + esc(a.id) + '" disabled>Enregistrement…</button>'
+          : '<button type="button" class="pec-pill tap" data-video="' + esc(a.id) + '">Vidéo ' + VIDEO_S + ' s</button>')
+      + '<button type="button" class="pec-pill tap" data-legende="' + esc(a.id) + '">Légende</button>'
+      + '<button type="button" class="pec-pill tap" data-stock="' + esc(a.id) + '"' + (edite ? ' disabled' : '') + '>Stock</button>'
+      + '<button type="button" class="pec-pill pec-pill--doux tap" data-retirer="' + esc(a.id) + '">Retirer</button>'
+      + '</div>'
+      + '<details class="pli" data-paiements="' + esc(a.id) + '"' + (plis[a.id] ? ' open' : '') + '><summary>Bons achetés par le réseau sur cet article'
+      + (pay.dem.length ? ' <b>· ' + esc(pl(pay.nb, 'bon')) + (pay.du > 0 ? ' · ' + esc(D.eur(pay.du)) + ' dus' : '') + '</b>' : ' <b>· aucun pour l’instant</b>')
+      + '</summary>' + pay.html + '</details>'
+      + '<div class="reseaux">' + partage(rs) + '</div>'
+      + '<a class="lienart tap" href="' + esc(D.techArticleUrl(a.slug)) + '" target="_blank" rel="noopener"><b>Page de l’article ›</b> ' + esc(D.techArticleUrl(a.slug)) + '</a>'
+      + '<div class="note-art" id="ed-etat-' + esc(a.id) + '">' + esc(notes[a.id] || '') + '</div>'
+      + '</div>';
+  }
+  /* GÉRER LE STOCK — dans la carte, sur les quantités DÉCLARÉES. Les bons déjà achetés restent déduits : le
+     data-layer refuse un total qui descendrait en dessous, et c'est lui qui le dit. */
+  function editeurStock(a) {
+    return '<div class="stock-ed">'
+      + '<div style="font-size:11.5px;font-weight:800;color:var(--color-ink)">Gérer le stock</div>'
+      + '<p class="aide">Corrige les quantités déclarées. Les bons déjà achetés par nous restent déduits : le total ne peut pas descendre en dessous.</p>'
+      + stockEdit.tailles.map(function (t, i) {
+          return '<div class="ed-tl">'
+            + '<span style="flex:1"><input class="pec-input" data-st="' + i + '" value="' + esc(t.taille) + '" placeholder="Taille" aria-label="Taille"></span>'
+            + '<span style="flex:0 0 92px"><input class="pec-input" data-sq="' + i + '" inputmode="numeric" value="' + esc(t.qte) + '" placeholder="qté" aria-label="Quantité"></span>'
+            + (stockEdit.tailles.length > 1 ? '<button type="button" class="x tap" data-stsupp="' + i + '" aria-label="Retirer cette taille">−</button>' : '')
+            + '</div>';
+        }).join('')
+      + '<button type="button" class="pec-btn-secondary tap" data-stplus="1" style="width:100%;margin-top:8px">Ajouter une taille</button>'
+      + '<p class="tk-err" id="ed-st-err" hidden></p>'
+      + '<div style="display:flex;gap:8px;margin-top:9px">'
+      + '<button type="button" class="pec-cta pec-cta--tight tap" data-stok="' + esc(a.id) + '" style="flex:1">Enregistrer le stock</button>'
+      + '<button type="button" class="pec-btn-secondary tap" data-stannule="1" style="flex:1">Annuler</button>'
+      + '</div></div>';
+  }
+
+  function peindre() {
+    var R = D.techRef(), m = D.techMarchand(s.id);
+    if (!m) { location.href = '01-connexion.html'; return; }
+
+    $('to-liens').innerHTML = liens().map(function (l) {
+      return '<a class="lien tap" href="' + esc(l[0]) + '"><svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-primary-dark)"><use href="#' + esc(l[1]) + '"/></svg>'
+        + '<span style="min-width:0;flex:1"><span class="nm">' + esc(l[2]) + '</span><span class="sb">' + esc(l[3]) + '</span></span>'
+        + '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-muted)"><use href="#i-chevron-right"/></svg></a>';
+    }).join('');
+
+    if (!S.marque) { S.marque = m.raisonSociale; syncMarque(); }
+    /* CE QUE NOUS NE CONTRÔLONS PAS, EN DEUX LIGNES — et ce qui reste à sa charge. Le nom vient du référentiel,
+       l'article de loi du fondement (`refArticle` en sort la référence courte, le texte entier en infobulle) :
+       rien de cité n'est écrit ici. Ce que le bon n'est pas (ni remboursable, ni monnaie) se lit au client, sur
+       la page du bon — pas ici une seconde fois. */
+    var F = R.fondement || {}, art = F.exemption ? D.refArticle(F.exemption) : '';
+    $('ed-cadre').innerHTML = 'Tu publies <b>tes</b> articles, sous <b>ta</b> responsabilité : ' + esc(R.nom) + ' ne contrôle ni tes produits ni tes annonces, et ne gère aucune livraison. '
+      + 'Ce que nous t’achetons, ce sont des <b>bons d’achat</b> valables uniquement chez toi — un réseau limité'
+      + (art ? ' (<b title="' + esc(F.exemption) + '">' + esc(art) + '</b>)' : '') + '.';
+    rendreListe();
+  }
+
+  /* ══ LES GESTES — délégués, parce que la liste est repeinte à chaque événement du bus ══════════════════════ */
+  document.addEventListener('input', function (e) {
+    var t = e.target, id = t.id || '', has = function (k) { return t.hasAttribute && t.hasAttribute(k); }, input = t.tagName === 'INPUT';
+    if (id === 'ed-photo') { chargerPhoto(); render(); return; }
+    if (id === 'ed-defaut') { S.defautLibre = t.value; valid(); return; }
+    if (input && has('data-t')) { S.tailles[+t.getAttribute('data-t')].taille = t.value; render(); apercu(); return; }
+    if (input && has('data-q')) { S.tailles[+t.getAttribute('data-q')].qte = t.value; render(); apercu(); return; }
+    /* l'édition du stock se recopie dans `stockEdit` à la frappe : une repeinte de la liste la rend telle quelle */
+    if (has('data-st') && stockEdit) { stockEdit.tailles[+t.getAttribute('data-st')].taille = t.value; return; }
+    if (has('data-sq') && stockEdit) { stockEdit.tailles[+t.getAttribute('data-sq')].qte = t.value; return; }
+    if (/^ed-(modele|marque|esprit|desc|prix|remise)$/.test(id)) { render(); apercu(); }
+  });
+
+  document.addEventListener('change', function (e) {
+    if (e.target.id !== 'ed-fichier') return;
+    var fichiers = Array.prototype.slice.call(e.target.files || []), champ = e.target;
+    var place = PHOTOS_MAX - S.photos.length;
+    if (!fichiers.length) return;
+    if (place <= 0) { $('ed-ph-etat').textContent = 'Quatre photos, c’est le maximum : retire-en une pour en ajouter une autre.'; champ.value = ''; return; }
+    /* LE FICHIER RESTE SUR L'APPAREIL : on le lit en base64 pour le dessiner et le garder, on n'envoie rien nulle
+       part. Les lectures s'enchaînent dans l'ordre choisi : la première image choisie est celle du visuel. */
+    (function suivant(i) {
+      if (i >= fichiers.length || S.photos.length >= PHOTOS_MAX) return;
+      var fr = new FileReader();
+      fr.onload = function () {
+        reduire(String(fr.result), function (src) {
+          S.photos.push(src);
+          render();
+          if (S.photos.length === 1) chargerPhoto(true);
+          suivant(i + 1);
+        });
+      };
+      fr.onerror = function () { suivant(i + 1); };
+      fr.readAsDataURL(fichiers[i]);
+    })(0);
+    champ.value = '';   // pour pouvoir re-choisir le même fichier après l'avoir retiré
+  });
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.id === 'ed-modal') { fermer(); return; }   // un toucher sur le voile ferme, le brouillon reste
+    /* le pli des paiements : on retient s'il est ouvert, parce que la carte est repeinte à chaque événement du bus */
+    var sm = t.closest ? t.closest('.pli > summary') : null;
+    if (sm) { var dt = sm.parentNode, pid = dt.getAttribute('data-paiements'); if (pid) plis[pid] = !dt.open; return; }
+    var el = t.closest ? t.closest('#ed-ouvrir,#ed-fermer,#ed-precedent,#ed-suivant,#ed-publier,#ed-taille-plus,[data-etape],[data-cat],[data-sub],[data-genre],[data-couleur],[data-matiere],[data-etat],[data-defaut],[data-qplus],[data-qmoins],[data-ph],[data-tsupp],[data-visuel],[data-video],[data-legende],[data-stock],[data-retirer],[data-stok],[data-stannule],[data-stplus],[data-stsupp]') : null;
+    if (!el) return;
+
+    if (el.id === 'ed-ouvrir') { ouvrir(); return; }
+    if (el.id === 'ed-fermer') { fermer(); return; }
+    if (el.id === 'ed-suivant') { next(); return; }
+    if (el.id === 'ed-precedent') { prev(); return; }
+    if (el.hasAttribute('data-etape')) { var n0 = +el.getAttribute('data-etape'); if (n0 < step) goStep(n0); return; }
+    if (el.id === 'ed-publier') { publier(); return; }
+
+    /* les choix du brouillon — un changement de catégorie ou de type change la grille : le stock saisi dessus
+       repart de zéro (les tailles hors grille restent), et les matières proposées aussi */
+    if (el.hasAttribute('data-cat')) { var c = el.getAttribute('data-cat'); if (S.cat !== c) { S.cat = c; S.sub = null; S.stock = {}; S.matiereSel = []; S.defautSel = []; } proposer(); render(); apercu(); return; }
+    if (el.hasAttribute('data-sub')) { var sb = el.getAttribute('data-sub'); if (S.sub !== sb) { S.sub = sb; S.stock = {}; S.matiereSel = []; S.defautSel = []; } proposer(); render(); apercu(); return; }
+    if (el.hasAttribute('data-genre')) { S.genre = el.getAttribute('data-genre'); render(); return; }
+    if (el.hasAttribute('data-couleur')) { bascule(S.couleurs, el.getAttribute('data-couleur')); render(); return; }
+    if (el.hasAttribute('data-matiere')) { bascule(S.matiereSel, el.getAttribute('data-matiere')); render(); return; }
+    if (el.hasAttribute('data-etat')) { S.etat = el.getAttribute('data-etat'); proposer(); render(); return; }
+    if (el.hasAttribute('data-defaut')) { bascule(S.defautSel, el.getAttribute('data-defaut')); render(); return; }
+    if (el.hasAttribute('data-qplus') || el.hasAttribute('data-qmoins')) {
+      var tq = el.getAttribute('data-qplus') || el.getAttribute('data-qmoins');
+      S.stock[tq] = Math.max(0, (S.stock[tq] || 0) + (el.hasAttribute('data-qplus') ? 1 : -1));
+      render(); apercu(); return;
+    }
+    if (el.id === 'ed-taille-plus') {
+      S.tailles.push({ taille: '', qte: '' }); rendreTailles();
+      var nv = $('ed-tailles').querySelector('[data-t="' + (S.tailles.length - 1) + '"]'); if (nv) nv.focus();
+      return;
+    }
+    if (el.hasAttribute('data-tsupp')) { S.tailles.splice(+el.getAttribute('data-tsupp'), 1); rendreTailles(); render(); apercu(); return; }
+    if (el.hasAttribute('data-ph')) {
+      var ip = +el.getAttribute('data-ph');
+      if (S.photos[ip]) { S.photos.splice(ip, 1); render(); chargerPhoto(true); return; }   // re-toucher = retirer
+      var fi = $('ed-fichier'); if (fi && fi.click) { fi.value = ''; fi.click(); }        // vrai sélecteur de fichier
+      return;
+    }
+
+    /* le stock en cours d'édition */
+    if (el.hasAttribute('data-stplus') && stockEdit) { stockEdit.tailles.push({ taille: '', qte: '' }); rendreListe(); return; }
+    if (el.hasAttribute('data-stsupp') && stockEdit) { stockEdit.tailles.splice(+el.getAttribute('data-stsupp'), 1); rendreListe(); return; }
+    if (el.hasAttribute('data-stannule')) { stockEdit = null; rendreListe(); return; }
+    if (el.hasAttribute('data-stok') && stockEdit) {
+      var rs0 = D.techArticleMajTailles(el.getAttribute('data-stok'), stockEdit.tailles, s.id);
+      if (!rs0.ok) { dire($('ed-st-err'), refus(rs0)); var fq = $('ed-liste').querySelector('[data-sq]'); if (fq) fq.focus(); return; }
+      stockEdit = null;
+      note(rs0.article.id, 'Stock mis à jour : ' + rs0.stock.dispo + ' disponible(s) sur ' + rs0.stock.total + ' déclaré(s).');
+      rendreListe(); return;
+    }
+
+    var a = D.techArticle(el.getAttribute('data-visuel') || el.getAttribute('data-video') || el.getAttribute('data-legende') || el.getAttribute('data-stock') || el.getAttribute('data-retirer'));
+    if (!a) return;
+
+    if (el.hasAttribute('data-stock')) {
+      stockEdit = { id: a.id, tailles: (a.tailles || []).map(function (t) { return { taille: t.taille, qte: t.qte }; }) };
+      if (!stockEdit.tailles.length) stockEdit.tailles.push({ taille: '', qte: '' });
+      rendreListe(); return;
+    }
+    if (el.hasAttribute('data-visuel')) {
+      if (!V) { note(a.id, 'Le module de visuel n’est pas chargé.'); return; }
+      V.composer(a, {}, function (url, avecPhoto) {
+        if (!url) { note(a.id, 'Le navigateur a refusé d’exporter l’image.'); return; }
+        V.telecharger(url, V.nomFichier(a, 'png'));
+        note(a.id, (avecPhoto || !a.photo) ? 'Visuel téléchargé.' : 'Visuel téléchargé SANS la photo (le navigateur a refusé de l’exporter : elle vient d’un autre domaine).');
+      });
+      return;
+    }
+    if (el.hasAttribute('data-video')) {
+      if (!V) { note(a.id, 'Le module de visuel n’est pas chargé.'); return; }
+      enreg[a.id] = true; note(a.id, VIDEO_S + ' secondes d’enregistrement — laisse l’écran ouvert.'); rendreListe();
+      V.video(a, { secondes: VIDEO_S }, function (url, motif) {
+        delete enreg[a.id];
+        if (!url) { note(a.id, motif || 'La vidéo n’a pas pu être enregistrée.'); rendreListe(); return; }
+        V.telecharger(url, V.nomFichier(a, 'webm'));
+        note(a.id, 'Vidéo de ' + VIDEO_S + ' s téléchargée.'); rendreListe();
+      });
+      return;
+    }
+    if (el.hasAttribute('data-legende')) {
+      if (!V) { note(a.id, 'Le module de visuel n’est pas chargé.'); return; }
+      var txt = legendeSignee(a, D.techMarchandReseauxGet ? D.techMarchandReseauxGet(s.id) : []);
+      /* COPIER SANS PRESSE-PAPIERS DISPONIBLE : on donne le texte, et l'écran le DIT — on ne prétend jamais avoir
+         copié ce qu'on n'a pas copié. */
+      var fait = function (ok) { note(a.id, ok ? 'Légende copiée — colle-la avec l’image : c’est elle qui porte le lien cliquable.' : 'Copie manuelle : ' + txt); };
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(function () { fait(true); }, function () { fait(false); });
+      else fait(false);
+      return;
+    }
+    if (el.hasAttribute('data-retirer')) {
+      var rr = D.techArticleSupprimer(a.id, s.id);
+      if (!rr.ok) { note(a.id, refus(rr)); return; }
+      if (stockEdit && stockEdit.id === a.id) stockEdit = null;
+      delete notes[a.id]; delete enreg[a.id]; delete plis[a.id];
+      rendreListe(); return;
+    }
+  });
+
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !$('ed-modal').hidden) fermer(); });
+
+  rendreTailles();
+  render();
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

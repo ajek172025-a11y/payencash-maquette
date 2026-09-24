@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Configuration</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<!--
+  CONFIGURATION — route `/config`.
+  Chaque réglage porte SON bouton « Enregistrer » : un bouton global en haut d'écran laisserait croire qu'on
+  enregistre tout d'un coup, alors que l'écran écrit un paramètre à la fois (D.parametreSet, journalisé).
+  (23/09 — pivot grossiste) NE RESTE QUE CE QUI RÈGLE L'ACTIVITÉ DE GROSSISTE EN BONS DE MARQUE : les offres de
+  paiement des marques et les formules du logiciel (avec leurs quotas), les seuils légaux, les délais de vérification,
+  le prélèvement SEPA et l'arrêté, les coûts bancaires, la pénalité d'impayé, le plafond d'encours, l'avance des
+  commissionnaires, la société. Les marges Mode/Fly, le Bon d'achat PayEnCash, le prestataire de cartes, la
+  proximité, le stock fournisseur et le marketing sont partis avec leurs activités.
+  Chaque champ lit sa valeur VIVE (D.param) et l'enregistre par D.parametreSet ; le référentiel (D.ref.tech) reste
+  intact, l'écart est affiché et rétablissable. Ce qui n'est pas réglable ici est LU du référentiel et le dit.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Configuration</h1>
+        <p class="sub">Ce qui compose le prix d’achat des bons, et ce qui cadence le prélèvement et le paiement des marques.</p>
+      </div>
+      <div class="pec-topbar-actions"></div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+      <div id="cf-role">Grille modifiable — chaque champ lit sa valeur vive (<code>D.param</code>) et l'enregistre par <code>D.parametreSet</code>, ligne par ligne, avec son auteur.</div>
+    </div>
+
+    <!-- écart au référentiel : rempli par le script (masqué tant qu'aucun paramètre n'est modifié) -->
+    <div class="pec-notice" id="cf-bandeau" hidden style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><span id="cf-bandeau-txt"></span> <button type="button" class="pec-pill tap" id="cf-tout-retablir">Tout rétablir</button></div>
+    </div>
+
+    <!-- ══ LES OFFRES ET LES FORMULES (22/09 et 23/09, décisions fondatrice) ═══════════════════════════════════
+         `partPointPct` est ce que garde le commerce du réseau ; NOTRE marge est la DIFFÉRENCE, affichée mais
+         jamais saisie : deux chiffres qui devraient s'accorder finissent toujours par diverger. ══ -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div>
+          <h2>Offres de paiement des marques et formules du logiciel</h2>
+          <p class="s">Nous achetons les bons à la valeur faciale moins la remise de l’offre que la marque a choisie ; le commerce du réseau les achète à la valeur faciale moins sa part. L’abonnement paie le logiciel d’édition des bons — et rien d’autre.</p>
+        </div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="pec-setting">
+          <div><div class="t" data-mode-lbl="j1">Offre</div><div class="s" id="cf-mode-j1-s">—</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-mode-j1-r" data-p="tech.mode.j1.remisePct" data-ref="ref.tech.modesPaiement.0.remisePct" data-t="pct" aria-label="Remise de l'offre 24 heures"><span style="color:var(--color-muted)">% remise ·</span>
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-mode-j1-p" data-p="tech.mode.j1.partPointPct" data-ref="ref.tech.modesPaiement.0.partPointPct" data-t="pct" aria-label="Part du commerce, offre 24 heures"><span style="color:var(--color-muted)">% au commerce</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t" data-mode-lbl="j7">Offre</div><div class="s" id="cf-mode-j7-s">—</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-mode-j7-r" data-p="tech.mode.j7.remisePct" data-ref="ref.tech.modesPaiement.1.remisePct" data-t="pct" aria-label="Remise de l'offre 7 jours ouvrés"><span style="color:var(--color-muted)">% remise ·</span>
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-mode-j7-p" data-p="tech.mode.j7.partPointPct" data-ref="ref.tech.modesPaiement.1.partPointPct" data-t="pct" aria-label="Part du commerce, offre 7 jours ouvrés"><span style="color:var(--color-muted)">% au commerce</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t" data-mode-lbl="j10">Offre</div><div class="s" id="cf-mode-j10-s">—</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-mode-j10-r" data-p="tech.mode.j10.remisePct" data-ref="ref.tech.modesPaiement.2.remisePct" data-t="pct" aria-label="Remise de l'offre 10 jours"><span style="color:var(--color-muted)">% remise ·</span>
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-mode-j10-p" data-p="tech.mode.j10.partPointPct" data-ref="ref.tech.modesPaiement.2.partPointPct" data-t="pct" aria-label="Part du commerce, offre 10 jours"><span style="color:var(--color-muted)">% au commerce</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Abonnements au logiciel d’édition des bons</div><div class="s" id="cf-formules-s">—</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-form-cinq" data-p="tech.formule.cinquante.prix" data-ref="ref.tech.logiciel.formules.1.prix" data-t="eur" aria-label="Prix mensuel de la formule 50 bons"><span style="color:var(--color-muted)" id="cf-form-cinq-lbl">€ ·</span>
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-form-ill" data-p="tech.formule.illimite.prix" data-ref="ref.tech.logiciel.formules.2.prix" data-t="eur" aria-label="Prix mensuel de la formule Illimité"><span style="color:var(--color-muted)" id="cf-form-ill-lbl">€</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Quotas d’édition des formules</div><div class="s" id="cf-quotas-s">—</div></div>
+          <!-- (24/09, fondatrice : « quotas réglables ») le nombre de bons du forfait se règle comme son prix ; l'Illimité reste sans limite -->
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-quota-gratuit" data-p="tech.formule.gratuit.bonsMax" data-ref="ref.tech.logiciel.formules.0.bonsMax" data-t="int" aria-label="Bons par mois de la formule offerte"><span style="color:var(--color-muted)" id="cf-quota-gratuit-lbl">bons · Offert</span>
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-quota-cinq" data-p="tech.formule.cinquante.bonsMax" data-ref="ref.tech.logiciel.formules.1.bonsMax" data-t="int" aria-label="Bons par mois de la formule 50 bons"><span style="color:var(--color-muted)" id="cf-quota-cinq-lbl">bons · 50 bons</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">TVA sur le logiciel</div><div class="s">L’abonnement est une prestation de services soumise à TVA (art. 256 CGI). Les bons relèvent de l’art. 256 ter : usage unique si tous les produits de la marque sont au même taux et taxables en France, sinon usages multiples — une qualification portée par chaque marque (Marques), pas un réglage global.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-tech-tva" data-p="tech.tvaPct" data-ref="ref.tech.tvaPct" data-t="pct" aria-label="Taux de TVA sur le logiciel (%)"><span style="color:var(--color-muted)">%</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Durée du contrat-cadre d’une marque</div><div class="s">Contrat d’achat et de distribution à usage unique, non reconductible, résiliable à tout moment par l’une ou l’autre des parties.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-tech-contrat" data-p="tech.dureeContratMois" data-ref="ref.tech.dureeContratMois" data-t="int" aria-label="Durée du contrat-cadre (mois)"><span style="color:var(--color-muted)">mois</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Validité d’un bon proposé</div><div class="s">Une marque propose un bon d’un montant précis à un client (son devis, sa commande) ; au-delà de ce délai, la proposition ne vaut plus rien.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-tech-lien" data-p="tech.lienValiditeJours" data-ref="ref.tech.lienValiditeJours" data-t="int" aria-label="Validité d’un bon proposé (jours)"><span style="color:var(--color-muted)">jours</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Délai d’annulation au comptoir</div><div class="s">Minutes pendant lesquelles le commerce peut annuler un bon émis par erreur, s’il n’a pas servi et si sa vente n’est pas encore partie au prélèvement.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-tech-annul" data-p="tech.annulationMinutes" data-ref="ref.tech.annulationMinutes" data-t="int" aria-label="Délai d’annulation au comptoir (minutes)"><span style="color:var(--color-muted)">min</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Seuil légal — déclaration à l’ACPR</div><div class="s" id="cf-seuils-s">—</div></div>
+          <div class="pec-setting-control"><span class="pec-pill pec-pill--off">Loi — lu du référentiel</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ (22/09 — décisions fondatrice) PRÉLÈVEMENTS ET PAIEMENTS ═══════════════════════════════════════════
+         « définir dans config la pénalité pour prélèvement échoué et le coût de représentation », « attention pas
+         de code en dur ». Tout ce qui décide d'un euro se règle ICI : les coordonnées de notre compte créancier, le
+         rythme de l'arrêté, ce que la banque nous prend, ce que le contrat met à la charge d'un commerce qui ne paie
+         pas, le plafond d'encours, l'avance des commissionnaires. Les écrans lisent techRef(), qui lit ces paramètres. ══ -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div>
+          <h2>Prélèvement SEPA, arrêté et paiement des marques</h2>
+          <p class="s">Le commerce du réseau est débité par prélèvement SEPA après l’arrêté du soir ; la marque est payée par virement instantané à l’échéance de son offre. Ces réglages commandent les deux.</p>
+        </div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="pec-setting">
+          <div><div class="t">Préparation du prélèvement</div><div class="s" id="cf-sepa-pret">—</div></div>
+          <div class="pec-setting-control"><span class="pec-pill" id="cf-sepa-pret-pill">—</span></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Banque et service de remises</div><div class="s" id="cf-sepa-canal-s">—</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:150px" value="" id="cf-sepa-banque" data-p="tech.paiement.banque" data-ref="ref.tech.paiement.banque" data-t="texte" aria-label="Banque">
+            <input class="pec-search" style="max-width:160px" value="" id="cf-sepa-canal" data-p="tech.paiement.canal" data-ref="ref.tech.paiement.canal" data-t="texte" aria-label="Espace bancaire de dépôt">
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-sepa-offre" data-p="tech.paiement.offreMensuelle" data-ref="ref.tech.paiement.offreMensuelle" data-t="eur" aria-label="Coût mensuel du service bancaire"><span style="color:var(--color-muted)">€ HT/mois</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Identifiant Créancier SEPA (ICS)</div><div class="s">Délivré par la banque à l'ouverture du service de prélèvement. Sans lui, aucun fichier ne peut être fabriqué — l'écran des prélèvements le refuse et le dit.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:200px" value="" id="cf-sepa-ics" data-p="tech.paiement.ics" data-ref="ref.tech.paiement.ics" data-t="ics" aria-label="Identifiant Créancier SEPA">
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Notre compte créancier</div><div class="s">Le compte crédité par les prélèvements, et débité par les virements aux marques. Il figure dans chaque fichier déposé.</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:280px" value="" id="cf-sepa-iban" data-p="tech.paiement.iban" data-ref="ref.tech.paiement.iban" data-t="iban" aria-label="IBAN de notre compte">
+            <input class="pec-search" style="max-width:130px" value="" id="cf-sepa-bic" data-p="tech.paiement.bic" data-ref="ref.tech.paiement.bic" data-t="bic" aria-label="BIC de notre compte">
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">L'arrêté du soir</div><div class="s">Tous les bons vendus entre deux passages de cette heure partent dans la même remise ; le fichier doit être déposé dans les minutes qui suivent. L'échéance tombe au moins N jours ouvrés plus tard — c'est la règle SEPA, pas la nôtre.</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-sepa-heure" data-p="tech.paiement.arreteHeure" data-ref="ref.tech.paiement.arreteHeure" data-t="heure" aria-label="Heure de l'arrêté">
+            <input class="pec-search" style="max-width:76px;text-align:right" value="" id="cf-sepa-depot" data-p="tech.paiement.depotMinutes" data-ref="ref.tech.paiement.depotMinutes" data-t="int" aria-label="Dépôt du fichier, en minutes"><span style="color:var(--color-muted)">min pour déposer ·</span>
+            <input class="pec-search" style="max-width:66px;text-align:right" value="" id="cf-sepa-jo" data-p="tech.paiement.remiseJoursOuvresAvant" data-ref="ref.tech.paiement.remiseJoursOuvresAvant" data-t="int" aria-label="Jours ouvrés avant l'échéance"><span style="color:var(--color-muted)">jours ouvrés avant échéance</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Ce que la banque nous prend</div><div class="s">Par prélèvement remis, par représentation d'un impayé, et par virement instantané émis vers une marque. Ces coûts sont portés par notre marge : ils ne se répercutent nulle part automatiquement.</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-sepa-cout" data-p="tech.paiement.coutPrelevement" data-ref="ref.tech.paiement.coutPrelevement" data-t="eur" aria-label="Coût d'un prélèvement"><span style="color:var(--color-muted)">€ prélèvement ·</span>
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-sepa-repr" data-p="tech.paiement.coutRepresentation" data-ref="ref.tech.paiement.coutRepresentation" data-t="eur" aria-label="Coût d'une représentation"><span style="color:var(--color-muted)">€ représentation ·</span>
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-sepa-vir" data-p="tech.paiement.coutVirement" data-ref="ref.tech.paiement.coutVirement" data-t="eur" aria-label="Coût d'un virement instantané"><span style="color:var(--color-muted)">€ virement</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Prélèvement impayé — ce que le contrat met à la charge du commerce</div><div class="s">La pénalité est facturée au commerce dès que la banque rend l'impayé ; elle part dans la remise suivante, sur le même mandat. Elle doit figurer au contrat de distribution pour être exigible.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-sepa-pen" data-p="tech.paiement.penaliteImpaye" data-ref="ref.tech.paiement.penaliteImpaye" data-t="eur" aria-label="Pénalité pour prélèvement impayé"><span style="color:var(--color-muted)">€ par impayé</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Encours maximum d'un commerce</div><div class="s">Ce qu'un commerce peut nous devoir à la fois : bons vendus, pas encore prélevés. Au-delà, la vente est refusée. C'est la seule borne du risque en offre « 24 heures », où la marque est payée avant que le prélèvement ne soit définitif.</div></div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:110px;text-align:right" value="" id="cf-sepa-enc" data-p="tech.paiement.encoursMaxPoint" data-ref="ref.tech.paiement.encoursMaxPoint" data-t="eur" aria-label="Encours maximum par commerce"><span style="color:var(--color-muted)">€ ·</span>
+            <input class="pec-search" style="max-width:66px;text-align:right" value="" id="cf-sepa-susp" data-p="tech.paiement.impayesAvantSuspension" data-ref="ref.tech.paiement.impayesAvantSuspension" data-t="int" aria-label="Impayés avant suspension"><span style="color:var(--color-muted)">prélèvements impayés avant suspension</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+        <!-- (23/09, arbitrage fondatrice : « prélèvement SEPA pour tabac etc., et avance pour micro ») LE SECOND
+             RÉSEAU. Le commissionnaire micro-entrepreneur ne doit jamais rien : il achète ses bons d'avance. La
+             garantie est un DÉPÔT restituable — jamais un droit d'entrée, jamais une sanction : une somme retenue
+             pour punir ferait la preuve d'un pouvoir disciplinaire que nous n'avons pas. -->
+        <div class="pec-setting">
+          <div><div class="t">Commissionnaires nomades — l'avance</div><div class="s" id="cf-av-s">—</div></div>
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-av-gar" data-p="tech.avance.garantie" data-ref="ref.tech.avance.garantie" data-t="eur" aria-label="Dépôt de garantie"><span style="color:var(--color-muted)">€ de garantie ·</span>
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-av-min" data-p="tech.avance.rechargeMin" data-ref="ref.tech.avance.rechargeMin" data-t="eur" aria-label="Versement d’avance minimum"><span style="color:var(--color-muted)">€ mini ·</span>
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-av-max" data-p="tech.avance.rechargeMax" data-ref="ref.tech.avance.rechargeMax" data-t="eur" aria-label="Versement d’avance maximum"><span style="color:var(--color-muted)">€ maxi ·</span>
+            <input class="pec-search" style="max-width:86px;text-align:right" value="" id="cf-av-alerte" data-p="tech.avance.soldeAlerte" data-ref="ref.tech.avance.soldeAlerte" data-t="eur" aria-label="Seuil d'alerte de l'avance"><span style="color:var(--color-muted)">€ d'alerte</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ VÉRIFICATIONS ET PRÉVENTION DE LA FRAUDE (24/09, soir : « vigilance » laissait croire à une obligation LCB-FT) — délais d'examen des dossiers (marques, commerces, porteurs), paliers de
+         vérification d'identité du utilisateur de Mes bons : LUS des référentiels, jamais réécrits ici. ══ -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div>
+          <h2>Vérifications et prévention de la fraude</h2>
+          <p class="s">Les engagements de délai des contrôles KYC / KYB, et les paliers au-delà desquels un utilisateur de Mes bons fait vérifier son identité.</p>
+        </div>
+        <div style="display:flex;gap:10px"><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="42-verifications.html">Vérifications</a></div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="pec-setting">
+          <div><div class="t">Délais d’examen des dossiers</div><div class="s" id="cf-verif-s">—</div></div>
+          <div class="pec-setting-control"><span class="pec-pill pec-pill--off">Lu du référentiel</span></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Paliers de vérification d’identité de l’utilisateur</div><div class="s" id="cf-kyc-s">—</div></div>
+          <!-- (24/09, fondatrice : « paliers réglables ») au-delà de ces cumuls sur la fenêtre des plafonds, Mes bons demande la pièce d'identité -->
+          <div class="pec-setting-control" style="gap:10px;flex-wrap:wrap">
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-kyc-especes" data-p="kyc.porteur.especesEur" data-ref="ref.kyc.porteur.especesEur" data-t="eur" aria-label="Cumul en espèces avant vérification d’identité (€)"><span style="color:var(--color-muted)">€ espèces ·</span>
+            <input class="pec-search" style="max-width:96px;text-align:right" value="" id="cf-kyc-carte" data-p="kyc.porteur.carteEur" data-ref="ref.kyc.porteur.carteEur" data-t="eur" aria-label="Cumul par carte avant vérification d’identité (€)"><span style="color:var(--color-muted)">€ carte ·</span>
+            <input class="pec-search" style="max-width:66px;text-align:right" value="" id="cf-kyc-jours" data-p="kyc.porteur.fenetreJours" data-ref="ref.bons.fenetrePlafondJours" data-t="int" aria-label="Fenêtre glissante des paliers (jours)"><span style="color:var(--color-muted)">jours</span>
+            <button type="button" class="pec-btn pec-btn--sm tap" data-cf-save>Enregistrer</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LA SOCIÉTÉ — ce que les contrats, factures et mentions légales reprennent (ref.societe) ══ -->
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div>
+          <h2>Société</h2>
+          <p class="s">L’identité qui signe les contrats-cadres, émet les factures d’abonnement et figure dans chaque fichier de prélèvement.</p>
+        </div>
+      </div>
+      <div class="pec-panel-body" id="cf-societe"></div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+      <div>Chaque modification est <b>journalisée</b> avec son auteur et son horodatage (<code>audit_log</code>). Un taux changé sans trace, c’est une vente dont personne ne saura expliquer le prix six mois plus tard — et une remise changée ne rejoue jamais les ventes déjà faites : elles gardent le taux qu'elles portaient.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  /* CONFIGURATION QUI ÉCRIT (03/09 — setters d'exploitation « fais ce qu'il faut »).
+     Chaque champ porte son chemin de paramètre (data-p) et son type (data-t) :
+       lecture  = D.param(chemin)                       → valeur VIVE (référentiel, ou valeur éditée)
+       écriture = D.parametreSet(chemin, v, acteur)     → persistée + journalisée (evt `parametre_modifie`)
+     Le référentiel (D.ref.tech) n'est JAMAIS touché : l'écart est affiché sous le champ (« valeur du référentiel :
+     X · rétablir ») et le bandeau compte les écarts (D.parametresModifies / D.parametresReset). Aucune valeur posée
+     en page : sans référentiel, le champ reste vide. */
+  (function () {
+    if (!window.PEC_DATA) return;
+    var D = PEC_DATA;
+    function acteur() { return (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)'; }
+    function esc(v) { return D.esc ? D.esc(v) : String(v == null ? '' : v); }
+    /* UN PARAMÈTRE PEUT VIVRE SOUS UN AUTRE CHEMIN QUE SON RÉFÉRENTIEL : techRef() lit « tech.paiement.ics » (clé d'édition)
+       et prend son défaut dans ref.tech.paiement.ics. Le champ porte data-ref = le chemin du référentiel, pour que la valeur
+       de repli, l'écart affiché et « rétablir » lisent la bonne source. */
+    function refPath(ch) { var inp = document.querySelector('input[data-p="' + ch + '"]'); return (inp && inp.getAttribute('data-ref')) || ch; }
+    function refVal(ch) { var cur = D, p = String(refPath(ch)).split('.'); for (var i = 0; i < p.length; i++) { if (cur == null) return undefined; cur = cur[p[i]]; } return cur; }
+    function nb(t) {
+      var x = String(t == null ? '' : t).replace(/[\s €%]/g, '').replace(/h$/i, '').replace(',', '.');
+      return (x && /^\d+(\.\d+)?$/.test(x)) ? parseFloat(x) : null;
+    }
+    var HEURE = /^(\d{1,2}):([0-5]\d)$/;   // « 6:00 » accepté, normalisé en « 06:00 »
+    // VALIDATIONS : nombres positifs, pourcentages 0-100, heures HH:MM, libellé non vide, IBAN/BIC/ICS contrôlés.
+    var T = {
+      pct:   { fmt: function (v) { return typeof v === 'number' ? String(v).replace('.', ',') : (v == null ? '' : String(v)); },
+               lire: function (t) { var n = nb(t); return (n === null || n > 100) ? null : n; },
+               err: 'saisis un pourcentage entre 0 et 100' },
+      eur:   { fmt: function (v) { return typeof v === 'number' ? v.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : (v == null ? '' : String(v)); },
+               lire: function (t) { return nb(t); },
+               err: 'saisis un montant positif en euros (ex. 7,90)' },
+      heure: { fmt: function (v) { return v == null ? '' : String(v); },
+               lire: function (t) { var m = HEURE.exec(String(t == null ? '' : t).trim()); return (m && +m[1] <= 23) ? (String(+m[1]).padStart(2, '0') + ':' + m[2]) : null; },
+               err: 'saisis une heure au format HH:MM (ex. 20:00)' },
+      texte: { fmt: function (v) { return v == null ? '' : String(v); },
+               lire: function (t) { t = String(t == null ? '' : t).trim(); return t || null; },
+               err: 'saisis un libellé (un champ vidé n’est jamais enregistré)' },
+      int:   { fmt: function (v) { return v == null ? '' : String(v); },
+               lire: function (t) { var n = nb(t); return (n === null || n < 1 || n % 1 !== 0) ? null : n; },
+               err: 'saisis un nombre entier strictement positif' },
+      /* (22/09 — prélèvement SEPA) LES COORDONNÉES DE NOTRE COMPTE CRÉANCIER : l'IBAN et le BIC se contrôlent par la
+         couche de données (la même règle que partout ailleurs dans la maison), et l'ICS a sa forme propre — celle que
+         la banque délivre. Un champ mal saisi ne s'enregistre pas : un fichier de prélèvement parti avec un ICS inventé,
+         c'est une remise rejetée en bloc. */
+      iban:  { fmt: function (v) { return v == null ? '' : String(v).replace(/(.{4})/g, '$1 ').trim(); },
+               lire: function (t) { var c = D.ibanControle(t); return c.ok ? c.valeur : null; },
+               err: 'saisis un IBAN valide (la clé de contrôle doit tomber juste)' },
+      bic:   { fmt: function (v) { return v == null ? '' : String(v); },
+               lire: function (t) { var c = D.bicControle(t); return c.ok ? c.valeur : null; },
+               err: 'saisis un BIC de 8 ou 11 caractères (ex. CMCIFR2A)' },
+      ics:   { fmt: function (v) { return v == null ? '' : String(v); },
+               lire: function (t) { t = String(t == null ? '' : t).replace(/\s+/g, '').toUpperCase();
+                 return /^[A-Z]{2}\d{2}[A-Z0-9]{3}[A-Z0-9]{6,}$/.test(t) ? t : null; },
+               err: 'saisis l’Identifiant Créancier SEPA délivré par la banque (ex. FR12ZZZ123456)' }
+    };
+    function typ(inp) { return T[inp.getAttribute('data-t')] || T.texte; }
+
+    var champs = [].slice.call(document.querySelectorAll('input[data-p]'));
+    champs.forEach(function (inp) {
+      var st = inp.closest('.pec-setting'), tete = st && st.firstElementChild;
+      var e = document.createElement('div'); e.className = 's cf-etat'; e.style.marginTop = '4px';
+      if (tete) tete.appendChild(e);
+      inp._etat = e;
+      inp.addEventListener('keydown', function (ev) { if (ev.key === 'Enter') { ev.preventDefault(); var b = st && st.querySelector('[data-cf-save]'); if (b && !b.disabled) b.click(); } });
+      // dès qu'on saisit quelque chose, le bouton redevient cliquable : on ne fait pas attendre un rendu complet
+      inp.addEventListener('input', function () {
+        var b = st && st.querySelector('[data-cf-save]'); if (!b) return;
+        var ins3 = [].slice.call(st.querySelectorAll('input[data-p]'));
+        b.disabled = ins3.length > 0 && ins3.every(function (i3) { return String(i3.value || '').trim() === ''; });
+      });
+    });
+
+    function erreur(inp, t) {
+      if (!inp._etat) return;
+      inp._etat.innerHTML = '<span style="color:var(--color-danger);font-weight:700">✗ ' + esc(inp.getAttribute('aria-label') || 'Valeur') +
+        ' invalide : ' + t.err + ' — rien n’a été enregistré.</span>';
+    }
+
+    /* (19/09, soir — audit de clics) « ENREGISTRER » LAISSAIT UNE TRACE DE 1,6 SECONDE, ET RIEN D'AUTRE. L'écriture
+       est déjà journalisée avec son auteur : on la LIT — la plus récente par sa DATE, jamais par sa position. */
+    function derniereEcriture(ch) {
+      var j = []; try { j = (window.PEC_BUS && PEC_BUS.journal()) || []; } catch (e) { return ''; }
+      var d = null, n = 0;
+      for (var i = 0; i < j.length; i++) {
+        if (j[i].evt === 'parametre_modifie' && j[i].ref === ch) { n++; if (!d || (j[i].at || 0) > (d.at || 0)) d = j[i]; }
+      }
+      if (!d || !d.at) return '';
+      var t = new Date(d.at);
+      var hms = String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0') + ':' + String(t.getSeconds()).padStart(2, '0');
+      return '<span class="meta" style="display:block;margin-top:2px">' + (n > 1 ? n + 'ᵉ enregistrement, à ' : 'Enregistré à ') + esc(hms) + ' (' + esc(D.dateCourte(d.at)) + ')' + (d.par ? ' par <b>' + esc(d.par) + '</b>' : '') + '</span>';
+    }
+
+    function rendu() {
+      var edits = D.parametresEdites();
+      champs.forEach(function (inp) {
+        var ch = inp.getAttribute('data-p'), t = typ(inp);
+        if (document.activeElement !== inp) inp.value = t.fmt(D.param(ch, refVal(ch)));
+        var e = inp._etat; if (!e) return;
+        var sig = derniereEcriture(ch);
+        if (!Object.prototype.hasOwnProperty.call(edits, ch)) { e.innerHTML = sig; return; }
+        var r = refVal(ch);
+        if (D.param(ch, r) === r) { e.innerHTML = '<span class="meta">Valeur du référentiel (rétablie) : <b>' + esc(t.fmt(r)) + '</b></span>' + sig; return; }
+        e.innerHTML = '<span class="meta">Modifié — valeur du référentiel : <b>' + esc(t.fmt(r)) + '</b> · </span>' +
+          '<button type="button" class="pec-pill tap" data-cf-reset="' + esc(ch) + '">rétablir</button>' + sig;
+      });
+      /* UN BOUTON QUI NE PEUT RIEN FAIRE NE SE LAISSE PAS CLIQUER : une ligne dont TOUS les champs sont vides
+         désactive son bouton et dit ce qu'on attend. */
+      document.querySelectorAll('[data-cf-save]').forEach(function (b2) {
+        var st2 = b2.closest('.pec-setting');
+        var ins2 = [].slice.call(st2.querySelectorAll('input[data-p]'));
+        var vide = ins2.length > 0 && ins2.every(function (i2) { return String(i2.value || '').trim() === ''; });
+        b2.disabled = vide;
+        b2.title = vide ? 'Renseigne d\'abord la valeur : il n\'y a rien à enregistrer' : 'Enregistrer ce paramètre (journalisé avec son auteur)';
+        var st3 = st2.querySelector('.cf-vide');
+        if (vide && !st3) {
+          st3 = document.createElement('div'); st3.className = 'cf-vide meta';
+          st3.style.cssText = 'margin-top:4px;color:var(--color-muted)';
+          st3.textContent = 'Aucune valeur fixée — les écrans le disent tels quels, ils n’inventent rien à la place.';
+          (st2.firstElementChild || st2).appendChild(st3);
+        } else if (!vide && st3) st3.remove();
+      });
+      var n = D.parametresModifies(), b = document.getElementById('cf-bandeau');
+      if (b) {
+        b.hidden = !n;
+        document.getElementById('cf-bandeau-txt').innerHTML = '<b>' + n + ' paramètre' + (n > 1 ? 's' : '') + ' modifié' + (n > 1 ? 's' : '') +
+          '</b> — écart au référentiel (tous les écrans de réglage confondus).';
+      }
+    }
+
+    /* CHAQUE « ENREGISTRER » PORTE SON IDENTITÉ : un id dérivé du réglage lève l'ambiguïté entre vingt boutons du
+       même libellé — et rend la ligne désignable, pour un test comme pour une aide. */
+    document.querySelectorAll('[data-cf-save]').forEach(function (b) {
+      if (b.id) return;
+      var st = b.closest('.pec-setting'), inp = st && st.querySelector('input[data-p]');
+      if (inp) b.id = 'cf-save-' + inp.getAttribute('data-p').replace(/[^a-zA-Z0-9]+/g, '-');
+    });
+
+    // « Enregistrer » ligne par ligne : tout le bloc est validé AVANT d'écrire (rien de partiel).
+    document.querySelectorAll('[data-cf-save]').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var st = btn.closest('.pec-setting'), ins = [].slice.call(st.querySelectorAll('input[data-p]'));
+        var aEcrire = [], ok = true;
+        ins.forEach(function (inp) {
+          var t = typ(inp), v = t.lire(inp.value);
+          if (v === null) { ok = false; erreur(inp, t); } else aEcrire.push([inp, v]);
+        });
+        if (!ok) return;                                   // rien n’est écrit si un champ du bloc est invalide
+        /* (11/09) LA COCHE VERTE SE MÉRITE : parametreSet rend null quand le stockage refuse. */
+        var refuses = aEcrire.filter(function (c) { return D.parametreSet(c[0].getAttribute('data-p'), c[1], acteur()) === null; });
+        rendu(); solutionEtat();
+        var lbl = btn.textContent;
+        if (refuses.length) {
+          btn.textContent = '✕ Non enregistré';   // la valeur était VALIDE — c'est le stockage qui a refusé, pas la saisie
+          var st2 = btn.closest('.pec-setting'), av = st2 && st2.querySelector('.cf-avert');
+          if (!av && st2) { av = document.createElement('div'); av.className = 'cf-avert meta'; av.style.cssText = 'color:var(--color-danger);margin-top:6px'; st2.appendChild(av); }
+          if (av) av.textContent = 'Ce réglage n’a PAS été enregistré (stockage de l’appareil plein ou refusé) — l’ancienne valeur reste appliquée partout. Libère de la place et recommence.';
+        } else {
+          var st3 = btn.closest('.pec-setting'), av3 = st3 && st3.querySelector('.cf-avert');
+          if (av3) av3.remove();
+          btn.textContent = '✓ Enregistré';
+        }
+        setTimeout(function () { btn.textContent = lbl; }, 1600);
+      });
+    });
+
+    // « rétablir » (par champ) et « tout rétablir » (bandeau)
+    document.addEventListener('click', function (ev) {
+      var r = ev.target.closest ? ev.target.closest('[data-cf-reset]') : null;
+      if (!r) return;
+      var ch = r.getAttribute('data-cf-reset');
+      /* un champ à data-ref se RÉTABLIT en effaçant sa clé d'édition (la valeur revient du référentiel par le défaut de
+         techRef) — écrire la valeur de référence sous la clé d'édition la ferait compter comme un écart. */
+      var inpR = document.querySelector('input[data-p="' + ch + '"]');
+      D.parametreSet(ch, (inpR && inpR.hasAttribute('data-ref')) ? undefined : refVal(ch), acteur());
+      rendu(); solutionEtat();
+    });
+    var tout = document.getElementById('cf-tout-retablir');
+    if (tout) tout.addEventListener('click', function () { D.parametresReset(); rendu(); solutionEtat(); });
+
+    // rôle : la SESSION manager (aucune redirection — la garde de session est portée par la barre latérale)
+    var ses = D.session && D.session(), mgr = ses && /Manager/.test(String(ses.espace || '')) ? ses : null;
+    var role = document.getElementById('cf-role');
+    if (role) role.innerHTML = (mgr ? 'Session <b>' + esc(mgr.role || mgr.identifiant) + '</b> (' + esc(mgr.identifiant) + ') — ' : 'Aucune session manager — ') +
+      'grille <b>modifiable</b> : chaque champ lit sa valeur vive (<code>D.param</code>) et l’enregistre par <code>D.parametreSet</code>, ligne par ligne, avec son auteur. ' +
+      'Le référentiel (<code>D.ref.tech</code>) reste intact et se rétablit d’un clic. En cible, seul le rôle <code>direction</code> modifie la configuration.';
+
+    /* ══ CE QUE DIT LE PANNEAU DE SOLUTION — entièrement DÉRIVÉ : la préparation se constate (un ICS posé ou non, un
+       mandat signé ou non), la marge de chaque offre est la DIFFÉRENCE des deux taux saisis, jamais un troisième champ.
+       Si le manager pose une part supérieure à la remise, la ligne le dit au lieu d'afficher une marge négative en
+       silence. Les quotas, les seuils légaux, les délais de vérification, la société : LUS, et dits comme tels. ══ */
+    function solutionEtat() {
+      if (!D.prelevementPreparation || !D.techRef) return;
+      var p = D.prelevementPreparation(), zp = document.getElementById('cf-sepa-pret'), zpp = document.getElementById('cf-sepa-pret-pill');
+      if (zp) zp.innerHTML = p.lignes.map(function (l) {
+        return '<div>' + (l.ok ? '✓ ' : '· ') + esc(l.libelle) + (l.detail ? ' <span style="color:var(--color-muted)">— ' + esc(l.detail) + '</span>' : '') + '</div>';
+      }).join('');
+      if (zpp) { zpp.textContent = p.pret ? 'Prêt' : PEC_DATA.nb(p.manquants.length, 'point') + ' à compléter'; zpp.className = 'pec-pill ' + (p.pret ? 'pec-pill--done' : 'pec-pill--wait'); }
+      var R = D.techRef(), P = R.paiement;
+      D.techModes().forEach(function (m) {
+        var z = document.getElementById('cf-mode-' + m.id + '-s'); if (!z) return;
+        var ok = m.partPointPct <= m.remisePct;
+        z.innerHTML = esc(m.detail) + '<div style="margin-top:4px">' + (ok
+          ? 'Sur 100 € de bons vendus : la marque touche <b>' + esc(D.eur(100 - m.remisePct)) + '</b>, le commerce garde <b>' + esc(D.eur(m.partPointPct))
+            + '</b>, il nous reste <b>' + esc(D.eur(m.margePct)) + '</b> pour payer le prélèvement (' + esc(D.eur(P.coutPrelevement)) + '), le virement (' + esc(D.eur(P.coutVirement)) + ') et le risque.'
+          : '<b style="color:var(--color-danger)">La part du commerce (' + esc(String(m.partPointPct).replace('.', ',')) + ' %) dépasse la remise de la marque (' + esc(String(m.remisePct).replace('.', ',')) + ' %) : chaque vente nous ferait perdre de l\'argent.</b>') + '</div>';
+      });
+      var F = D.techFormules();
+      var zf = document.getElementById('cf-formules-s');
+      if (zf) zf.innerHTML = 'Le logiciel est vendu à part : c\'est lui qui justifie l\'abonnement, et il ne commande ni le prix d\'achat des bons ni le délai de paiement. '
+        + F.map(function (f) { return '<b>' + esc(f.nom) + '</b> ' + (f.prix > 0 ? esc(D.eur(f.prix)) + '/mois' : 'inclus'); }).join(' · ')
+        + ((R.logiciel || {}).essaiMois ? ' · premier mois offert' : '') + '. Prélevé le ' + esc(String(P.abonnementJour)) + ' de chaque mois sur le mandat SEPA de la marque.';
+      var fC = F.filter(function (f) { return f.id === 'cinquante'; })[0], fI = F.filter(function (f) { return f.id === 'illimite'; })[0];
+      var lC = document.getElementById('cf-form-cinq-lbl'), lI = document.getElementById('cf-form-ill-lbl');
+      if (lC) lC.textContent = '€ ' + ((fC && fC.nom) || '50 bons') + ' ·'; if (lI) lI.textContent = '€ ' + ((fI && fI.nom) || 'Illimité');
+      var zq = document.getElementById('cf-quotas-s');
+      if (zq) zq.innerHTML = 'Le bon s\'édite à la vente, au montant que le client demande : une vente = une édition, comptée dans le quota du mois de la marque. '
+        + F.map(function (f) { return '<b>' + esc(f.nom) + '</b> : ' + (f.bonsMax == null ? 'sans limite de nombre' : f.bonsMax + ' bons par mois'); }).join(' · ')
+        + '. Le quota des formules Offert et 50 bons se règle ci-contre (tech.formule.<id>.bonsMax) ; l\'Illimité reste sans limite de nombre.';
+      var S = R.seuils || {}, zs = document.getElementById('cf-seuils-s');
+      if (zs) zs.innerHTML = (S.acprMontant12Mois ? 'Au-delà de <b>' + esc(D.eur(S.acprMontant12Mois)) + '</b> de bons vendus sur douze mois glissants, une marque déclare son réseau limité à l\'ACPR ; ses écrans la préviennent à <b>' + esc(String(S.alertePct || 0)) + ' %</b> du seuil. ' : 'Aucun seuil au référentiel. ')
+        + (S.acprSource ? '<span class="meta">Source : ' + esc(S.acprSource) + (S.acprUrl ? ' — <a href="' + esc(S.acprUrl) + '" target="_blank" rel="noopener">Légifrance</a>' : '') + '</span>' : '');
+      var A = R.avance || {};
+      var za = document.getElementById('cf-av-s');
+      if (za) za.innerHTML = 'Le commissionnaire micro-entrepreneur <b>paie d\'avance</b> : garantie versée une fois, puis des versements d\'avance qui se débitent à chaque bon. '
+        + 'Il ne doit jamais rien — aucune remise, aucun impayé possible de son côté. La garantie (' + esc(D.eur(A.garantie)) + ') est un <b>dépôt restituable</b>, jamais un droit d\'entrée ni une sanction : '
+        + 'une somme retenue pour punir ferait la preuve d\'un pouvoir disciplinaire, donc d\'un lien de subordination. '
+        + 'Sous ' + esc(D.eur(A.soldeAlerte)) + ' d\'avance, son écran l\'avertit avant qu\'il ne soit bloqué en pleine vente.';
+      var zc2 = document.getElementById('cf-sepa-canal-s');
+      if (zc2) zc2.textContent = 'Le service ' + (P.canal || '—') + ' de ' + (P.banque || '—') + ' prend nos remises au format ' + P.formatRemise + ' et nous rend les retours (' + P.formatRetour + ').'
+        + (+P.offreMensuelle > 0 ? ' Option souscrite : ' + D.eur(P.offreMensuelle) + ' HT par mois.' : ' Le coût mensuel de l\'option n\'est pas renseigné : la préparation du prélèvement le signale.');
+      // ── vérifications : délais et tarifs du référentiel (lus par le coffre), paliers de l’utilisateur (kycPorteurRef)
+      var V = (D.ref && D.ref.verification) || {}, dl = V.delaiHeures || {}, tf = V.tarifs || {};
+      var QUI = { client: 'utilisateur Mes bons', partenaire: 'commerce du réseau', marchand: 'marque' };
+      var zv = document.getElementById('cf-verif-s');
+      if (zv) zv.innerHTML = (dl.standard ? 'Un dossier est contrôlé sous <b>' + esc(String(dl.standard)) + ' h</b>' + (dl.urgence ? ' (<b>' + esc(String(dl.urgence)) + ' h</b> en urgence)' : '') + ' ; au-delà, il remonte en escalade. ' : 'Aucun délai au référentiel. ')
+        + (Object.keys(tf).filter(function (k) { return QUI[k]; }).length ? 'Frais d\'examen : ' + Object.keys(tf).filter(function (k) { return QUI[k]; }).map(function (k) { return QUI[k] + ' ' + (tf[k] > 0 ? D.eur(tf[k]) : 'gratuit'); }).join(' · ') + '. ' : '')
+        + (V.controleurs ? 'Contrôlé par ' + esc(V.controleurs.join(' et ')) + '. ' : '')
+        + '<span class="meta">Référentiel ref.verification — lu par le coffre, ne se règle pas d\'ici.</span>';
+      var K = D.kycPorteurRef ? D.kycPorteurRef() : null, zk = document.getElementById('cf-kyc-s');
+      if (zk) zk.innerHTML = K
+        ? 'Un utilisateur fait vérifier son identité au-delà de <b>' + esc(D.eur(K.especesEur)) + '</b> de bons achetés en espèces, ou <b>' + esc(D.eur(K.carteEur)) + '</b> par carte, sur <b>' + esc(String(K.fenetreJours)) + ' jours</b> glissants. <span class="meta">' + esc(K.source || '') + ' — se règle ci-contre (kyc.porteur.*).</span>'
+        : 'Paliers indisponibles (kycPorteurRef absent du data-layer).';
+      // ── société
+      var Sc = (D.ref && D.ref.societe) || {}, zso = document.getElementById('cf-societe');
+      if (zso) {
+        var lignes = [['Dénomination', [Sc.nom, Sc.forme].filter(Boolean).join(' ')], ['Créée le', Sc.creeeLe], ['Siège', Sc.siege], ['Présidente', Sc.presidente], ['SIREN', Sc.siren], ['RCS', Sc.rcs], ['TVA intracommunautaire', Sc.tvaIntra], ['Capital', Sc.capital]];
+        zso.innerHTML = lignes.filter(function (l) { return l[1]; }).map(function (l) {
+          return '<div class="pec-setting"><div><div class="t">' + esc(l[0]) + '</div></div><div class="pec-setting-control"><span style="font-size:13px">' + esc(l[1]) + '</span></div></div>';
+        }).join('') + (Sc.note ? '<p class="meta" style="margin:10px 0 0">' + esc(Sc.note) + '</p>' : '')
+          + '<p class="meta" style="margin:6px 0 0">Référentiel ref.societe — repris par les contrats, les factures et les mentions légales ; il ne se règle pas d\'ici.</p>';
+      }
+    }
+
+    /* (24/09, soir — audit zéro dur) LE NOM D'UNE OFFRE VIENT DU RÉFÉRENTIEL (techModes : libelle) — la page qui le règle ne le recopie plus */
+    (D.techModes ? D.techModes() : []).forEach(function (m) {
+      var t0 = document.querySelector('[data-mode-lbl="' + m.id + '"]'); if (t0) t0.textContent = 'Offre « ' + m.libelle + ' »';
+      var r0 = document.getElementById('cf-mode-' + m.id + '-r'), p0 = document.getElementById('cf-mode-' + m.id + '-p');
+      if (r0) r0.setAttribute('aria-label', 'Remise de l’offre « ' + m.libelle + ' »');
+      if (p0) p0.setAttribute('aria-label', 'Part du commerce, offre « ' + m.libelle + ' »');
+    });
+    solutionEtat();
+    rendu();
+    window.addEventListener('pec-bus', function () { rendu(); solutionEtat(); });
+    window.addEventListener('storage', function () { rendu(); solutionEtat(); });
+  })();
+</script>
+</body>
+</html>

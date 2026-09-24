@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PayEnCash Manager — Journal des flux</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) la coque du back-office : navigation à gauche, tiroir sur un téléphone -->
+<!-- JOURNAL DES FLUX (fondatrice 27/08) : la preuve noir sur blanc que RIEN ne se règle tout seul.
+     (23/09 — pivot grossiste) Chaque ligne dit QUI a fait QUOI : le COMMERCE qui vend un bon au comptoir (le
+     réseau achète le bon à la marque à cet instant), l’UTILISATEUR qui utilise son bon chez la marque depuis l'app,
+     la MARQUE qui propose un bon ou signe son contrat, le MANAGER qui dépose une remise ou paie une marque, la
+     BANQUE dont le retour règle ou rend impayé. Le libellé de chaque événement vient du référentiel
+     (ref.auditLibelles) — jamais écrit ici. Live (storage). -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `event_log`, `audit_log` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Journal des flux</h1>
+        <p class="sub">Qui a fait quoi, quand — en direct. Le libellé de chaque événement vient du référentiel (ref.auditLibelles).</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" onclick="PEC_BUS.viderJournal();rendre()">Vider</button>
+      </div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div>Règle de la maison : un bon <b style="color:var(--color-ink)">acheté au comptoir</b> reste <b style="color:var(--color-amber-text)">à prélever</b> tant que la <b style="color:var(--color-ink)">banque</b> n'a pas rendu son retour ; une marque est <b style="color:var(--color-ink)">payée</b> à l'échéance de son offre, jamais avant. Jamais de bascule automatique.</div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-head">
+        <div><h2>Événements</h2><p class="s" id="jr-n">—</p></div>
+        <input class="pec-search" type="search" data-fsearch="#jr > *" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="max-width:320px">
+      </div>
+      <div class="pec-panel-body">
+        <div class="meta" data-fvide="#jr > *" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <div id="jr" data-fpage="15" style="display:flex;flex-direction:column;gap:8px"></div>
+        <div id="jr-vide" style="display:none;padding:30px 20px;text-align:center;font-size:13px;color:var(--color-muted)">Journal vide — lance un flux (vente d'un bon au comptoir, usage chez la marque, remise de prélèvements, paiement d'une marque) et il s'écrira ici en direct.</div>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+function rendre() {
+  var D = window.PEC_DATA, esc = function (v) { return D ? D.esc(v) : String(v == null ? '' : v); };
+  var j = PEC_BUS.journal();
+  document.getElementById('jr-vide').style.display = j.length ? 'none' : 'block';
+  var jn = document.getElementById('jr-n'); if (jn) jn.textContent = j.length ? PEC_DATA.nb(j.length, 'événement') + ', du plus récent au plus ancien' : 'Aucun événement pour l’instant — le journal se remplit avec les gestes réels.';
+  var AL = (D && D.ref && D.ref.auditLibelles) || {};
+  /* L'ACTEUR ET L'ÉTAT DE CHAQUE ÉVÉNEMENT DU GROSSISTE — le libellé, lui, vient toujours du référentiel */
+  var M = {
+    tech_vente:             { acteur: 'COMMERCE', etat: 'À PRÉLEVER' },
+    tech_bon_emis:          { acteur: 'COMMERCE', etat: 'ACHETÉ' , vert: true },
+    tech_bon_vendu:         { acteur: 'COMMERCE', etat: 'REMIS', vert: true },
+    tech_vente_annulee:     { acteur: 'COMMERCE', etat: 'ANNULÉE' },
+    tech_bon_annule:        { acteur: 'COMMERCE', etat: 'ANNULÉ' },
+    tech_bon_utilise:       { acteur: 'UTILISATEUR', etat: 'UTILISÉ', vert: true },
+    tech_lien_bon_utilise:  { acteur: 'UTILISATEUR', etat: 'UTILISÉ', vert: true },
+    tech_lien_couvert:      { acteur: 'UTILISATEUR', etat: 'COUVERT', vert: true },
+    tech_lien_cree:         { acteur: 'MARQUE', etat: 'PROPOSÉ' },
+    tech_lien_annulee:      { acteur: 'MARQUE', etat: 'ANNULÉ' },
+    tech_contrat_signe:     { acteur: 'MARQUE', etat: 'SIGNÉ', vert: true },
+    tech_mandat_sepa_signe: { acteur: 'MANDAT', etat: 'SIGNÉ', vert: true },
+    tech_remise_preparee:   { acteur: 'MANAGER', etat: 'PRÉPARÉE' },
+    tech_remise_deposee:    { acteur: 'MANAGER', etat: 'REMISE À LA BANQUE' },
+    tech_remise_retour:     { acteur: 'BANQUE', etat: 'RETOUR', vert: true },
+    tech_representation:    { acteur: 'MANAGER', etat: 'REPRÉSENTÉ' },
+    tech_penalite:          { acteur: 'MANAGER', etat: 'PÉNALITÉ' },
+    tech_revendeur_suspendu:{ acteur: 'MANAGER', etat: 'SUSPENDU' },
+    tech_reglement_marque:  { acteur: 'MANAGER', etat: 'MARQUE PAYÉE', vert: true },
+    tech_marchand_valide:   { acteur: 'MANAGER', etat: 'VALIDÉE', vert: true },
+    avance_mouvement:       { acteur: 'COMMISSIONNAIRE', etat: 'AVANCE' },
+    tech_rencontre_demandee:{ acteur: 'UTILISATEUR', etat: 'RENCONTRE' },
+    tech_rencontre_servie:  { acteur: 'NOMADE', etat: 'SERVIE', vert: true },
+    sav:                    { acteur: 'HOTLINE', etat: 'SAV' }
+  };
+  document.getElementById('jr').innerHTML = j.map(function (e) {
+    var d = new Date(e.at);
+    var hh = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0') + ':' + String(d.getSeconds()).padStart(2, '0');
+    var m = M[e.evt] || { acteur: String(e.par || 'système').toUpperCase().slice(0, 18), etat: '' };
+    var label = AL[e.evt] || e.evt;
+    var coul = m.vert ? 'linear-gradient(135deg,var(--color-primary),var(--color-primary-dark))' : 'var(--color-ink)';
+    var montant = e.montant != null ? e.montant : (e.data && e.data.montant != null ? e.data.montant : null);
+    return '<div class="pec-card" style="display:flex;align-items:center;gap:10px;padding:11px 13px">'
+      + '<span style="flex:none;border-radius:8px;background:' + coul + ';color:#fff;font-size:8.5px;font-weight:800;letter-spacing:.07em;padding:4px 8px">' + esc(m.acteur) + '</span>'
+      + '<div style="min-width:0;flex:1"><div style="font-size:12px;font-weight:800;color:var(--color-ink)">' + esc(label) + ' · ' + esc(e.ref || '—') + '</div>'
+      + '<div style="font-size:10px;color:var(--color-muted)">' + hh + (montant != null ? ' · ' + esc(String(montant).replace('.', ',')) + ' €' : '') + (e.par && !M[e.evt] ? '' : (e.par ? ' · ' + esc(e.par) : '')) + '</div></div>'
+      + '<span style="flex:none;font-size:9.5px;font-weight:800;color:' + (m.vert ? 'var(--color-primary-dark)' : 'var(--color-amber-text)') + '">' + esc(m.etat) + '</span></div>';
+  }).join('');
+}
+window.addEventListener('pec-bus', rendre);
+window.addEventListener('storage', rendre);
+rendre();
+</script>
+</body>
+</html>

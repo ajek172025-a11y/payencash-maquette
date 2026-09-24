@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Carte du réseau</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<link rel="stylesheet" href="../assets/vendor/maplibre-gl.css">
+<script src="../assets/vendor/maplibre-gl.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  CARTE DU RÉSEAU (fondatrice 28/08 : « une carte […] pour prendre de meilleures décisions »).
+  (23/09 — pivot grossiste) CE QUI VIT SUR LA CARTE, ET QUI EST BIEN UNE GÉOGRAPHIE : le RÉSEAU qui vend les bons
+  des marques — les commerces SÉDENTAIRES (une adresse, une ville : le client s'y rend), les commissionnaires NOMADES
+  (une ville où ils se déplacent, jamais une adresse : on montre le centre de leur ville et on le dit), et les
+  RENCONTRES en cours (le point de rendez-vous d'un utilisateur qui attend un nomade). Les MARQUES n'ont pas de position :
+  leurs bons se vendent partout où le réseau vend — elles se lisent dans le volet, avec ce que le réseau leur a acheté.
+  TOUT EST DÉRIVÉ : techRevendeurs (position = centre de la ville, `geoApprox`, ou l'adresse exacte de la fiche du
+  point quand elle existe), techRencontresGet, techVentes, techMarchands. Rien n'est posé à la main.
+-->
+<style>
+  .op-mk { width: 30px; height: 30px; border-radius: 999px; display: flex; align-items: center;
+    justify-content: center; font-size: 12px; font-weight: 800; color: #fff; cursor: pointer;
+    border: 2.5px solid #fff; box-shadow: 0 2px 8px rgba(15,42,36,.35); }
+  .op-mk--validated { background: var(--color-primary-dark); }
+  .op-mk--pending { background: #fff; color: var(--color-primary-dark); border-color: var(--color-primary); opacity: .95; }
+  .op-mk--suspended { background: #9aa5a0; }
+  /* un nomade N'A PAS D'ADRESSE : on montre SA VILLE, en trait tireté — dire ce qu'on sait, pas inventer où il est */
+  .op-mk--mobile { background: #fff; color: var(--color-primary-dark); border: 2px dashed var(--color-primary); }
+  .op-mk--rdv { background: var(--color-amber-text); color: #fff; border-color: var(--color-amber-text); }
+  .op-mk--rdv.op-mk--prise { background: var(--color-primary); border-color: var(--color-primary); }
+  .op-res { display: block; width: 100%; text-align: left; border: 0; background: var(--color-bg);
+    border-radius: 9px; padding: 9px 11px; margin-bottom: 7px; cursor: pointer; }
+  .op-res b { font-size: 12.5px; color: var(--color-ink); }
+  .op-res .m { font-size: 11px; color: var(--color-muted); margin-top: 1px; }
+  .ob-duo { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 12px; }
+  @media (max-width: 899.98px) { .ob-duo { grid-template-columns: minmax(0, 1fr); } }
+  .bizrow { display: flex; align-items: center; gap: 8px; margin-top: 7px; font-size: 11.5px; }
+  .bizrow .lb { flex: 0 0 118px; color: var(--color-muted); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bizrow .bar { flex: 1; height: 12px; border-radius: 999px; background: var(--color-bg); overflow: hidden; }
+  .bizrow .bar i { display: block; height: 100%; border-radius: 999px; background: var(--color-primary); }
+  .bizrow .vv { flex: 0 0 auto; font-weight: 800; color: var(--color-ink); font-variant-numeric: tabular-nums; }
+  .op-legende span { display: inline-flex; align-items: center; gap: 5px; margin-right: 14px;
+    font-size: 11.5px; font-weight: 600; color: var(--color-muted); }
+  .op-legende i { width: 11px; height: 11px; border-radius: 999px; display: inline-block; }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `tech_resellers`, `tech_merchants`, `tech_sales`, `tech_meetings`, `partners` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Carte du réseau</h1>
+        <p class="sub">Les commerces qui vendent les bons des marques, les nomades qui se déplacent, les rencontres en cours — en direct. Clique un marqueur pour le détail.</p>
+        <p class="sub" style="font-size:11px;color:var(--color-muted)">Sources : commerces = réseau des marques (position au centre de la ville, ou l’adresse exacte de la fiche du point) · rencontres = demandes des utilisateurs · ventes = tables Solution · fond de carte = CARTO. Rien n'est posé à la main.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <input class="pec-search" id="op-q" type="search" placeholder="Chercher un commerce, une marque, un bon, une vente…" style="width:280px" aria-label="Recherche sur la carte">
+        <select class="pec-btn pec-btn--ghost pec-btn--sm tap" id="op-ville" aria-label="Centrer sur une ville"></select>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-bottom:14px">
+      <div class="pec-panel" style="padding:13px 15px">
+        <p class="pec-section-label" style="margin:0 0 2px" title="Source : PEC_DATA.techVentes() — ventes du jour, annulées exclues">BONS ACHETÉS <span style="font-weight:600;color:var(--color-muted);text-transform:none">· aujourd'hui</span></p>
+        <div class="val" id="k-jour" style="font-size:26px;font-weight:800;color:var(--color-ink)">—</div>
+        <div class="hint" id="k-jour-h" style="font-size:11.5px;color:var(--color-muted)">—</div>
+        <div style="display:flex;gap:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--color-sep);font-size:11.5px">
+          <span title="ce que les commerces nous doivent pour les bons vendus aujourd'hui"><b id="k-jour-reseau" style="font-size:14px">—</b> dus par le réseau</span>
+          <span title="ce que nous devons aux marques pour les bons vendus aujourd'hui"><b id="k-jour-marques" style="font-size:14px">—</b> dus aux marques</span>
+        </div>
+      </div>
+      <div class="pec-panel" style="padding:13px 15px">
+        <p class="pec-section-label" style="margin:0 0 2px" title="Source : PEC_DATA.techRevendeurs() — le réseau des marques">COMMERCES DU RÉSEAU <span style="font-weight:600;color:var(--color-muted);text-transform:none">· référentiel</span></p>
+        <div class="val" id="k-pts-actifs" style="font-size:26px;font-weight:800;color:var(--color-ink)">—</div>
+        <div class="hint" style="font-size:11.5px;color:var(--color-muted)">validés — ils vendent</div>
+        <div style="display:flex;gap:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--color-sep);font-size:11.5px">
+          <span title="inscrits, dossier en attente de vérification"><b id="k-pts-attente" style="font-size:14px">—</b> en attente</span>
+          <span title="suspendus après impayé — ils ne vendent plus"><b id="k-pts-susp" style="font-size:14px">—</b> suspendus</span>
+          <span title="commerces sans ville renseignée : absents de la carte"><b id="k-pts-sansgeo" style="font-size:14px;color:#C77B21">—</b> sans position</span>
+        </div>
+      </div>
+      <div class="pec-panel" style="padding:13px 15px">
+        <p class="pec-section-label" style="margin:0 0 2px" title="Source : PEC_DATA.techRencontresGet() — demandes de rencontre des utilisateurs">RENCONTRES <span style="font-weight:600;color:var(--color-muted);text-transform:none">· nomades</span></p>
+        <div class="val" id="k-rdv" style="font-size:26px;font-weight:800;color:var(--color-ink)">—</div>
+        <div class="hint" id="k-rdv-h" style="font-size:11.5px;color:var(--color-muted)">—</div>
+        <div style="display:flex;gap:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--color-sep);font-size:11.5px">
+          <span title="commissionnaires nomades validés — ils n'ont pas d'adresse : la carte montre leur ville"><b id="k-mobiles" style="font-size:14px">—</b> nomades validés</span>
+          <span><a href="29-partenaires.html" class="pec-tap-confort" style="font-weight:700;color:var(--color-primary-dark)">le détail</a></span>
+        </div>
+      </div>
+      <div class="pec-panel" style="padding:13px 15px">
+        <p class="pec-section-label" style="margin:0 0 2px" title="Source : PEC_DATA.techMarchands() — les marques de PayEnCash Solution">MARQUES <span style="font-weight:600;color:var(--color-muted);text-transform:none">· Solution</span></p>
+        <div class="val" id="k-mq" style="font-size:26px;font-weight:800;color:var(--color-ink)">—</div>
+        <div class="hint" style="font-size:11.5px;color:var(--color-muted)">validées — leurs bons se vendent</div>
+        <div style="display:flex;gap:12px;margin-top:8px;padding-top:8px;border-top:1px solid var(--color-sep);font-size:11.5px">
+          <span title="inscrites, dossier ou déclaration à statuer"><b id="k-mq-attente" style="font-size:14px">—</b> en attente</span>
+          <span><a href="46-marques.html" class="pec-tap-confort" style="font-weight:700;color:var(--color-primary-dark)">les marques</a></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ob-duo" style="margin-bottom:14px">   <!-- (24/09, nuit) la carte et « Le réseau en direct » : côte à côte au bureau, l'un sous l'autre sur un téléphone -->
+    <div class="pec-panel">
+      <div class="pec-panel-head">
+        <div><h2>Bons achetés par le réseau <span class="meta" id="og-total" style="font-weight:600">—</span></h2>
+        <p class="s">Barres : valeur des bons · ligne : nombre de ventes — source : tables Solution, en direct.</p></div>
+        <div style="display:flex;gap:6px" id="og-per">
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="jour" aria-pressed="true">Jour</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="semaine" aria-pressed="false">Semaine</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="mois" aria-pressed="false">Mois</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="annee" aria-pressed="false">Année</button>
+        </div>
+      </div>
+      <div class="pec-panel-body" style="padding:8px 16px 14px">
+        <div id="og-vide" class="meta" hidden style="text-align:center;padding:22px 0">Aucune vente sur la période — le graphe se remplit dès qu'un commerce du réseau vend un bon.</div>
+        <svg id="og-svg" viewBox="0 0 720 190" style="width:100%;display:block" preserveAspectRatio="none" aria-label="Ventes par période"></svg>
+      </div>
+    </div>
+    <div class="pec-panel">
+      <div class="pec-panel-head"><div><h2>Le réseau en direct</h2>
+      <p class="s">Notre marge, les marques et les commerces les plus actifs — sur la période.</p></div>
+        <div style="display:flex;flex-wrap:wrap;gap:6px" id="ob-per">
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="jour" aria-pressed="true">Jour</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="semaine" aria-pressed="false">Sem.</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="mois" aria-pressed="false">Mois</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-per="annee" aria-pressed="false">Année</button>
+        </div></div>
+      <div class="pec-panel-body" style="padding:6px 16px 14px" id="og-biz">
+        <div class="meta" style="text-align:center;padding:18px 0">—</div>
+      </div>
+    </div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-body" style="padding:0">
+        <div style="padding:10px 16px;border-bottom:1px solid var(--color-sep);display:flex;gap:7px;flex-wrap:wrap;align-items:center" id="op-filtres">
+          <span class="meta" style="font-weight:700">Afficher :</span>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-f="validated" aria-pressed="true">Vendent</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-f="pending" aria-pressed="true">En attente</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-f="suspended" aria-pressed="true">Suspendus</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-f="mobile" aria-pressed="true">Nomades</button>
+          <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-f="rdv" aria-pressed="true">Rencontres</button>
+          <span class="meta" id="op-q-res" style="margin-left:auto"></span>
+        </div>
+        <div style="display:flex;min-height:520px">
+          <div style="flex:1;position:relative">
+            <div id="map" style="position:absolute;inset:0;border-radius:0 0 0 12px;background:var(--color-bg)"></div>
+          </div>
+          <div id="op-detail" style="flex:none;width:300px;border-left:1px solid var(--color-sep);padding:16px;overflow-y:auto">
+            <p class="pec-section-label">Détail</p>
+            <div id="op-detail-corps" class="meta">Clique un commerce, un nomade ou une rencontre sur la carte.</div>
+          </div>
+        </div>
+        <div class="op-legende" style="padding:10px 16px;border-top:1px solid var(--color-sep)">
+          <span><i style="background:var(--color-primary-dark)"></i> commerce validé — il vend les bons des marques</span>
+          <span><i style="background:#fff;border:2px solid var(--color-primary)"></i> en attente de vérification</span>
+          <span><i style="background:#9aa5a0"></i> suspendu</span>
+          <span><i style="background:#fff;border:2px dashed var(--color-primary)"></i> nomade — sa VILLE, pas une adresse</span>
+          <span><i style="background:var(--color-amber-text)"></i> rencontre en attente d'un nomade</span>
+          <span><i style="background:var(--color-primary)"></i> rencontre prise — un nomade vient</span>
+          <span style="color:var(--color-muted)">Un commerce sans ville n'apparaît pas sur la carte — il se retrouve par la recherche. Une position au centre de la ville est dite « approchée ».</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-top:14px">
+      <div class="pec-panel-head"><div><h2>Les marques et ce que le réseau leur achète</h2><p class="s" id="mq-s">Une marque n'a pas de position : ses bons se vendent partout où le réseau vend.</p></div></div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Marque</th><th>Offre</th><th class="num">Bons vendus</th><th class="num">Valeur</th><th class="num">Encore dû</th><th>État</th></tr></thead>
+          <tbody id="mq-rows"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (function () {
+    if (!window.maplibregl || !window.PEC_DATA || !window.PEC_GEO) return;
+    var D = PEC_DATA;
+    if (!D.techRevendeurs || !D.techVentes || !D.techMarchands) return;
+    var esc = function (s) { return D.esc(s); }, eur = function (n) { return D.eur(n); };
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    /* LA POSITION D'UN COMMERCE : l'adresse exacte de la fiche du point quand elle est saisie (partenaire lié par
+       partenaireId), sinon le centre de sa ville — et on le DIT (`approx`). Sans ville, pas de position. */
+    function geoDe(r) {
+      var p = (r.partenaireId && D.partenaire) ? D.partenaire(r.partenaireId) : null;
+      if (p && p.geo && !p.geoApprox && isFinite(p.geo.lat) && isFinite(p.geo.lng)) return { lat: p.geo.lat, lng: p.geo.lng, approx: false };
+      var g = (r.ville && D.villeGeo) ? D.villeGeo(r.ville) : null;
+      return g ? { lat: g.lat, lng: g.lng, approx: true } : null;
+    }
+    function commerces() { return D.techRevendeurs({}).map(function (r) { return Object.assign({}, r, { geo: geoDe(r), mobile: D.partenaireEstMobile(r) }); }); }
+    /* les villes se dérivent des commerces eux-mêmes : le barycentre des positions d'une ville, jamais une liste posée */
+    var sel = document.getElementById('op-ville');
+    function villes() {
+      var par = {};
+      commerces().forEach(function (r) { if (!r.geo) return; var v = r.ville || '—'; (par[v] = par[v] || []).push(r.geo); });
+      var out = {};
+      Object.keys(par).sort(function (a, b) { return a.localeCompare(b, 'fr'); }).forEach(function (v) {
+        var lat = 0, lng = 0; par[v].forEach(function (g) { lat += g.lat; lng += g.lng; });
+        out[v] = [lat / par[v].length, lng / par[v].length];
+      });
+      return out;
+    }
+    var VILLES = villes();
+    function majVilles() {
+      var avant = sel.value;
+      VILLES = villes();
+      var ks = Object.keys(VILLES);
+      sel.innerHTML = ks.length ? ks.map(function (v) { return '<option value="' + esc(v) + '">' + esc(v) + '</option>'; }).join('')
+                                : '<option value="">Aucun commerce géolocalisé</option>';
+      if (avant && VILLES[avant]) sel.value = avant;
+    }
+    majVilles();
+    var c0 = VILLES[Object.keys(VILLES)[0]] || [D.posReference.lat, D.posReference.lng];
+    var map = PEC_GEO.carte('map', { centre: { lat: c0[0], lng: c0[1] }, zoom: 11.4 });
+    if (!map) return;
+    map.addControl(new maplibregl.NavigationControl({ showCompass: false }), 'top-left');
+    sel.addEventListener('input', function () { var c = VILLES[sel.value]; if (c) map.flyTo({ center: [c[1], c[0]], zoom: 12, duration: document.hidden ? 0 : 700 }); });
+
+    var marqueurs = [];
+    var F = { q: '', validated: true, pending: true, suspended: true, mobile: true, rdv: true };
+    var norm = function (t) { return String(t || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); };
+    function matchQ() { var parts = Array.prototype.slice.call(arguments).map(norm).join(' '); return !F.q || norm(F.q).split(/\s+/).every(function (m) { return parts.indexOf(m) !== -1; }); }
+    document.getElementById('op-filtres').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-f]'); if (!b) return;
+      var k = b.getAttribute('data-f'); F[k] = !F[k];
+      b.setAttribute('aria-pressed', String(F[k])); b.style.opacity = F[k] ? '' : '.45';
+      maj();
+    });
+    var qIn = document.getElementById('op-q'), qT = null;
+    qIn.addEventListener('input', function () { clearTimeout(qT); qT = setTimeout(function () { F.q = qIn.value.trim(); maj(true); }, 250); });
+
+    /* ── LA RECHERCHE CONNECTÉE AUX TABLES : commerces, marques, bons (par code), ventes (par référence), rencontres —
+       résultats LISTÉS, clic = détail + recentrage quand l'élément a une position. ── */
+    function chercherTout(q) {
+      var out = [];
+      commerces().forEach(function (r) {
+        if (!matchQ(r.raisonSociale, r.ville, r.adresse, r.id, r.siret, r.mobile ? 'nomade mobile' : 'commerce sédentaire', D.techStatutLbl(r.statut))) return;
+        out.push({ t: r.mobile ? 'Commissionnaire nomade' : 'Commerce du réseau', nom: r.raisonSociale, sub: [r.ville, D.techStatutLbl(r.statut)].filter(Boolean).join(' · '), geo: r.geo, act: function () { ouvrirCommerce(r); } });
+      });
+      D.techMarchands({}).forEach(function (m) {
+        if (!matchQ(m.raisonSociale, m.siret, m.siteUrl, m.id, 'marque', D.techStatutLbl(m.statut))) return;
+        out.push({ t: 'Marque', nom: m.raisonSociale, sub: [m.siteUrl, D.techStatutLbl(m.statut)].filter(Boolean).join(' · '), geo: null, act: function () { document.getElementById('op-detail-corps').innerHTML = detailMarque(m); } });
+      });
+      var b = D.techBon ? D.techBon(q) : null;
+      if (b) out.push({ t: 'Bon de marque (' + D.techBonEtatLbl(b.etat) + ')', nom: b.code, sub: [b.marchand, eur(b.montant), b.venteRef].filter(Boolean).join(' · '), geo: null, act: function () { document.getElementById('op-detail-corps').innerHTML = detailBon(b); } });
+      D.techVentes({}).forEach(function (v) {
+        if (!matchQ(v.reference, v.marchand, v.revendeur, 'vente')) return;
+        out.push({ t: 'Vente — ' + D.techVenteStatutLbl(v.statut), nom: v.reference, sub: [v.marchand, v.revendeur, eur(v.montant)].filter(Boolean).join(' · '), geo: null, act: function () { document.getElementById('op-detail-corps').innerHTML = detailVente(v); } });
+      });
+      if (D.techRencontresGet) D.techRencontresGet().map(function (r) { return D.techRencontre(r.id); }).filter(Boolean).forEach(function (r) {
+        if (!matchQ(r.ref, r.ville, r.lieu, r.marchand, r.revendeur || '', 'rencontre')) return;
+        out.push({ t: 'Rencontre — ' + D.rencontreStatutLbl(r.statut), nom: r.ref, sub: [r.marchand, r.ville, eur(r.montant)].filter(Boolean).join(' · '), geo: r.geo || null, act: function () { document.getElementById('op-detail-corps').innerHTML = detailRencontre(r); } });
+      });
+      return out;
+    }
+    var _resAct = [];
+    function rendreResultats() {
+      var corps = document.getElementById('op-detail-corps');
+      if (!F.q) return;
+      var res = chercherTout(F.q); _resAct = res;
+      document.getElementById('op-q-res').textContent = res.length ? res.length + ' résultat' + (res.length > 1 ? 's' : '') + ' « ' + F.q + ' »' : 'aucun résultat « ' + F.q + ' »';
+      corps.innerHTML = res.length
+        ? '<div class="meta" style="margin-bottom:8px">' + res.length + ' résultat' + (res.length > 1 ? 's' : '') + ' — commerces, marques, bons, ventes, rencontres.</div>' +
+          res.map(function (r, i) { return '<button class="op-res tap" data-res="' + i + '"><b>' + esc(r.nom) + '</b><div class="m">' + esc(r.t) + (r.sub ? ' · ' + esc(r.sub) : '') + '</div></button>'; }).join('')
+        : '<div class="meta">Aucun résultat « ' + esc(F.q) + ' » dans les tables (commerces, marques, bons, ventes, rencontres).</div>';
+      corps.querySelectorAll('[data-res]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var r = _resAct[+b.getAttribute('data-res')]; if (!r) return;
+          r.act();
+          if (r.geo) map.flyTo({ center: [r.geo.lng, r.geo.lat], zoom: 14.5, duration: document.hidden ? 0 : 600 });
+        });
+      });
+    }
+
+    /* ── LES DÉTAILS — tout dérivé, rien recopié ; le geste, lui, se fait sur la fiche du réseau (29) ou des marques (46). */
+    function detailCommerce(r) {
+      var tot = D.techVentesTotaux({ revendeurId: r.id }), enc = D.techEncours(r.id);
+      var mdt = D.techSepaMandat('revendeur', r.id);
+      var av = (r.mobile && D.avanceSolde) ? D.avanceSolde('revendeur', r.id) : null;
+      var h = '<div style="font-size:15px;font-weight:800;color:var(--color-ink)">' + esc(r.raisonSociale) + '</div>' +
+        '<div class="meta" style="margin-top:2px">' + esc(r.id) + ' · SIRET ' + esc(r.siret || '—') + '</div>' +
+        '<div class="meta">' + esc(r.mobile ? D.partenaireModeLbl(r) + ' — se déplace à ' + (r.ville || 'toute ville') : [r.adresse, r.ville].filter(Boolean).join(', ') || 'Ville non renseignée') + (r.geo && r.geo.approx ? ' · position approchée (centre de la ville)' : '') + '</div>' +
+        '<div style="margin-top:6px"><span class="pec-pill ' + (r.statut === 'validated' ? 'pec-pill--done' : r.statut === 'suspended' ? 'pec-pill--off' : 'pec-pill--wait') + '">' + esc(D.techStatutLbl(r.statut)) + '</span>' + (r.suspenduMotif ? '<div class="meta" style="margin-top:4px">' + esc(r.suspenduMotif) + '</div>' : '') + '</div>';
+      h += '<div style="margin:10px 0;padding:10px;border-radius:10px;background:' + (tot.ventes ? 'var(--color-mint)' : 'var(--color-bg)') + '">' +
+        '<div style="font-size:11px;font-weight:700;color:' + (tot.ventes ? 'var(--color-mint-ink)' : 'var(--color-muted)') + '">BONS ACHETÉS AU RÉSEAU</div>' +
+        '<div style="font-size:19px;font-weight:800;color:var(--color-ink)">' + esc(eur(tot.valeur)) + '</div>' +
+        '<div class="meta">' + (tot.ventes ? pl(tot.ventes, 'bon') + ' · il nous doit ' + esc(eur(tot.attente)) + (tot.impaye ? ' · <b style="color:var(--color-danger)">impayé ' + esc(eur(tot.impaye)) + '</b>' : '') : 'Aucun bon vendu pour l’instant') + '</div></div>';
+      h += '<div style="margin:10px 0;padding:10px;border-radius:10px;background:var(--color-bg)"><div style="font-size:11px;font-weight:700;color:var(--color-muted)">' + (r.mobile ? 'AVANCE' : 'PRÉLÈVEMENT') + '</div>' +
+        (r.mobile
+          ? '<div class="meta">' + (av ? 'Avance disponible ' + esc(eur(av.solde)) + ' · garantie ' + (av.garantieVersee ? esc(eur(av.garantie)) + ' versée' : 'à verser (' + esc(eur(av.garantieDue)) + ')') + (av.bas ? ' · <b style="color:var(--color-amber-text)">sous le seuil d’alerte</b>' : '') : 'Aucun mouvement d’avance.') + '</div>'
+          : '<div class="meta">' + (mdt ? 'Mandat SEPA ' + esc(mdt.rum) + ' · ' + esc(mdt.ibanMasque || '') : '<b style="color:var(--color-amber-text)">aucun mandat SEPA signé — il ne peut pas vendre</b>') + '</div>' +
+            '<div class="meta">Encours ' + esc(eur(enc.montant)) + ' / ' + esc(eur(enc.plafond)) + (enc.depasse ? ' — <b style="color:var(--color-danger)">plafond dépassé</b>' : '') + '</div>') + '</div>';
+      h += '<a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="29-partenaires.html" style="margin-top:6px;display:inline-block">Commerces du réseau →</a>';
+      return h;
+    }
+    function ouvrirCommerce(r) {
+      document.getElementById('op-detail-corps').innerHTML = detailCommerce(r);
+      if (r.geo) map.flyTo({ center: [r.geo.lng, r.geo.lat], zoom: 14.5, duration: document.hidden ? 0 : 600 });
+    }
+    function detailMarque(m) {
+      var tot = D.techVentesTotaux({ marchandId: m.id }), q = D.techQuota ? D.techQuota(m.id) : null;
+      return '<div style="font-size:15px;font-weight:800;color:var(--color-ink)">' + esc(m.raisonSociale) + '</div>' +
+        '<div class="meta" style="margin-top:2px">Marque · ' + esc(m.id) + ' · ' + esc(m.siteUrl || '') + '</div>' +
+        '<div style="margin-top:6px"><span class="pec-pill ' + (m.statut === 'validated' ? 'pec-pill--done' : m.statut === 'suspended' ? 'pec-pill--off' : 'pec-pill--wait') + '">' + esc(D.techStatutLbl(m.statut)) + '</span></div>' +
+        '<div style="margin:10px 0;padding:10px;border-radius:10px;background:var(--color-bg)"><div style="font-size:11px;font-weight:700;color:var(--color-muted)">CE QUE LE RÉSEAU LUI A ACHETÉ</div>' +
+        '<div style="font-size:19px;font-weight:800;color:var(--color-ink)">' + esc(eur(tot.valeur)) + '</div>' +
+        '<div class="meta">' + (tot.ventes ? pl(tot.ventes, 'bon') + ' · nous lui devons encore ' + esc(eur(tot.duMarque)) : 'Aucun bon vendu pour l’instant') + (q ? ' · ' + q.emisMois + (q.max != null ? '/' + q.max : '') + ' bons ce mois · seuil ACPR ' + String(q.seuilPct).replace('.', ',') + ' %' : '') + '</div></div>' +
+        '<a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="46-marques.html" style="margin-top:6px;display:inline-block">Marques — Solution →</a>';
+    }
+    function detailBon(b) {
+      return '<div style="font-size:15px;font-weight:800;color:var(--color-ink)">' + esc(b.code) + '</div>' +
+        '<div class="meta" style="margin-top:2px">Bon ' + esc(b.marchand) + ' de ' + esc(eur(b.montant)) + ' · ' + esc(D.techBonEtatLbl(b.etat)) + '</div>' +
+        '<div class="meta">Émis le ' + esc(D.dateHeure(b.emisLe)) + (b.expireLe ? ' · expire le ' + esc(new Date(b.expireLe).toLocaleDateString('fr-FR')) : '') + ' · ce qu’il reste : ' + esc(eur(b.solde)) + '</div>' +
+        (b.venteRef ? '<div class="meta">Vente ' + esc(b.venteRef) + ' — le commerce nous doit ' + esc(eur(b.prixPoint)) + ', nous devons ' + esc(eur(b.prixMarque)) + ' à la marque.</div>' : '');
+    }
+    function detailVente(v) {
+      return '<div style="font-size:15px;font-weight:800;color:var(--color-ink)">' + esc(v.reference) + '</div>' +
+        '<div class="meta" style="margin-top:2px">' + esc(D.dateHeure(v.at)) + ' · ' + esc(v.marchand) + ' → ' + esc(v.revendeur) + '</div>' +
+        '<div class="meta">Bon ' + esc(eur(v.montant)) + ' · le commerce nous doit ' + esc(eur(v.prixPoint)) + ' · nous devons ' + esc(eur(v.prixMarque)) + ' à la marque · marge ' + esc(eur(v.marge)) + '</div>' +
+        '<div style="margin-top:6px"><span class="pec-pill ' + esc(D.techVenteStatutPill(v.statut)) + '">' + esc(D.techVenteStatutLbl(v.statut)) + '</span> <span class="pec-pill ' + esc((D.TECH_MARQUE_STATUTS[v.marqueStatut] || ['', ''])[1]) + '">' + esc((D.TECH_MARQUE_STATUTS[v.marqueStatut] || [v.marqueStatut || '—'])[0]) + '</span></div>' +
+        '<a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="45-solution-paiements.html" style="margin-top:8px;display:inline-block">Prélèvements &amp; paiements →</a>';
+    }
+    /* LE DÉTAIL D'UNE RENCONTRE — ce que le manager a besoin de savoir, et rien de plus : il la surveille, il ne la sert pas. */
+    function detailRencontre(r) {
+      var h = '<div style="font-weight:800;font-size:14px">' + esc(r.ref) + ' · ' + esc(D.rencontreStatutLbl(r.statut)) + '</div>'
+        + '<div class="meta" style="margin-top:4px">' + esc(r.lieu) + ' — ' + esc(r.ville) + '</div>'
+        + '<div style="margin-top:8px;font-size:12.5px">Bon ' + esc(r.marchand) + ' de <b>' + esc(eur(r.montant)) + '</b> à remettre</div>'
+        + '<div style="margin-top:6px;font-size:12.5px">' + (r.revendeur ? '<b>' + esc(r.revendeur) + '</b> l\'a prise' : (r.joignables ? PEC_DATA.nb(r.joignables, 'nomade joignable', 'nomades joignables') + ' sur la ville' : 'aucun nomade sur cette ville')) + '</div>'
+        + '<div class="meta" style="margin-top:6px">' + (r.statut === 'demandee' ? 'Expire le ' + esc(new Date(r.expireTs).toLocaleString('fr-FR')) + '.' : r.statut === 'servie' ? PEC_DATA.nb((r.codes || []).length, 'bon remis', 'bons remis') + '.' : r.motifAnnulation ? esc(r.motifAnnulation) : 'Un nomade de la marque se déplace : il ne partage pas sa position, aucune heure n\'est inventée.') + '</div>'
+        + (r.geoApprox ? '<div class="meta" style="margin-top:4px">Point de rendez-vous <b>approché</b> (centre de ' + esc(r.ville) + ').</div>' : '')
+        + '<div style="margin-top:9px"><a href="29-partenaires.html" style="font-weight:700;color:var(--color-primary-dark)">Voir toutes les rencontres</a></div>';
+      return h;
+    }
+
+    function maj(centrer) {
+      marqueurs.forEach(function (m) { m.remove(); });
+      marqueurs = [];
+      var _hits = [];
+      var L = commerces();
+      var nOk = 0, nAtt = 0, nSusp = 0, nSansGeo = 0, nMobiles = 0;
+      L.forEach(function (r) {
+        if (r.statut === 'validated') nOk++; else if (r.statut === 'suspended') nSusp++; else nAtt++;
+        if (r.mobile && r.statut === 'validated') nMobiles++;
+        if (!r.geo) { nSansGeo++; return; }
+        if (r.mobile ? !F.mobile : !F[r.statut]) return;
+        if (!matchQ(r.raisonSociale, r.ville, r.adresse, r.id)) return;
+        if (F.q) _hits.push({ pos: r.geo });
+        var el = document.createElement('div');
+        el.className = 'op-mk ' + (r.mobile ? 'op-mk--mobile' : 'op-mk--' + r.statut);
+        el.textContent = String(r.raisonSociale || r.id).charAt(0).toUpperCase();
+        el.title = r.raisonSociale + ' · ' + D.techStatutLbl(r.statut) + (r.mobile ? ' · nomade (sa ville, pas une adresse)' : (r.geo.approx ? ' · position approchée' : ''));
+        el.addEventListener('click', function (ev) { ev.stopPropagation(); document.getElementById('op-detail-corps').innerHTML = detailCommerce(r); });
+        marqueurs.push(new maplibregl.Marker({ element: el }).setLngLat([r.geo.lng, r.geo.lat]).addTo(map));
+      });
+      /* ══ LES RENCONTRES VIVANTES — le point de rendez-vous d'un utilisateur, et le nomade qui l'a prise ══ */
+      var nRdv = 0, nRdvPrises = 0;
+      if (D.techRencontresGet) D.techRencontresGet().map(function (r) { return D.techRencontre(r.id); }).filter(function (r) { return r && (r.statut === 'demandee' || r.statut === 'acceptee'); }).forEach(function (r) {
+        nRdv++; if (r.statut === 'acceptee') nRdvPrises++;
+        if (!F.rdv || !r.geo) return;
+        if (!matchQ(r.ref, r.ville, r.lieu, r.marchand, r.revendeur || '')) return;
+        var el = document.createElement('div');
+        el.className = 'op-mk op-mk--rdv' + (r.statut === 'acceptee' ? ' op-mk--prise' : '');
+        el.textContent = r.statut === 'acceptee' ? '→' : '?';
+        el.title = r.ref + ' · ' + r.lieu + ' (' + r.ville + ') · ' + D.rencontreStatutLbl(r.statut) + (r.revendeur ? ' · ' + r.revendeur : ' · en attente d\'un nomade') + (r.geoApprox ? ' · point APPROCHÉ' : '');
+        el.addEventListener('click', function (ev) { ev.stopPropagation(); document.getElementById('op-detail-corps').innerHTML = detailRencontre(r); });
+        marqueurs.push(new maplibregl.Marker({ element: el }).setLngLat([r.geo.lng, r.geo.lat]).addTo(map));
+      });
+      majVilles();
+
+      // ── KPI, chaque chiffre avec sa source en title dans le markup
+      var minuit = new Date(); minuit.setHours(0, 0, 0, 0); minuit = minuit.getTime();
+      var jour = D.techVentes({}).filter(function (v) { return v.statut !== 'annulee' && v.at >= minuit; });
+      var som = function (l, k) { return l.reduce(function (s, v) { return s + (v[k] || 0); }, 0); };
+      document.getElementById('k-jour').textContent = eur(som(jour, 'montant'));
+      document.getElementById('k-jour-h').textContent = jour.length ? pl(jour.length, 'bon') + ' vendu' + (jour.length > 1 ? 's' : '') + ' au comptoir · marge ' + eur(som(jour, 'marge')) : 'aucun bon vendu aujourd\'hui';
+      document.getElementById('k-jour-reseau').textContent = eur(som(jour, 'prixPoint'));
+      document.getElementById('k-jour-marques').textContent = eur(som(jour, 'prixMarque'));
+      document.getElementById('k-pts-actifs').textContent = String(nOk);
+      document.getElementById('k-pts-attente').textContent = String(nAtt);
+      document.getElementById('k-pts-susp').textContent = String(nSusp);
+      document.getElementById('k-pts-sansgeo').textContent = String(nSansGeo);
+      document.getElementById('k-rdv').textContent = String(nRdv);
+      document.getElementById('k-rdv-h').textContent = nRdv ? (PEC_DATA.nb(nRdvPrises, 'prise') + ' · ' + (nRdv - nRdvPrises) + ' en attente d\'un nomade') : 'aucune rencontre en cours';
+      document.getElementById('k-mobiles').textContent = String(nMobiles);
+      var mqs = D.techMarchands({});
+      document.getElementById('k-mq').textContent = String(mqs.filter(function (m) { return m.statut === 'validated'; }).length);
+      document.getElementById('k-mq-attente').textContent = String(mqs.filter(function (m) { return m.statut === 'pending'; }).length);
+      // ── les marques et ce que le réseau leur achète
+      document.getElementById('mq-rows').innerHTML = mqs.length ? mqs.map(function (m) {
+        var t = D.techVentesTotaux({ marchandId: m.id });
+        return '<tr><td class="who">' + esc(m.raisonSociale) + '<div class="meta">' + esc(m.siteUrl || m.id) + '</div></td><td class="meta">' + esc(D.techMarchandMode(m).libelle) + '</td><td class="num">' + t.ventes + '</td><td class="num">' + esc(eur(t.valeur)) + '</td><td class="num">' + (t.duMarque ? '<b>' + esc(eur(t.duMarque)) + '</b>' : '<span class="meta">—</span>') + '</td><td><span class="pec-pill ' + (m.statut === 'validated' ? 'pec-pill--done' : m.statut === 'suspended' ? 'pec-pill--off' : 'pec-pill--wait') + '">' + esc(D.techStatutLbl(m.statut)) + '</span></td></tr>';
+      }).join('') : '<tr><td colspan="6" class="meta" style="text-align:center;padding:16px">Aucune marque inscrite — une marque naît de son inscription dans PayEnCash Solution.</td></tr>';
+      document.getElementById('mq-s').textContent = mqs.length ? pl(mqs.length, 'marque') + ' — une marque n\'a pas de position : ses bons se vendent partout où le réseau vend.' : 'Une marque n\'a pas de position : ses bons se vendent partout où le réseau vend.';
+
+      var resEl = document.getElementById('op-q-res');
+      if (F.q) {
+        if (centrer === true && _hits.length) map.flyTo({ center: [_hits[0].pos.lng, _hits[0].pos.lat], zoom: 14, duration: document.hidden ? 0 : 600 });
+        if (centrer === true) rendreResultats();
+        else if (!_resAct.length) rendreResultats();
+      } else { resEl.textContent = ''; _resAct = []; }
+      courbe();
+      business();
+    }
+
+    // ── LE RÉSEAU EN DIRECT : marge, marques et commerces les plus actifs sur la période choisie
+    var PERB = 'jour';
+    document.getElementById('ob-per').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-per]'); if (!b) return;
+      PERB = b.getAttribute('data-per');
+      document.querySelectorAll('#ob-per [data-per]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); x.style.opacity = x === b ? '' : '.55'; });
+      business();
+    });
+    function debutPeriode(per) {
+      var d = new Date(); d.setHours(0, 0, 0, 0);
+      if (per === 'semaine') d.setDate(d.getDate() - 6);
+      else if (per === 'mois') d.setDate(d.getDate() - 29);
+      else if (per === 'annee') d.setMonth(d.getMonth() - 11, 1);
+      return d.getTime();
+    }
+    function business() {
+      var el = document.getElementById('og-biz'); if (!el) return;
+      var depuis = debutPeriode(PERB);
+      var libPer = PERB === 'jour' ? "aujourd'hui" : PERB === 'semaine' ? 'sur 7 jours' : PERB === 'mois' ? 'sur 30 jours' : 'sur 12 mois';
+      var ventes = D.techVentes({}).filter(function (v) { return v.statut !== 'annulee' && v.at >= depuis; });
+      if (!ventes.length) { el.innerHTML = '<div class="meta" style="text-align:center;padding:18px 0">Aucune vente ' + esc(libPer) + ' — la marge, les marques et les commerces les plus actifs se dérivent des ventes dès la première.</div>'; return; }
+      var tot = 0, marge = 0, parM = {}, parC = {};
+      ventes.forEach(function (v) { tot += v.montant; marge += v.marge; parM[v.marchand] = (parM[v.marchand] || 0) + v.montant; parC[v.revendeur] = (parC[v.revendeur] || 0) + v.montant; });
+      var top = function (o) { return Object.keys(o).map(function (k) { return [k, o[k]]; }).sort(function (a, b) { return b[1] - a[1]; }).slice(0, 6); };
+      var barres = function (titre, l) { var mx = l[0] ? l[0][1] : 1; return '<div style="margin-top:12px;font-size:11px;font-weight:800;letter-spacing:.06em;color:var(--color-muted)">' + titre + '</div>' + l.map(function (t) { return '<div class="bizrow"><span class="lb" title="' + esc(t[0]) + '">' + esc(t[0]) + '</span><span class="bar"><i style="width:' + Math.max(4, Math.round(t[1] / mx * 100)) + '%"></i></span><span class="vv">' + esc(eur(t[1])) + '</span></div>'; }).join(''); };
+      el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px">' +
+        '<div style="flex:1 1 110px;min-width:0;padding:9px 11px;border-radius:10px;background:var(--color-mint)"><div style="font-size:10px;font-weight:800;color:var(--color-mint-ink)">BONS ACHETÉS ' + esc(libPer.toUpperCase()) + '</div><div style="font-size:18px;font-weight:800;color:var(--color-ink)">' + esc(eur(tot)) + '</div><div class="meta">' + pl(ventes.length, 'vente') + '</div></div>' +
+        '<div style="flex:1 1 110px;min-width:0;padding:9px 11px;border-radius:10px;background:var(--color-bg)"><div style="font-size:10px;font-weight:800;color:var(--color-muted)">NOTRE MARGE</div><div style="font-size:18px;font-weight:800;color:var(--color-ink)">' + esc(eur(marge)) + '</div><div class="meta">revente − achat</div></div></div>' +
+        barres('PAR MARQUE — ' + libPer.toUpperCase(), top(parM)) + barres('PAR COMMERCE — ' + libPer.toUpperCase(), top(parC));
+    }
+
+    // ── COURBE : valeur des bons (barres) + nombre de ventes (ligne), période jour/semaine/mois/année
+    var PER = 'jour';
+    document.getElementById('og-per').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-per]'); if (!b) return;
+      PER = b.getAttribute('data-per');
+      document.querySelectorAll('#og-per [data-per]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); x.style.opacity = x === b ? '' : '.55'; });
+      courbe();
+    });
+    function courbe() {
+      var ventes = D.techVentes({}).filter(function (v) { return v.statut !== 'annulee'; });
+      var maintenant = new Date(), bins = [], libs = [];
+      if (PER === 'jour') {
+        var minuit = new Date(); minuit.setHours(0, 0, 0, 0);
+        for (var h = 0; h < 24; h++) { bins.push({ t0: minuit.getTime() + h * 36e5, t1: minuit.getTime() + (h + 1) * 36e5 }); libs.push(h % 3 === 0 ? h + ' h' : ''); }
+      } else if (PER === 'annee') {
+        var moisN = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+        for (var mA = 11; mA >= 0; mA--) {
+          var d0 = new Date(maintenant.getFullYear(), maintenant.getMonth() - mA, 1);
+          var d1 = new Date(maintenant.getFullYear(), maintenant.getMonth() - mA + 1, 1);
+          bins.push({ t0: d0.getTime(), t1: d1.getTime() });
+          libs.push(moisN[d0.getMonth()]);
+        }
+      } else {
+        var nJ = PER === 'semaine' ? 7 : 30;
+        var j0 = new Date(); j0.setHours(0, 0, 0, 0);
+        var noms = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'];
+        for (var j = nJ - 1; j >= 0; j--) {
+          var d = new Date(j0.getTime() - j * 864e5);
+          bins.push({ t0: d.getTime(), t1: d.getTime() + 864e5 });
+          libs.push(PER === 'semaine' ? noms[d.getDay()] : ((nJ - j) % 5 === 1 ? d.getDate() + '/' + (d.getMonth() + 1) : ''));
+        }
+      }
+      var eurB = bins.map(function () { return 0; }), nB = bins.map(function () { return 0; }), tot = 0, nTot = 0;
+      ventes.forEach(function (v) {
+        for (var i = 0; i < bins.length; i++) if (v.at >= bins[i].t0 && v.at < bins[i].t1) { eurB[i] += v.montant; nB[i]++; tot += v.montant; nTot++; break; }
+      });
+      document.getElementById('og-total').textContent = nTot ? '— ' + pl(nTot, 'vente') + ' · ' + eur(tot) + ' de bons (' + (PER === 'jour' ? "aujourd'hui, par heure" : PER === 'semaine' ? '7 jours' : PER === 'mois' ? '30 jours' : '12 mois') + ')' : '—';
+      var svg = document.getElementById('og-svg'), vide = document.getElementById('og-vide');
+      vide.hidden = !!nTot; svg.style.display = nTot ? 'block' : 'none';
+      if (!nTot) { svg.innerHTML = ''; return; }
+      var W = 720, H = 190, padB = 22, padT = 14, maxE = Math.max.apply(null, eurB) || 1, maxN = Math.max.apply(null, nB) || 1;
+      var bw = W / bins.length, out = [];
+      out.push('<text x="4" y="12" font-size="10" fill="var(--color-muted)">' + esc(eur(maxE)) + ' max</text>');
+      out.push('<text x="' + (W - 4) + '" y="12" font-size="10" text-anchor="end" fill="var(--color-primary-dark)">' + PEC_DATA.nb(maxN, 'vente') + ' max</text>');
+      bins.forEach(function (b, i) {
+        var hB = eurB[i] / maxE * (H - padB - padT);
+        if (eurB[i]) out.push('<rect x="' + (i * bw + 2).toFixed(1) + '" y="' + (H - padB - hB).toFixed(1) + '" width="' + (bw - 4).toFixed(1) + '" height="' + hB.toFixed(1) + '" rx="2" fill="var(--color-primary)" opacity=".82"><title>' + esc(libs[i]) + ' — ' + esc(eur(eurB[i])) + ' · ' + pl(nB[i], 'vente') + '</title></rect>');
+        if (libs[i]) out.push('<text x="' + (i * bw + bw / 2).toFixed(1) + '" y="' + (H - 6) + '" font-size="9.5" text-anchor="middle" fill="var(--color-muted)">' + esc(libs[i]) + '</text>');
+      });
+      var pts = nB.map(function (n, i) { return (i * bw + bw / 2).toFixed(1) + ',' + (H - padB - n / maxN * (H - padB - padT)).toFixed(1); });
+      out.push('<polyline points="' + pts.join(' ') + '" fill="none" stroke="var(--color-ink)" stroke-width="1.6" opacity=".8"/>');
+      nB.forEach(function (n, i) { if (n) out.push('<circle cx="' + (i * bw + bw / 2).toFixed(1) + '" cy="' + (H - padB - n / maxN * (H - padB - padT)).toFixed(1) + '" r="2.6" fill="var(--color-ink)"><title>' + esc(libs[i]) + ' — ' + pl(n, 'vente') + '</title></circle>'); });
+      svg.innerHTML = out.join('');
+    }
+
+    maj();
+    window.addEventListener('pec-bus', maj);
+    window.addEventListener('storage', maj);
+  })();
+</script>
+</body>
+</html>

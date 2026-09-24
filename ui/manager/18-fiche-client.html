@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Utilisateurs Mes bons</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<!--
+  UTILISATEURS MES BONS — route `/utilisateurs`.
+  (23/09 — pivot grossiste) LE UTILISATEUR DE BONS DE MARQUE : un compte de l'app Mes bons (protocole des comptes,
+  espace `client`), vérifié par SMS et e-mail. Il range les codes des bons qu'il a achetés au comptoir et les utilise
+  chez la marque émettrice — l'app est obligatoire pour utiliser un bon, c'est ce qui rend chaque usage retraçable.
+  Ce que le manager fait ici : la liste des comptes (état, vérifications, suspension), la fiche d'un compte
+  (recherche par téléphone ou e-mail exact — jamais par nom), ses usages de bons (dérivés des bons proposés par
+  les marques, où chaque usage porte le compte de l’utilisateur), ses documents acceptés, et le sas RGPD en deux temps.
+  CE QUE L'ÉCRAN NE MONTRE PAS : les codes que l’utilisateur a rangés dans son app — ils n'existent que sur son
+  appareil, sous sa clé (PEC_BONS) ; aucune valeur n'est détenue chez nous, il n'y a rien à lire ici.
+  L'effacement RGPD passe par compteSupprimer ; chaque ouverture de fiche et chaque code RGPD sont journalisés.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Utilisateurs Mes bons</h1>
+        <p class="sub">Les utilisateurs de Mes bons : leurs comptes, leurs usages, leurs demandes RGPD.</p>
+      </div>
+      <div class="pec-topbar-actions"></div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:22px" id="kpis"></div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Comptes</h2><p class="s" id="cl-sub">—</p></div>
+        <div class="pec-controlbar" data-fplaceholder="#recherche-client" style="padding:6px 8px">
+          <button class="pec-filter tap" aria-pressed="true" data-ph="06 •• •• •• ••">Téléphone</button>
+          <button class="pec-filter tap" aria-pressed="false" data-ph="prenom.nom@mail.fr">E-mail</button>
+          <input class="pec-search" id="recherche-client" style="flex:0 1 240px" type="search" placeholder="06 •• •• •• ••" aria-label="Recherche d’un utilisateur">
+          <button class="pec-btn pec-btn--sm tap" id="fc-chercher" aria-label="Rechercher"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-search"/></svg></button>
+        </div>
+      </div>
+      <div class="pec-panel-body">
+        <div id="fc-resultat" class="meta" style="margin:0 0 10px" hidden></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Compte</th><th>Vérifications</th><th>Documents Mes bons</th><th class="num">Usages de bons</th><th>Statut</th><th>Créé</th><th>Actions</th></tr></thead>
+          <tbody id="clients-rows" data-fpage="15"></tbody>
+        </table>
+        <p class="meta" id="cl-msg" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="pec-grid pec-grid--2" style="margin-bottom:16px">
+      <div class="pec-panel">
+        <div class="pec-panel-head">
+          <div><h2 id="fc-nom">Aucun compte sélectionné</h2><p class="s" id="fc-sub">Clique un compte, ou cherche-le par téléphone ou e-mail exact.</p></div>
+        </div>
+        <div class="pec-panel-body">
+          <div class="pec-setting" style="padding-top:0">
+            <div><div class="t">Téléphone</div><div class="s">Identifiant de connexion</div></div>
+            <div class="pec-setting-control"><span style="font-family:var(--font-mono);font-size:13px" id="fc-tel">—</span></div>
+          </div>
+          <div class="pec-setting">
+            <div><div class="t">E-mail</div><div class="s">Chiffré au repos, déchiffré pour cet affichage</div></div>
+            <div class="pec-setting-control"><span style="font-size:13px" id="fc-email">—</span></div>
+          </div>
+          <div class="pec-setting">
+            <div><div class="t">Vérification du compte</div><div class="s">SMS et e-mail confirmés par code</div></div>
+            <div class="pec-setting-control" id="fc-verif" style="flex-wrap:wrap;gap:6px">—</div>
+          </div>
+          <div class="pec-setting">
+            <div><div class="t">Vérification d’identité (KYC)</div><div class="s" id="fc-kyc-regle">—</div></div>
+            <div class="pec-setting-control" id="fc-kyc" style="flex-wrap:wrap;gap:6px">—</div>
+          </div>
+          <div class="pec-setting">
+            <div><div class="t">Dernière activité</div><div class="s">Dernier usage d’un bon, dernière connexion</div></div>
+            <div class="pec-setting-control"><span class="meta" id="fc-activite">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pec-panel">
+        <div class="pec-panel-head">
+          <div><h2>Documents acceptés</h2><p class="s" id="fc-consents-src">Avec la version du texte accepté — sans elle, une acceptation n’est pas opposable.</p></div>
+        </div>
+        <div class="pec-panel-body">
+          <table class="pec-table">
+            <thead><tr><th>Document</th><th>Version</th><th>État</th></tr></thead>
+            <tbody id="fc-consents"><tr><td colspan="3" class="meta" style="text-align:center;padding:18px">Aucun compte sélectionné.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Usages de bons</h2><p class="s" id="fc-usages-sub">Chaque usage d’un bon de marque passe par l’app, sous le compte de l’utilisateur — c’est ce qui le rend retraçable.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#fc-usages tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#fc-usages tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Quand</th><th>Marque</th><th>Bon proposé</th><th>Bon utilisé</th><th class="num">Pris</th><th>État du bon proposé</th></tr></thead>
+          <tbody id="fc-usages" data-fpage="15"><tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucun compte sélectionné.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:22px">
+      <div class="pec-panel-head">
+        <div><h2>Assistance et appels</h2><p class="s">Les demandes et rappels de ce compte.</p></div>
+        <div style="display:flex;gap:10px"><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="09-appels.html">Centre d’appels</a></div>
+      </div>
+      <div class="pec-panel-body">
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Date</th><th>Nature</th><th>Sujet</th><th>État</th></tr></thead>
+          <tbody id="fc-appels" data-fpage="15"><tr><td colspan="4" class="meta" style="text-align:center;padding:18px">Aucun compte sélectionné.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Traiter une demande RGPD</h2><p class="s">Pour quelqu’un qui n’a plus accès à son compte et appelle pour exercer ses droits.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <p class="pec-input-label" style="margin-bottom:9px">1 · Quelle demande ?</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px" data-fpick>
+          <button class="pec-filter tap" aria-pressed="false" data-fset='{"#rgpd-demande":"accès à ses données","#rgpd-action":"Exporter ses données"}'>Accès à ses données</button>
+          <button class="pec-filter tap" aria-pressed="false" data-fset='{"#rgpd-demande":"rectification du compte","#rgpd-action":"Appliquer la rectification"}'>Rectification</button>
+          <button class="pec-filter tap" aria-pressed="true" data-fset='{"#rgpd-demande":"effacement du compte","#rgpd-action":"Effacer le compte"}'>Effacement</button>
+        </div>
+        <hr class="pec-sep">
+        <!-- le code = celui du COMPTE dans le protocole (PEC_DATA.compteCode, canal SMS — affiché comme code de démo, aucun envoi
+             réel) ; la saisie est VÉRIFIÉE ; l'effacement appelle PEC_DATA.compteSupprimer (la session manager est reposée après,
+             car le data-layer purge la session de l'appelant) ; export et rectification disent honnêtement leur limite. -->
+        <div class="pec-setting" style="margin-top:14px">
+          <div>
+            <div class="t">2 · Vérifier que c’est bien lui</div>
+            <div class="s">Un code part sur le <b id="fc-tel-code">—</b>, le numéro du compte. Demandez-lui de vous le lire. <span id="rgpd-demo" class="meta"></span></div>
+          </div>
+          <div class="pec-setting-control"><button class="pec-btn pec-btn--ghost tap" id="rgpd-envoyer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-smartphone"/></svg> Envoyer le code</button></div>
+        </div>
+        <div class="pec-setting">
+          <div>
+            <div class="t">3 · Saisir le code dicté</div>
+            <div class="s">Demande sélectionnée : <b id="rgpd-demande">effacement du compte</b>.</div>
+          </div>
+          <div class="pec-setting-control" style="gap:10px">
+            <input class="pec-search" style="max-width:130px;text-align:center;letter-spacing:3px" placeholder="······" aria-label="Code de vérification" id="rgpd-code" inputmode="numeric">
+            <button class="pec-btn pec-btn--danger tap" id="rgpd-action">Effacer le compte</button>
+          </div>
+        </div>
+        <p class="meta" id="rgpd-msg" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Un appel ne prouve rien.</b> Sans le code lu à voix haute, n’importe qui connaissant un nom et un numéro pourrait faire effacer le compte d’un autre. Les trois demandes passent par le même sas — y compris la rectification, moins grave, parce qu’une exception dans un contrôle finit toujours par s’élargir.</div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>« Effacer » veut dire anonymiser.</b> Les traces des usages de bons sont conservées (elles justifient chaque achat de bon à une marque) ; ce qui disparaît, ce sont les données personnelles — nom, e-mail, téléphone. L’effacement est réservé à la <b>direction</b> ; un opérateur peut consulter et déclencher un export, pas supprimer.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-shield"/></svg>
+      <div><b>Cette consultation est tracée.</b> L’ouverture d’une fiche écrit une ligne au journal d’audit, à votre nom. L’export part <b>directement par e-mail à l’utilisateur</b> — le fichier contient toutes ses données personnelles, il n’a rien à faire sur votre poste.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.comptesTous) return;
+    function $(id) { return document.getElementById(id); }
+    var esc = function (v) { return D.esc(v); };
+    function set(id, v) { var e = $(id); if (e) e.textContent = v; }
+    function html(id, v) { var e = $(id); if (e) e.innerHTML = v; }
+    function vide(cols, txt) { return '<tr><td colspan="' + cols + '" class="meta" style="text-align:center;padding:18px">' + txt + '</td></tr>'; }
+    function pill(t, cls) { return '<span class="pec-pill' + (cls ? ' ' + cls : '') + '">' + esc(t) + '</span>'; }
+    function dateFr(ts) { return ts ? new Date(ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'; }
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    function acteur() { return (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)'; }
+    function noter(evt, c, extra) { try { if (window.PEC_BUS && PEC_BUS.noter) PEC_BUS.noter(evt, c ? c.id : '—', Object.assign({ par: acteur(), compte: c ? c.identifiant : '' }, extra || {})); } catch (e) {} }
+    var ESP = (D.ESPACES_COMPTE || {}).client || {};
+    // le code d'un bon ne s'affiche jamais en entier au manager : les quatre derniers caractères suffisent à le retrouver
+    function masque(code) { var c = String(code || ''); if (c.length < 4) return c; var m = c.match(/^([A-Z]{1,4})-/); return (m ? m[1] + '-' : '') + '••••-••••-' + c.slice(-4); }
+    var sel = null, courant = null, codeEnvoye = false;
+
+    function comptes() { return D.comptesTous('client').filter(function (c) { return c.statut !== 'supprime'; }); }
+    function porteurIds(c) { return [c.refId, c.id, c.identifiant].filter(Boolean); }
+    /* LES USAGES D'UN UTILISATEUR : chaque bon proposé par une marque garde, usage par usage, le compte qui l'a utilisé (`par`). */
+    function usagesDe(c) {
+      var ids = porteurIds(c), out = [];
+      (D.techLiens ? D.techLiens({}) : []).forEach(function (x) {
+        (x.usages || []).forEach(function (u) { if (ids.indexOf(u.par) !== -1) out.push({ at: u.at, lien: x, code: u.code, pris: u.pris }); });
+      });
+      return out.sort(function (a, b) { return b.at - a.at; });
+    }
+    function verifsHTML(c) { var v = c.verifs || {}; return (ESP.verifs || ['sms', 'email']).map(function (k) { return pill((k === 'sms' ? 'SMS ' : 'E-mail ') + (v[k] ? '✓' : '✗'), v[k] ? 'pec-pill--done' : 'pec-pill--wait'); }).join(' '); }
+    function docsHTML(c) {
+      var l = (D.documentsEtat && c.refId) ? D.documentsEtat('bons', c.refId) : [];
+      if (!l.length) return '<span class="meta">—</span>';
+      var ok = l.filter(function (d) { return d.aJour; }).length;
+      return pill(ok + ' / ' + l.length + ' acceptés', ok === l.length ? 'pec-pill--done' : 'pec-pill--wait');
+    }
+    function stPill(c) { return c.statut === 'actif' ? pill('Actif', 'pec-pill--done') : c.statut === 'suspendu' ? pill('Suspendu', 'pec-pill--wait') : pill(D.STATUTS_COMPTE[c.statut] || c.statut, 'pec-pill--off'); }
+
+    function kpis(L) {
+      var actifs = L.filter(function (c) { return c.statut === 'actif'; }).length;
+      var verif = L.filter(function (c) { return c.verifs && c.verifs.sms && c.verifs.email; }).length;
+      var usages = 0; L.forEach(function (c) { usages += usagesDe(c).length; });
+      var crees = L.filter(function (c) { return !c.seed; }).length;
+      $('kpis').innerHTML =
+        '<div class="pec-kpi"><div class="lbl">Comptes</div><div class="val">' + L.length + '</div><div class="hint">' + actifs + ' actif' + (actifs > 1 ? 's' : '') + ' · ' + (L.length - actifs) + ' suspendu' + (L.length - actifs > 1 ? 's' : '') + '</div></div>' +
+        '<div class="pec-kpi"><div class="lbl">Vérifiés (SMS + e-mail)</div><div class="val">' + verif + '</div><div class="hint">' + (L.length - verif) + ' à confirmer</div></div>' +
+        '<div class="pec-kpi"><div class="lbl">Usages de bons</div><div class="val">' + usages + '</div><div class="hint">bons de marque utilisés depuis l’app</div></div>' +
+        '<div class="pec-kpi"><div class="lbl">Inscrits via l’app</div><div class="val">' + crees + '</div><div class="hint">' + (L.length - crees) + ' de démo</div></div>';
+    }
+    function render() {
+      var L = comptes();
+      kpis(L);
+      set('cl-sub', L.length ? pl(L.length, 'compte') + ' — ' + (ESP.label || 'utilisateurs') : 'Aucun compte pour l’instant — un compte naît de l’inscription dans l’app Mes bons.');
+      $('clients-rows').innerHTML = L.map(function (c) {
+        var p = c.profil || {}, u = usagesDe(c);
+        return '<tr class="cl-row' + (sel === c.id ? ' on' : '') + '" data-id="' + esc(c.id) + '" style="cursor:pointer' + (sel === c.id ? ';background:var(--color-mint)' : '') + '">' +
+          '<td><b>' + esc(p.nom || p.prenom || c.identifiant) + '</b><br><span class="meta">' + esc(c.identifiant) + (p.email ? ' · ' + esc(p.email) : '') + (c.seed ? ' · démo' : '') + '</span></td>' +
+          '<td>' + verifsHTML(c) + '</td><td>' + docsHTML(c) + '</td><td class="num">' + u.length + '</td><td>' + stPill(c) + '</td><td class="meta">' + (c.creeAt ? esc(dateFr(c.creeAt)) : 'démo') + '</td>' +
+          '<td>' + (c.statut === 'actif' ? '<button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-statut="suspendre" data-id="' + esc(c.id) + '">Suspendre</button>' : c.statut === 'suspendu' ? '<button class="pec-btn pec-btn--sm tap" data-statut="reactiver" data-id="' + esc(c.id) + '">Réactiver</button>' : '<span class="meta">—</span>') +
+          ' <a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="40-comptes.html?id=' + esc(c.id) + '" style="text-decoration:none">Compte</a></td></tr>';
+      }).join('') || vide(7, 'Aucun compte — les utilisateurs de Mes bons apparaissent ici dès leur inscription.');
+      afficher(sel ? D.compte(sel) : null);
+    }
+
+    function afficher(c) {
+      courant = c || null; codeEnvoye = false; if ($('rgpd-demo')) $('rgpd-demo').textContent = ''; if ($('rgpd-msg')) $('rgpd-msg').textContent = '';
+      if (!c) {
+        set('fc-nom', 'Aucun compte sélectionné'); set('fc-sub', 'Clique un compte, ou cherche-le par téléphone ou e-mail exact.');
+        set('fc-tel', '—'); set('fc-tel-code', '—'); set('fc-email', '—'); html('fc-verif', '—'); html('fc-kyc', '—'); set('fc-kyc-regle', '—'); set('fc-activite', '—');
+        html('fc-consents', vide(3, 'Aucun compte sélectionné.')); set('fc-consents-src', 'Avec la version du texte accepté — sans elle, une acceptation n’est pas opposable.');
+        html('fc-usages', vide(6, 'Aucun compte sélectionné.')); set('fc-usages-sub', 'Chaque usage d’un bon de marque passe par l’app, sous le compte de l’utilisateur — c’est ce qui le rend retraçable.');
+        html('fc-appels', vide(4, 'Aucun compte sélectionné.'));
+        return;
+      }
+      var p = c.profil || {}, u = usagesDe(c);
+      set('fc-nom', p.nom || p.prenom || c.identifiant);
+      set('fc-sub', [ESP.label || 'Utilisateur Mes bons', c.id, c.seed ? 'compte de démo' : 'inscrit via l’app' + (c.creeAt ? ' le ' + dateFr(c.creeAt) : ''), D.STATUTS_COMPTE[c.statut] || c.statut].join(' · '));
+      set('fc-tel', c.identifiant || 'non renseigné'); set('fc-tel-code', c.identifiant || 'non renseigné'); set('fc-email', p.email || 'non renseigné');
+      html('fc-verif', verifsHTML(c));
+      // KYC de l’utilisateur : les paliers du référentiel, et la décision de la hotline sur son dossier (bus)
+      var K = D.kycPorteurRef ? D.kycPorteurRef() : null;
+      set('fc-kyc-regle', K ? 'Vérification exigée au-delà de ' + D.eur(K.especesEur) + ' de bons achetés en espèces ou ' + D.eur(K.carteEur) + ' par carte, sur ' + K.fenetreJours + ' jours glissants.' : 'Paliers indisponibles.');
+      var ids = porteurIds(c);
+      var kycs = (window.PEC_BUS && PEC_BUS.verifications) ? PEC_BUS.verifications().filter(function (v) { return ids.indexOf(v.clientId) !== -1 || ids.indexOf(v.compteId) !== -1; }) : [];
+      html('fc-kyc', kycs.length ? kycs.slice(0, 3).map(function (v) { return pill(v.id + ' · ' + (v.statut || '—'), v.statut === 'validee' ? 'pec-pill--done' : v.statut === 'refusee' ? 'pec-pill--off' : 'pec-pill--wait'); }).join(' ') : '<span class="meta">Aucune vérification d’identité demandée.</span>');
+      set('fc-activite', (u.length ? 'Dernier usage d’un bon : ' + dateFr(u[0].at) : 'Aucun usage de bon') + (c.derniereConnexion ? ' · dernière connexion ' + dateFr(c.derniereConnexion) : ''));
+      // documents acceptés — l'espace `bons`, sous l'id de l’utilisateur, avec la version
+      var accs = (D.acceptationsGet && c.refId) ? D.acceptationsGet('bons', c.refId) : [];
+      var docs = (D.documentsEtat && c.refId) ? D.documentsEtat('bons', c.refId) : [];
+      html('fc-consents', docs.length ? docs.map(function (d) {
+        var a = accs.filter(function (x) { return x.texte === d.titre || x.cle === d.cle; })[0];
+        return '<tr><td>' + esc(d.titre) + '</td><td class="meta">v' + esc(d.version || '—') + '</td><td>' + (d.aJour ? pill(d.fait + (a && a.granted_at ? ' le ' + new Date(a.granted_at).toLocaleDateString('fr-FR') : ''), 'pec-pill--done') : pill(d.aRelire ? 'Nouvelle version ' + d.aFaire : (d.information ? 'Non lu' : 'Non accepté'), 'pec-pill--wait')) + '</td></tr>';
+      }).join('') : vide(3, 'Aucun document au référentiel de l’app Mes bons pour ce compte.'));
+      set('fc-consents-src', docs.length ? docs.filter(function (d) { return d.aJour; }).length + ' / ' + docs.length + ' documents reconnus (lus ou acceptés) dans leur version en vigueur.' : 'Avec la version du texte accepté — sans elle, une acceptation n’est pas opposable.');
+      // usages
+      html('fc-usages', u.length ? u.map(function (x) {
+        return '<tr data-s-at="' + x.at + '"><td class="meta">' + esc(dateFr(x.at)) + '</td><td class="who">' + esc(x.lien.marchand || x.lien.marchandId) + '</td><td class="ref">' + esc(x.lien.reference || x.lien.slug || x.lien.id) + ' · ' + esc(D.eur(x.lien.montant)) + '</td><td class="ref">' + esc(masque(x.code)) + '</td><td class="num">' + esc(D.eur(x.pris)) + '</td><td>' + pill(D.techLienEtatLbl(x.lien.etat), x.lien.etat === 'used' ? 'pec-pill--done' : 'pec-pill--wait') + '</td></tr>';
+      }).join('') : vide(6, 'Aucun usage — chaque bon utilisé chez une marque depuis l’app apparaîtra ici.'));
+      set('fc-usages-sub', u.length ? pl(u.length, 'usage') + ' · ' + D.eur(u.reduce(function (s, x) { return s + x.pris; }, 0)) + ' de bons utilisés chez les marques.' : 'Chaque usage d’un bon de marque passe par l’app, sous le compte de l’utilisateur — c’est ce qui le rend retraçable.');
+      // assistance et appels du compte (bus)
+      var lignes = [];
+      if (window.PEC_BUS) {
+        (PEC_BUS.demandesSav ? PEC_BUS.demandesSav() : []).filter(function (d) { return ids.indexOf(d.clientId) !== -1 || ids.indexOf(d.compteId) !== -1; }).forEach(function (d) { lignes.push({ at: d.at, nature: 'Demande ' + d.id, sujet: d.sujet || '—', etat: D.statutDemande(d).lbl, ok: /^clot|resolue/.test(d.statut || '') }); });
+        (PEC_BUS.appels ? PEC_BUS.appels() : []).filter(function (a) { return ids.indexOf(a.clientId) !== -1 || ids.indexOf(a.compteId) !== -1; }).forEach(function (a) { lignes.push({ at: a.at, nature: 'Appel — ' + D.appelTypeLbl(a), sujet: a.ref || a.sujet || '—', etat: a.statut === 'fait' ? 'Fait' : 'À passer', ok: a.statut === 'fait' }); });
+      }
+      lignes.sort(function (a, b) { return b.at - a.at; });
+      html('fc-appels', lignes.length ? lignes.map(function (l) { return '<tr><td class="meta">' + esc(dateFr(l.at)) + '</td><td>' + esc(l.nature) + '</td><td>' + esc(l.sujet) + '</td><td>' + pill(l.etat, l.ok ? 'pec-pill--done' : 'pec-pill--wait') + '</td></tr>'; }).join('') : vide(4, 'Aucune demande ni appel pour ce compte.'));
+    }
+
+    // ── liste : sélection, suspension / réactivation (journalisées par le data-layer)
+    $('clients-rows').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-statut]');
+      if (b) {
+        var id = b.getAttribute('data-id'), msg = $('cl-msg');
+        if (b.getAttribute('data-statut') === 'suspendre') { D.compteSuspendre(id, acteur()); msg.textContent = 'Compte ' + id + ' suspendu par ' + acteur() + ' — l’app Mes bons refuse la connexion, trace conservée.'; }
+        else { D.compteReactiver(id, acteur()); msg.textContent = 'Compte ' + id + ' réactivé par ' + acteur() + '.'; }
+        sel = id; render(); return;
+      }
+      var tr = e.target.closest('tr[data-id]'); if (tr) { sel = tr.getAttribute('data-id'); noter('rgpd_consultation_fiche', D.compte(sel), {}); render(); }
+    });
+    // ── recherche EXACTE : téléphone (fin de numéro ≥ 4 chiffres) ou e-mail — jamais par nom
+    function modeRecherche() { var b = document.querySelector('[data-fplaceholder] [data-ph][aria-pressed="true"]'), ph = b ? b.getAttribute('data-ph') : ''; return ph.indexOf('@') !== -1 ? 'email' : 'tel'; }
+    function chercher() {
+      var q = ($('recherche-client').value || '').trim(), res = $('fc-resultat');
+      // (07/09 — audit navigation) une recherche vide DIT ce qu'elle attend, elle ne se tait pas
+      if (!q) { res.hidden = false; res.textContent = 'Saisis un téléphone complet (ou ses 4 derniers chiffres) ou un e-mail exact — on ne cherche pas par nom.'; return; }
+      var L = comptes(), trouves = [];
+      if (modeRecherche() === 'tel') { var dig = q.replace(/\D/g, ''); if (dig.length >= 4) trouves = L.filter(function (c) { var t = String(c.identifiant || '').replace(/\D/g, ''); return dig.length >= 10 ? t === dig : t.slice(-dig.length) === dig; }); }
+      else trouves = L.filter(function (c) { return String((c.profil || {}).email || '').toLowerCase() === q.toLowerCase(); });
+      res.hidden = false;
+      res.textContent = trouves.length ? ('Compte trouvé : ' + ((trouves[0].profil || {}).nom || trouves[0].identifiant) + ' (' + trouves[0].id + ')' + (trouves.length > 1 ? ' — ' + trouves.length + ' comptes correspondent, précise le critère' : '')) : ('Aucun compte pour « ' + q + ' » (' + (modeRecherche() === 'tel' ? 'téléphone' : 'e-mail exact') + ') — on ne cherche pas par nom.');
+      if (trouves.length) { sel = trouves[0].id; noter('rgpd_consultation_fiche', trouves[0], {}); render(); }
+    }
+    $('recherche-client').addEventListener('input', chercher);
+    $('fc-chercher').addEventListener('click', chercher);
+    $('recherche-client').addEventListener('keydown', function (e) { if (e.key === 'Enter') chercher(); });
+
+    // ── SAS RGPD (réel) : code du compte, vérifié, action tracée
+    $('rgpd-envoyer').addEventListener('click', function () {
+      var c = courant, msg = $('rgpd-msg'); if (!c) { msg.textContent = 'Sélectionne d’abord un compte.'; return; }
+      codeEnvoye = true;
+      $('rgpd-demo').textContent = 'Code de démo (aucun SMS ne part) : ' + D.compteCode(c, 'sms');
+      msg.textContent = 'Code émis sur le numéro du compte ' + c.id + ' — demande à l’utilisateur de le lire.';
+      noter('rgpd_code_envoye', c, {});
+    });
+    $('rgpd-action').addEventListener('click', function () {
+      var c = courant, msg = $('rgpd-msg'); if (!c) { msg.textContent = 'Sélectionne d’abord un compte.'; return; }
+      if (!codeEnvoye) { msg.textContent = 'Envoie d’abord le code (étape 2) — sans code lu à voix haute, aucune demande n’est traitée.'; return; }
+      var saisi = ($('rgpd-code').value || '').trim();
+      if (saisi !== D.compteCode(c, 'sms')) { msg.textContent = 'Code incorrect — la demande n’est pas traitée.'; noter('rgpd_code_refuse', c, {}); return; }
+      var demande = ($('rgpd-demande').textContent || '').trim();
+      if (/effacement/.test(demande)) {
+        if (c.seed) { msg.textContent = 'Compte de démo (' + c.id + ') : l’effacement n’est pas porté par la donnée — un compte de démo est reconstruit au démarrage.'; noter('rgpd_effacement_refuse', c, { motif: 'compte de démo' }); return; }
+        if (!window.confirm('Effacer (anonymiser) le compte ' + c.identifiant + ' ? Les traces d’usage des bons sont conservées.')) return;
+        var sess = D.session ? D.session() : null;
+        D.compteSupprimer(c.id);                          // ferme le compte
+        if (sess && D.connecter) D.connecter(sess);       // le data-layer purge la session de l'appelant : on repose celle du manager
+        noter('rgpd_effacement', c, {});
+        msg.textContent = 'Compte ' + c.id + ' effacé (anonymisé) par ' + acteur() + ' — journalisé. L’utilisateur n’apparaît plus dans les comptes.';
+        sel = null; render();
+      } else if (/accès/.test(demande)) {
+        noter('rgpd_export_demande', c, {});
+        msg.textContent = 'Demande d’accès enregistrée au journal — l’export part par e-mail à l’utilisateur sous ' + (((D.ref || {}).rgpd || {}).exportDelaiH || '—') + ' h : l’envoi e-mail n’est pas branché dans la maquette (rien n’est produit sur ce poste, par conception).';
+      } else {
+        noter('rgpd_rectification_demande', c, {});
+        msg.textContent = 'Demande de rectification enregistrée au journal — la rectification des champs se fait par l’utilisateur depuis son compte (compteProfilMaj) ; aucun formulaire manager n’est porté ici.';
+      }
+    });
+    var q = new URLSearchParams(location.search); if (q.get('id')) sel = q.get('id');
+    render();
+    window.addEventListener('storage', render);
+    window.addEventListener('pec-bus', render);
+  })();
+</script>
+</body>
+</html>

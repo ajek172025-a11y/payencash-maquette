@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash SOLUTION — Documentation de l’API</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : les fixtures et la signature du contrat-cadre le lisent -->
+<script src="../assets/payencash-tech.js"></script>
+<!-- DOCUMENTATION DE L'API (19/09, nuit — cahier des charges §8 « architecture API suggérée (REST) » ; 23/09, soir —
+     audit : « décrire ce qui existe »). Les points d'entrée sont ceux du modèle d'aujourd'hui — le grossiste : une marque,
+     son dossier, ses documents, SON contrat-cadre signé par son dirigeant vérifié, ses bons proposés, ses ventes, nos
+     prélèvements et nos virements. Les mandats de représentation, les mises en relation et les contrats marque↔point de
+     l'intermédiaire du 19/09 n'y sont plus : ils ne décrivaient plus rien.
+     LES CHIFFRES ET LES RÈGLES VIENNENT DU RÉFÉRENTIEL (techRef, ref.juridique) : offres de paiement, durée, préavis, TVA.
+     Aucune valeur n'est recopiée ici ; le jour où un taux bouge dans Configuration, cette page bouge avec lui. -->
+<style>
+  .doc{max-width:860px;margin:0 auto;padding:6px 4px 40px}
+  .dc-sommaire{display:none}
+  @media (min-width:1024px){
+    .doc{margin:0;padding:0 0 60px}
+    .dc-sommaire{display:flex;flex-direction:column;gap:2px;position:sticky;top:24px;background:var(--color-card);border-radius:16px;box-shadow:var(--shadow-card);padding:16px 10px}
+    .dc-sommaire .pec-section-label{margin:0 8px 8px}
+    .dc-sommaire a{padding:9px 10px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--color-ink);text-decoration:none}
+    .dc-sommaire a:hover{background:var(--color-mint)}
+    h1{font-size:30px} .lead{font-size:15px} h2{font-size:20px} h3{font-size:16px} p,li{font-size:15px} .lst .t,.lst .d{font-size:14px} .lst .s,.bloc .e .s{font-size:12.5px} code{font-size:13px} pre{font-size:12.5px} .warn{font-size:14px}
+  }
+  h1{font-size:27px;letter-spacing:-0.02em;margin:0 0 5px}
+  .lead{margin:0 0 18px;font-size:14px;line-height:1.65;color:var(--color-muted)}
+  h2{font-size:17px;margin:26px 0 8px;padding-top:16px;border-top:1px solid var(--color-sep)}
+  h3{font-size:14px;margin:16px 0 6px}
+  p,li{font-size:13.5px;line-height:1.7;color:var(--color-ink)}
+  .mut{color:var(--color-muted)}
+  /* (19/09, nuit — audit de mise en page) TROIS COLONNES NE TIENNENT PAS DANS 390 px. Les tableaux
+     forçaient 518 px : la page débordait de 143 px sur le côté et 96 éléments sortaient du cadre. Une
+     documentation qu'on lit sur un téléphone s'empile : une entrée = un bloc, son intitulé au-dessus. */
+  .lst{margin-top:10px;border-top:1px solid var(--color-sep)}
+  .lst .e{padding:9px 0;border-bottom:1px solid var(--color-sep)}
+  .lst .t{display:flex;align-items:center;gap:7px;flex-wrap:wrap;font-size:12.5px;font-weight:700;color:var(--color-ink)}
+  .lst .d{font-size:12.5px;line-height:1.6;color:var(--color-ink);margin-top:3px}
+  .lst .s{display:block;font-size:11.5px;line-height:1.55;color:var(--color-muted);margin-top:2px}
+  .lst code{white-space:normal;word-break:break-word}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;background:var(--color-surface);border-radius:5px;padding:1px 5px}
+  .m{display:inline-block;min-width:52px;text-align:center;font-family:ui-monospace,Menlo,monospace;font-size:10.5px;font-weight:800;border-radius:6px;padding:2px 6px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .bloc{border-radius:14px;background:var(--color-card);box-shadow:var(--shadow-card);padding:14px 16px;margin-top:12px}
+  /* (23/09, soir — audit) dans un bloc aussi, le détail d'une ligne va à la ligne : il était collé au chiffre qui le précède */
+  .bloc .e .s{display:block;font-size:11.5px;line-height:1.55;color:var(--color-muted);margin-top:2px}
+  .bloc .e .t{margin-top:8px}
+  .warn{border-radius:14px;border:1.5px solid var(--color-amber-text);background:var(--color-amber-well);padding:13px 15px;margin-top:14px;color:var(--color-amber-text);font-size:13px;line-height:1.65}
+  pre{background:var(--color-ink);color:#fff;border-radius:12px;padding:13px 14px;overflow-x:auto;font-family:ui-monospace,Menlo,monospace;font-size:11.5px;line-height:1.65}
+  a{color:var(--color-primary-dark);font-weight:700}
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<!-- (24/09, soir) LA PAGE PREND LA COQUE DES AUTRES ÉCRANS (colonne de navigation sur bureau, barre du bas sur téléphone) au
+     lieu d'une barre d'onglets de téléphone posée au milieu d'une page de bureau ; sur bureau, un sommaire à gauche suit la lecture. -->
+<div class="pec-scene">
+<div class="pec-device pec-large">
+  <div class="pec-tech-entete" id="tk-entete"></div>
+  <div class="pec-body pec-body--scroll">
+  <div class="pec-cols pec-cols--panneau dc-mise">
+  <nav class="dc-sommaire" aria-label="Sommaire">
+    <p class="pec-section-label">Sommaire</p>
+    <a href="#dc-1">1 · Ce que l’API fait</a><a href="#dc-2">2 · Authentification</a><a href="#dc-3">3 · Points d’entrée</a>
+    <a href="#dc-4">4 · Le contrat-cadre</a><a href="#dc-5">5 · Ce que nous facturons</a><a href="#dc-6">6 · Ton bouton en deux lignes</a>
+  </nav>
+<div class="doc">
+  <h1>Documentation de l’API</h1>
+  <p class="lead" id="dc-lead">—</p>
+
+  <div class="warn" id="dc-reserve">—</div>
+
+  <h2 id="dc-1">1 · Ce que l’API fait — et ce qu’elle refuse de faire</h2>
+  <p>Elle porte l’<b>achat</b> des bons d’une marque, leur <b>achat par un réseau de commerces</b> sous contrat, et
+  le suivi de chacun jusqu’à son utilisation. Elle fait signer le contrat-cadre par le dirigeant vérifié de la marque,
+  elle prélève le réseau qui achète ses bons et elle paie la marque à l’échéance de son offre — <b>pour notre propre
+  compte</b>, jamais pour celui d’un tiers.</p>
+  <div class="bloc">
+    <h3 style="margin-top:0">Les garde-fous, écrits dans le code et pas seulement ici</h3>
+    <ul id="dc-mentions" style="margin:6px 0 0;padding-left:19px"></ul>
+    <p class="mut" style="margin:10px 0 0;font-size:12.5px">Aucun point d’entrée ne permet de recevoir, détenir ou
+    transférer des fonds <b>pour le compte d’autrui</b> : pas de portefeuille client, pas de compte de cantonnement,
+    aucun solde appartenant à un tiers. Ce qui transite est le prix de nos propres achats — à la marque, puis par le réseau — et le compte
+    d’avance d’un distributeur nomade est le paiement anticipé de la valeur des bons qu’il revend pour notre compte, imputé à chaque bon édité.</p>
+  </div>
+
+  <h2 id="dc-2">2 · Authentification</h2>
+  <p>Deux clés par marque, générées depuis son compte (Compte › Intégration) :</p>
+  <div class="lst">
+    <div class="e"><div class="t"><code>pk_…</code> publique</div><div class="d">Identifier la marque, afficher où s’achètent ses bons, ouvrir le bon proposé d’une commande (un par référence) et en relire l’état. <b>Rien d’autre.</b><span class="s">Elle vit dans la page de commande du site.</span></div></div>
+    <div class="e"><div class="t"><code>sk_…</code> secrète</div><div class="d">Tous les appels d’écriture : bons proposés, lecture des achats du réseau et des virements, abonnement.<span class="s">Elle vit sur le serveur de la marque, jamais dans une page.</span></div></div>
+  </div>
+  <p class="mut">Le secret est montré <b>une seule fois</b>, à la génération. Nous n’en conservons que l’empreinte
+  SHA-256 : perdu, il ne se retrouve pas — il se révoque et se refait. Une seule clé vivante par marque.</p>
+  <pre id="dc-auth">—</pre>
+
+  <h2 id="dc-3">3 · Les points d’entrée</h2>
+  <div class="lst" id="dc-endpoints"></div>
+
+  <h2 id="dc-4">4 · Le cycle de vie du contrat-cadre</h2>
+  <p id="dc-cycle">—</p>
+  <div class="lst" id="dc-etats"></div>
+
+  <h2 id="dc-5">5 · Ce que nous gagnons, et ce que nous facturons</h2>
+  <div class="bloc"><div id="dc-remu">—</div></div>
+
+  <h2 id="dc-6">6 · Proposer ton bon d’achat en deux lignes</h2>
+  <p>Le bouton « Bon d’achat {ta marque} » apparaît à côté des moyens de paiement de ton site. Au clic, notre page du
+  <b>bon proposé</b> s’ouvre dans une fenêtre, sur ton site : où l’acheter — chez un commerce du réseau, ou un
+  distributeur nomade qui se déplace, avec adresses et distances — et l’app <b>Mes bons</b> pour l’utiliser chez toi. Aucun code
+  ne se saisit dans ta page ni dans la nôtre : un bon de marque s’utilise depuis l’app, avec le compte de son
+  porteur (retraçable). Une commande ouvre <b>un</b> bon proposé, retrouvé à l’identique si la fenêtre se rouvre ;
+  plusieurs bons peuvent le couvrir.</p>
+  <pre id="dc-widget">—</pre>
+  <p class="mut">Quand la commande est entièrement couverte, le bouton émet l’événement <code>payencash:couvert</code> sur
+  l’élément hôte : <code>{ commande, montant, bons: [{ apercu, pris }], offre, marchand }</code> — les codes n’y
+  figurent qu’abrégés. C’est ton tunnel qui décide de la suite, et ton serveur vérifie le bon proposé avec ta clé
+  secrète : nous ne validons pas ta commande à ta place, et aucun fonds ne passe par nous.</p>
+  <p><a class="pec-tap-confort" href="04-boutique-demo.html">Voir le bouton en situation</a> · <a class="pec-tap-confort" href="02-espace.html">Mon espace</a></p>
+</div>
+  </div>
+  </div>
+  <nav id="tk-menu"></nav>
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, $ = function (i) { return document.getElementById(i); };
+  if (!D || !D.techRef) return;
+  var esc = function (v) { return D.esc(v); };
+
+  /* (19/09, nuit — audit de clics : « écran sourd ») LA PAGE DÉMENTAIT SA PROPRE PHRASE. Elle annonce que
+     les taux viennent du référentiel et que « le jour où l'un bouge dans Configuration, la page bouge avec
+     lui » — et elle ne réécoutait rien : un taux changé par le manager laissait la documentation sur
+     l'ancien chiffre jusqu'au rechargement. Tout le rendu tient donc dans une fonction, rejouée dès que
+     les données bougent — depuis cet onglet (pec-bus) comme depuis un autre (storage). */
+  function peindre() {
+  var R = D.techRef();
+
+  if (window.PEC_TECH) { PEC_TECH.entete('tk-entete'); PEC_TECH.menu('tk-menu', '03-documentation.html'); }
+  /* (23/09, audit) LE CHAPEAU DISAIT L'INVERSE DE CE QUE NOUS SOMMES. « Met les deux en relation », « pour le
+     compte du commerçant », « sans jamais toucher un centime » : c'était le vocabulaire du courtier et du
+     prestataire technique — celui que la page principale, les contrats et la consultation juridique écartent
+     depuis le 22/09. Nous ACHETONS les bons et nous les REVENDONS ; l'argent passe par nous, et c'est
+     précisément ce qui fait de nous un grossiste et non un intermédiaire de paiement. Une documentation qui
+     contredit les contrats est la première pièce qu'un contrôle oppose. */
+  $('dc-lead').innerHTML = 'L’API du <b>grossiste en bons d’achat de marque</b>. Une marque émet ses propres bons, '
+    + 'utilisables uniquement sur son site ; <b>' + esc(R.nom) + '</b> les lui <b>achète</b> avec une remise, et son réseau de commerces '
+    + 'les lui <b>achète</b> à son tour pour les remettre aux clients — pour son propre compte. Nous ne fournissons aucun service de '
+    + 'paiement et ne recevons jamais de fonds pour le compte d’autrui : nous achetons, notre réseau achète.';
+  /* (24/09, soir — relecture juridique, constats 48 et 57) DEUX POINTS RESTENT À FAIRE VALIDER, pas trois : l'absence de fonds détenus
+     pour autrui tient au PAIEMENT ANTICIPÉ du commissionnaire, pas à une exclusion d'agent commercial de la DSP2. Et la consultation du
+     23/09 n'est plus liée depuis un écran public : sa propre mise à jour la dit datée — elle vit dans le portail des documents. */
+  $('dc-reserve').innerHTML = esc((R.fondement || {}).reserve || '')
+    + ' Deux points restent à faire valider : l’assiette de cotisations du commissionnaire, et la clause d’exclusivité. '
+    + 'Nous ne détenons jamais de fonds pour le compte d’autrui : le commissionnaire paie d’avance les bons qu’il revend.';
+  $('dc-mentions').innerHTML = (R.mentions || []).map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');
+
+  $('dc-auth').textContent = 'curl https://api.payencash.fr/v1/merchants/MCH-00001/offers \\\n'
+    + '  -H "Authorization: Bearer sk_••••••••"\n\n'
+    + '# côté navigateur, la clé PUBLIQUE suffit et ne peut rien écrire :\n'
+    + '<div data-payencash="pk_…" data-montant="49.90" data-commande="CMD-1"></div>';
+
+  /* LES POINTS D'ENTRÉE — ceux du grossiste, et chaque ligne dit ce que le data-layer fait réellement aujourd'hui dans la
+     maquette. (23/09, soir — audit) La liste du 19/09 documentait l'intermédiaire (mandats de représentation, mises en
+     relation, contrats de distribution marque↔point, « exécuter au titre des mandats ») : autant de portes que le modèle a
+     fermées le 22/09. Les points de vente ne s'inscrivent pas ici : ce sont des commerces partenaires de PayEnCash, qui
+     rejoignent le réseau des marques depuis LEUR app. */
+  var P = R.paiement || {};
+  var EP = [
+    ['/merchants', 'POST / GET', 'Inscrire / lister les marques (entreprise, dirigeant, déclaration « réseau limité », CGU)', 'techMarchandCreer · techMarchands'],
+    ['/merchants/{id}', 'GET / PATCH', 'La fiche d’une marque ; déclarer ou corriger son dirigeant', 'techMarchand · techMarchandDirigeantSet'],
+    ['/merchants/{id}/compliance-declaration', 'POST / GET', 'Déposer (ou corriger) / consulter la déclaration « réseau limité » — statuée par nous', 'techConformiteDeposer · techConformiteMarchand · techConformiteStatuer'],
+    ['/merchants/{id}/verification', 'GET / POST', 'Le dossier de vérification (KYB) : pièces déposées, envoyées, contrôlées — le compte s’active sur dossier contrôlé', 'PEC_DOCS.dossier · deposer · soumettre · statuer'],
+    ['/merchants/{id}/documents', 'GET / POST', 'Les documents en vigueur, lus jusqu’au bout puis acceptés dans leur version', 'documentsEtat · documentConsulter · acceptationsPoser'],
+    ['/merchants/{id}/contract', 'GET / POST', 'Le contrat-cadre : généré du modèle, signé par le dirigeant vérifié (KYC), contresigné par nous', 'techMarchandContratSigner · PEC_DOCS.contresigner'],
+    ['/merchants/{id}/status', 'POST', 'Valider, suspendre (motivé), réactiver une marque — un geste du manager', 'techMarchandValider · techMarchandSuspendre · techMarchandReactiver'],
+    ['/merchants/{id}/can-operate', 'GET', 'Ce qui manque avant de travailler avec nous — chaque manque avec l’adresse où le régler', 'techMarchandPeutTravailler'],
+    ['/network', 'GET', 'Le réseau qui achète les bons de la marque : les commerces, et les distributeurs nomades qui se déplacent', 'techReseauVente · techPoints · techRevendeursMobiles'],
+    ['/offers', 'POST / GET', 'Proposer un bon d’achat à un client (montant fixé par la marque, sa référence) / lister', 'techLienCreer · techLiens'],
+    ['/offers/{slug}', 'GET / DELETE', 'L’état d’un bon proposé (ce qui manque encore, les usages retraçables) / le retirer', 'techLien · techLienAnnuler'],
+    ['/offers/by-order', 'POST', 'Le bon proposé d’une commande du site — un par référence, le bouton le retrouve', 'techLienPourCommande'],
+    ['/sale-link', 'POST / GET', 'Le lien de vente à partager, et ce qu’il a produit', 'techVenteLienCreer · techVenteLienStats'],
+    ['/articles', 'POST / GET', 'Les articles publiés (visuel, prix, remise, tailles × quantités) et leur stock dérivé', 'techArticleCreer · techArticles · techArticleStock'],
+    ['/vouchers', 'POST / GET', 'Le bon, édité au comptoir quand le réseau l’achète, au montant demandé — nous l’achetons à la marque à cet instant', 'techBonEmettre · techBons'],
+    ['/vouchers/{code}/redeem', 'POST', 'Utiliser un bon sur un bon proposé, depuis l’app Mes bons, sous le compte de l’utilisateur', 'techLienUtiliserBon'],
+    ['/payment-modes', 'GET', 'Les trois offres de paiement et leurs taux', 'techModes'],
+    ['/merchants/{id}/payment-mode', 'PUT', 'Choisir l’offre de paiement d’une marque', 'techMarchandModeChoisir'],
+    ['/merchants/{id}/bank-account', 'PUT', 'Déposer le RIB qui reçoit les virements', 'techMarchandRibEnregistrer'],
+    ['/sepa-mandates', 'POST / DELETE', 'Signer / révoquer un mandat de prélèvement SEPA — le commerce pour ses achats, la marque pour son abonnement', 'techSepaMandatSigner · techSepaMandatRevoquer'],
+    ['/sales', 'GET', 'Les achats du réseau, leur répartition figée et leur statut de prélèvement', 'techVentes · techVentesTotaux'],
+    ['/direct-debits', 'POST / GET', 'Préparer et lister les remises de prélèvements', 'techRemisePreparer · techRemises'],
+    ['/direct-debits/{ref}/file', 'GET', 'Le fichier ' + (P.formatRemise || 'pain.008') + ' à déposer à la banque', 'techRemiseFichier'],
+    ['/direct-debits/{ref}/deposit', 'POST', 'Constater le dépôt et poser l’échéance', 'techRemiseDeposer'],
+    ['/direct-debits/{ref}/return', 'POST', 'Importer le retour bancaire (payés, impayés, motifs)', 'techRetourImporter'],
+    ['/payouts', 'POST / GET', 'Payer une marque par virement instantané, à l’échéance de son offre', 'techReglementEmettre · techReglementsDus'],
+    ['/subscriptions', 'GET / POST', 'Les abonnements au logiciel, le quota du mois et leur génération', 'techAbonnements · techQuota · techAbonnementGenerer'],
+    ['/subscriptions/{id}/invoice', 'POST', 'Facturer un abonnement (TVA comprise)', 'techFactureEmettre'],
+    ['/api-keys', 'POST / DELETE', 'Générer la clé d’API (le secret montré une fois) / la révoquer ; vérifier un secret', 'techCleGenerer · techCleRevoquer · techCleVerifier'],
+    ['/audit-logs', 'GET', 'Le journal d’audit, filtrable par entité', 'PEC_BUS.journal()']
+  ];
+  $('dc-endpoints').innerHTML = EP.map(function (e) {
+    return '<div class="e"><div class="t"><code>' + esc(e[0]) + '</code><span class="m">' + esc(e[1]) + '</span></div>'
+      + '<div class="d">' + esc(e[2]) + '<span class="s">maquette : <code>' + esc(e[3]) + '</code></span></div></div>';
+  }).join('');
+
+  /* (23/09, soir — audit) LE CYCLE DÉCRIT ÉTAIT CELUI D'UN CONTRAT DE MISE EN RELATION (« proposé », « exécuté au titre des
+     mandats », « ad nutum ») — et il contredisait le contrat-cadre lui-même : durée ferme, sans reconduction tacite, clause de
+     rendez-vous, résiliation pour manquement. Ce qui suit lit le contrat (modèle contrat_marchand) et le référentiel. */
+  var J = (D.ref && D.ref.juridique) || {};
+  $('dc-cycle').innerHTML = 'Un contrat par marque, avec nous. Généré du modèle du coffre avec ses conditions (son offre de paiement, son site, son dirigeant), '
+    + '<b>lu jusqu’au bout</b> puis <b>signé par le dirigeant déclaré</b> — une fois sa pièce d’identité contrôlée (KYC) — et <b>contresigné</b> par ' + esc(R.nom) + '. '
+    + 'Durée ferme de <b>' + R.dureeContratMois + ' mois</b>, <b>sans reconduction tacite</b> (un renouvellement est un nouveau contrat) ; clause de rendez-vous au sixième mois ; '
+    + 'résiliation pour manquement après une mise en demeure restée ' + esc(String(J.preavisAmiableJours)) + ' jours sans effet. Les bons déjà achetés restent honorés jusqu’à leur terme, même après la fin du contrat.';
+  var ET = [
+    ['a_signer', 'Le dirigeant est déclaré et sa pièce d’identité contrôlée : le contrat se lit et se signe dans le lecteur de Compte › Documents', 'tech_contrat_signe'],
+    ['signe', 'Signé par le dirigeant — signataire dérivé du compte, jamais tapé ; la marque porte le tampon, le PDF entre au coffre', 'document_signe'],
+    ['contresigne', 'Contresigné par ' + R.nom + ' : le contrat est complet, la pièce du coffre est validée', 'contrat_contresigne'],
+    ['echu', 'Terme des ' + R.dureeContratMois + ' mois, ou résiliation pour manquement : les bons en circulation restent honorés', '—']
+  ];
+  $('dc-etats').innerHTML = ET.map(function (e) {
+    return '<div class="e"><div class="t"><code>' + esc(e[0]) + '</code></div>'
+      + '<div class="d">' + esc(e[1]) + '<span class="s">journal <code>' + esc(e[2]) + '</code></span></div></div>';
+  }).join('');
+
+  /* (22/09) LA RÉMUNÉRATION — lue au référentiel. Nous sommes GROSSISTE : notre revenu est une MARGE sur un
+     achat-revente, pas une commission prélevée sur le flux d'autrui. Le logiciel, lui, se facture pour lui-même. */
+  var modes = D.techModes();
+  $('dc-remu').innerHTML = '<h3 style="margin-top:0">L’achat des bons — à la marque, puis par le réseau</h3>'
+    + '<p>Nous achetons les bons de la marque à la <b>valeur faciale moins la remise</b> de l’offre de paiement '
+    + 'qu’elle a choisie, et le commerce du réseau nous les achète à la valeur faciale moins <b>sa</b> part. '
+    + 'Notre revenu est la différence entre les deux ; la marge du commerce lui appartient entièrement.</p>'
+    + '<div class="e">' + modes.map(function (m) {
+        return '<div class="t"><code>' + esc(m.id) + '</code> · ' + esc(m.libelle) + '</div>'
+          + '<div class="d">Remise à la marque <b>' + esc(String(m.remisePct).replace('.', ',')) + ' %</b> · part du commerce <b>'
+          + esc(String(m.partPointPct).replace('.', ',')) + ' %</b> · marge ' + esc(R.nom) + ' <b>' + esc(String(m.margePct).replace('.', ',')) + ' %</b>'
+          + '<span class="s">' + esc(m.detail) + '</span></div>';
+      }).join('') + '</div>'
+    + '<h3>Le prélèvement du commerce</h3>'
+    + '<p>Le commerce signe <b>un</b> mandat SEPA, une fois. Ses achats sont arrêtés à <b>' + esc(P.arreteHeure) + '</b>, '
+    + 'groupés par commerce, et le fichier <code>' + esc(P.formatRemise) + '</code> est déposé à ' + esc(P.banque)
+    + ' dans les <b>' + esc(String(P.depotMinutes)) + ' minutes</b> qui suivent. L’échéance tombe au moins '
+    + '<b>' + esc(String(P.remiseJoursOuvresAvant)) + ' jour ouvré</b> plus tard — c’est la règle SEPA, pas la nôtre. '
+    + 'Le retour de la banque (<code>' + esc(P.formatRetour) + '</code>) met les statuts à jour : payé, ou impayé avec son motif.</p>'
+    + '<h3>Le paiement de la marque</h3>'
+    + '<p>Virement <b>instantané</b> depuis notre banque, au délai de son offre, compté depuis l’arrêté. '
+    + 'Aucun virement ne part sans RIB déposé.</p>'
+    + '<h3>L’abonnement au logiciel</h3>'
+    + '<p>Facturé à part, débité sur ta carte bancaire : il ne change ni le prix d’achat des bons, ni le délai où nous payons la marque. '
+    + 'TVA <b>' + R.tvaPct + ' %</b>.</p>'
+    /* (24/09, soir — relecture juridique, constat 16) LA TVA DES BONS, DITE À LA MARQUE : son régime se déduit de ce qu'elle vend
+       (techMarchandTva), il ne se choisit pas — et il s'affiche dans Compte › Identité. */
+    + '<h3>La TVA de tes bons</h3>'
+    + '<p>Elle suit l’art. 256 ter du CGI. <b>Usage unique</b> — tous tes produits au même taux, vendus en France seule : chaque transfert du bon est une vente taxée au taux de tes produits. '
+    + '<b>Usages multiples</b> — sinon : les transferts du bon sont hors champ, tu déclares la TVA quand le client l’utilise chez toi, et notre prestation de distribution t’est facturée avec TVA. '
+    + 'Ton régime se lit dans Compte › Identité, d’après tes deux réponses.</p>';
+
+  /* le même bout de code que Compte › Intégration : l'adresse du script est celle du site, jamais une adresse écrite */
+  $('dc-widget').textContent = '<script src="' + (window.PEC_TECH ? PEC_TECH.origine() : 'https://solution.payencash.fr') + '/ui/tech/payencash-tech-widget.js"></' + 'script>\n'
+    + '<div data-payencash="pk_…"\n     data-montant="49.90"\n     data-commande="CMD-2026-001"></div>';
+  }
+
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

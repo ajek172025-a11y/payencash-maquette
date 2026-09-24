@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Le détail d’un bon de marque</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script><!-- (23/09, nuit — APP·551) le journal : ranger et UTILISER un bon de marque se tracent avec le compte du porteur — sans le bus, l'app agissait en silence ; (24/09, soir) et le signalement d'un bon refusé ouvre une réclamation par lui -->
+<script src="../assets/payencash-bons.js"></script>
+<script src="../assets/payencash-qr.js"></script><!-- le flashcode du code (PEC_QR.svg) : un scan photo le ressort tel quel -->
+<!-- LE DÉTAIL D'UN BON DE MARQUE (?code=…) — POURQUOI : chez la marque, le porteur a besoin du CODE en entier (ici, à
+     la demande — la liste le masque), de ce qu'il reste, de la validité et de l'endroit où le bon s'utilise. Tout est
+     RELU chez la marque à chaque peinture (PEC_BONS.resoudre) : montant, reste, état, dates.
+     L'ÉMETTEUR EN PREMIER : la marque, son site — c'est chez elle, et chez elle seule, que le bon vaut (réseau limité
+     cité depuis techRef().seuils.reseauLimiteSource). PayEnCash vient en note de bas de page : elle a vendu le bon à
+     travers son réseau, elle ne l'émet pas, ne le tient pas, n'en détient aucune valeur. Les mentions sont celles du
+     référentiel (PEC_BONS.resoudre → mentions).
+     Un code qui n'est pas dans la liste du porteur se voit proposer « Ranger ce bon » (même contrôle que sur la
+     liste) ; un code d'une autre famille est reconnu et nommé (PEC_BONS.familleAutre, tant que le data-layer la
+     connaît) — il ne se range pas ici ; un code inconnu le dit et renvoie à la liste. Une info, une fois : les mentions
+     du référentiel (réseau limité, validité, ni remboursable, le code vaut titre) ne sont pas redoublées par le rappel
+     de la liste ; PayEnCash n'est dite qu'en note.
+     ══ (24/09, soir — fondatrice : « je consulte et le design n'a pas été repris ») DEUX COLONNES SUR BUREAU ══
+     L'émetteur en tête, sur toute la largeur ; à gauche le flashcode et le code (ce qu'on présente chez la marque) ;
+     à droite le détail (ce qu'il reste, la validité, l'achat, le rangement), « où et comment l'utiliser », puis
+     ranger / retirer. Sur téléphone, les mêmes blocs, dans le même ordre qu'avant.
+     ══ (24/09, soir — décision fondatrice) LA MARQUE N'A PAS LE DROIT DE REFUSER UN BON VALIDE QU'ELLE A ÉMIS ══
+     Un bon refusé au site de la marque n'est pas le problème du porteur : la porte « Un problème avec ce bon ? »
+     ouvre une réclamation par le bus (PEC_BUS.ouvrirDemande, type reclamation, la référence = le code du bon, le
+     sujet = « Bon refusé par {marque} », le récit du porteur en premier échange) ; la hotline oriente et note le
+     refus, et elle prévient la marque. Une réclamation déjà ouverte sur ce code (PEC_BUS.demandesSav, filtrée sur
+     ref) se relit et s'affiche à la place du formulaire. Le délai annoncé est celui du référentiel (ref.hotline). -->
+<style>
+  .db-hdr{display:flex;align-items:center;gap:10px}
+  .db-hdr h1{margin:0;font-size:19px;font-weight:800;letter-spacing:-0.02em}
+  .db-back{flex:none;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .db-back .pec-ico{font-size:17px}
+  /* la fiche : une colonne sur téléphone ; les deux « colonnes » n'y sont que des groupes, au même pas */
+  .db-fiche,.db-col{display:flex;flex-direction:column;gap:14px}
+  .db-emet{padding:14px 16px}
+  .db-emet-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+  .db-emet-h .pec-pill{flex:none;margin-top:2px}
+  .db-em{display:flex;align-items:center;gap:10px;min-width:0}
+  .db-em .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:40px;height:40px;border-radius:13px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .db-em .ic .pec-ico{font-size:19px}
+  .db-em .t{min-width:0}
+  .db-em .t small{display:block;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-primary-dark)}
+  .db-em .t b{display:block;font-size:15px;color:var(--color-ink)}
+  .db-em .t span{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
+  .db-detail{margin-top:8px;font-size:11.5px;line-height:1.5;color:var(--color-amber-text)}
+  .db-kvs{padding:6px 16px}
+  .db-kv{display:flex;align-items:baseline;justify-content:space-between;gap:10px;padding:9px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
+  .db-kv:first-child{border-top:0}
+  .db-kv span{color:var(--color-muted)}
+  .db-kv b{text-align:right;color:var(--color-ink)}
+  .db-kv b.grand{font-size:19px;font-weight:800;font-variant-numeric:tabular-nums}
+  .db-ment{padding:14px 16px}
+  .db-ment-t{font-size:10.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-muted);margin-bottom:6px}
+  .db-mentions{margin:0;padding-left:18px;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  .db-mentions li{margin:4px 0}
+  .db-act{display:flex;flex-direction:column}
+  .db-retirer{width:100%;color:var(--color-danger)}
+  .db-msg{margin-top:9px;border-radius:12px;padding:9px 11px;font-size:11.5px;line-height:1.5;font-weight:700}
+  .db-msg.ko{background:var(--color-danger-well);color:var(--color-danger)}
+  .db-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .db-note{margin:0;font-size:10.5px;line-height:1.55;color:var(--color-muted-2)}
+  .db-note b{color:var(--color-muted)}
+  .db-lien{display:inline-flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .db-lien .pec-ico{font-size:14px}
+  /* LA PORTE « UN PROBLÈME AVEC CE BON ? » (24/09, soir) — le même dessin que la carte « Être rappelé » de la liste et du compte */
+  .db-pb{padding:14px 16px}
+  .db-pb-h{display:flex;align-items:flex-start;gap:10px}
+  .db-pb-h .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .db-pb-h .ic .pec-ico{font-size:17px}
+  .db-pb-h .t{min-width:0;flex:1}
+  .db-pb-h .t b{display:block;font-size:13.5px;color:var(--color-ink)}
+  .db-pb-h .t small{display:block;margin-top:2px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .db-pb-etat{margin-top:10px;border-radius:12px;background:var(--color-amber-well);color:var(--color-amber-text);padding:9px 11px;font-size:11.5px;line-height:1.5;font-weight:700}
+  .db-pb-ouvrir{margin-top:10px;font-weight:800}
+  .db-pb-form{margin-top:10px;border-top:1px solid var(--color-sep);padding-top:10px}
+  .db-pb-form textarea.pec-input{resize:vertical;min-height:88px;line-height:1.5}
+  .db-pb-act{display:flex;gap:8px;margin-top:10px}
+  .db-pb-act .pec-cta{flex:1}
+  .db-pb-act .pec-btn-secondary{flex:none;padding:0 14px}
+  /* sur téléphone et tablette, le corps garde sa marge : rien ne bouge en dessous de 1024 px */
+  @media (max-width:1023.98px){ #db-page{padding:14px 18px 8px} }
+  /* ══ (24/09, soir) LE BUREAU : deux colonnes, l'échelle des briques de la page ══ */
+  @media (min-width:1024px){
+    .db-hdr{gap:14px}
+    .db-hdr h1{font-size:28px;letter-spacing:-0.8px}
+    .db-back{width:42px;height:42px}
+    .db-fiche{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+    .db-large{grid-column:1 / -1}
+    .db-col{gap:18px}
+    .db-emet,.db-ment,.db-pb{padding:22px 24px}
+    .db-kvs{padding:8px 24px}
+    .db-em{gap:14px}
+    .db-em .ic{width:48px;height:48px;border-radius:15px}
+    .db-em .ic .pec-ico{font-size:23px}
+    .db-em .t small{font-size:11.5px}
+    .db-em .t b{font-size:22px;letter-spacing:-0.02em}
+    .db-em .t span{font-size:13.5px;margin-top:4px}
+    .db-detail{font-size:13.5px}
+    .pec-code-slab{padding:28px 24px 24px;border-radius:18px}
+    .pec-flashcode svg{width:220px;height:220px}
+    .pec-code-num{margin-top:16px;font-size:18px;letter-spacing:4px}
+    .pec-code-caption{margin-top:8px;font-size:12.5px}
+    .db-kv{padding:13px 0;font-size:14.5px}
+    .db-kv b.grand{font-size:26px}
+    .db-ment-t{font-size:12px;margin-bottom:10px}
+    .db-mentions{font-size:13.5px;padding-left:20px}
+    .db-mentions li{margin:6px 0}
+    .db-lien{font-size:13.5px;margin-top:12px}
+    .db-act{flex-direction:row;flex-wrap:wrap;align-items:center;gap:14px}
+    .db-act .db-msg{flex:1 1 100%;margin-top:0}
+    .db-retirer{width:fit-content;min-width:220px}
+    .db-msg{font-size:13.5px;padding:12px 14px}
+    .db-note{font-size:12.5px;max-width:80ch}
+    .db-pb-h .t b{font-size:16px} .db-pb-h .t small{font-size:13.5px}
+    .db-pb-etat{font-size:13.5px;padding:12px 14px}
+    .db-pb-form{max-width:640px}
+    .db-pb-act .pec-cta{flex:none}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll" id="db-page">
+
+    <div class="db-hdr">
+      <a href="01-mes-bons.html" class="tap db-back" aria-label="Retour à mes bons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg></a>
+      <h1>Mon bon</h1>
+    </div>
+
+    <!-- CODE INCONNU, OU D'UNE AUTRE FAMILLE — l'écran le dit, il n'invente pas une fiche -->
+    <div id="db-inconnu" class="pec-vide" hidden>
+      <span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg></span>
+      <p class="pec-vide-t" id="db-inconnu-t">Ce code n’est pas connu</p>
+      <p class="pec-vide-s" id="db-inconnu-txt">—</p>
+      <div class="pec-vide-actions"><a class="pec-cta pec-cta--tight tap" href="01-mes-bons.html">Retour à mes bons</a></div>
+    </div>
+
+    <div id="db-fiche" class="db-fiche" hidden>
+
+      <!-- L'ÉMETTEUR D'ABORD : la marque, et le seul endroit où le bon vaut — puis l'état. Sur bureau, en tête, sur toute la largeur. -->
+      <div class="pec-card db-emet db-large">
+        <div class="db-emet-h">
+          <div class="db-em"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span><span class="t"><small>Bon d’achat émis par</small><b id="db-emetteur">—</b><span id="db-ou">—</span></span></div>
+          <span class="pec-pill" id="db-pill">—</span>
+        </div>
+        <div class="db-detail" id="db-detail" hidden></div>
+      </div>
+
+      <!-- À GAUCHE SUR BUREAU : LE CODE — en entier, avec son flashcode : c'est ce qu'on présente chez la marque -->
+      <div class="db-col">
+        <div class="pec-code-slab">
+          <div class="pec-flashcode" id="db-qr"></div>
+          <div class="pec-code-num" id="db-code">—</div>
+          <div class="pec-code-caption">Le code vaut titre : ne le montre qu’au moment de l’utiliser.</div>
+        </div>
+      </div>
+
+      <!-- À DROITE SUR BUREAU : ce qu'il reste, où l'utiliser, ranger / retirer -->
+      <div class="db-col">
+        <!-- CE QU'IL RESTE, LE MONTANT, LA VALIDITÉ — relus chez la marque. L'état est dit par la pastille (pas deux fois) ;
+             le moyen d'achat (espèces / carte) n'est PAS affiché : c'est un fait de prévention de la fraude, lu en cumul sur
+             Compte, que le data-layer garde sur le bon sans l'imprimer. -->
+        <div class="pec-card db-kvs">
+          <div class="db-kv"><span>Ce qu’il te reste sur ce bon</span><b class="grand" id="db-reste">—</b></div>
+          <div class="db-kv"><span>Montant à l’achat</span><b id="db-montant">—</b></div>
+          <div class="db-kv"><span id="db-validite-l">Valable jusqu’au</span><b id="db-validite">—</b></div>
+          <div class="db-kv" id="db-achat-row"><span>Acheté</span><b id="db-achat">—</b></div>
+          <div class="db-kv" id="db-range-row" hidden><span>Rangé ici le</span><b id="db-range">—</b></div>
+        </div>
+
+        <!-- OÙ L'UTILISER + LES MENTIONS DU BON (référentiel) -->
+        <div class="pec-card db-ment">
+          <div class="db-ment-t">Où et comment l’utiliser</div>
+          <ul class="db-mentions" id="db-mentions"></ul>
+          <a class="tap db-lien" id="db-site" href="#" hidden><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-arrow-right"/></svg><span id="db-site-lbl">—</span></a>
+        </div>
+
+        <!-- RANGER / RETIRER -->
+        <div class="db-act">
+          <button type="button" id="db-ranger" class="pec-cta pec-cta--tight tap" hidden>Ranger ce bon</button>
+          <button type="button" id="db-retirer" class="pec-btn-secondary tap db-retirer" hidden>Retirer de mes bons</button>
+          <div class="db-msg ko" id="db-err" role="alert" hidden></div>
+          <div class="db-msg ok" id="db-ok" role="status" hidden></div>
+        </div>
+      </div>
+
+      <!-- UN PROBLÈME AVEC CE BON ? (24/09, soir — décision fondatrice : la marque ne peut pas refuser un bon valide qu'elle a
+           émis) — le récit du porteur ouvre une réclamation ; une réclamation déjà ouverte sur ce code s'affiche à la place. -->
+      <div class="pec-card db-pb db-large" id="db-pb">
+        <div class="db-pb-h">
+          <span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-headset"/></svg></span>
+          <span class="t"><b>Un problème avec ce bon ?</b><small>Un bon valide ne peut pas être refusé par la marque qui l’a émis. Si ça arrive, dis-le : la hotline PayEnCash t’oriente, note le refus et prévient la marque.</small></span>
+        </div>
+        <div class="db-pb-etat" id="db-pb-etat" role="status" hidden></div>
+        <button type="button" class="pec-btn-secondary tap db-pb-ouvrir" id="db-pb-ouvrir" aria-expanded="false" aria-controls="db-pb-form">Signaler un problème</button>
+        <div class="db-pb-form" id="db-pb-form" hidden>
+          <label class="pec-input-label" for="db-pb-txt">Que s’est-il passé ?</label>
+          <textarea class="pec-input" id="db-pb-txt" rows="3" maxlength="600" placeholder="Où, quand, et ce que la marque a répondu…"></textarea>
+          <div class="db-pb-act"><button type="button" class="pec-cta pec-cta--tight tap" id="db-pb-go">Signaler à PayEnCash</button><button type="button" class="pec-btn-secondary tap" id="db-pb-annuler">Annuler</button></div>
+        </div>
+        <div class="db-msg ok" id="db-pb-ok" role="status" hidden></div>
+        <div class="db-msg ko" id="db-pb-err" role="alert" hidden></div>
+      </div>
+
+      <!-- LA NOTE DE BAS DE PAGE : le rôle de PayEnCash, secondaire — et ce que l'app n'est pas -->
+      <p class="db-note db-large"><b>PayEnCash</b> <span id="db-note">—</span> Cette app range des codes : elle ne détient aucune valeur, n’ouvre aucun compte de paiement et ne fait circuler aucun fonds.</p>
+    </div>
+
+    <div style="height:10px"></div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="02-bon.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, B = window.PEC_BONS; if (!D || !B) return;
+    if (window.PEC_HORS_SESSION) return;   // la garde a remplacé la page : rien à peindre
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function message(el, txt) { el.hidden = !txt; el.textContent = txt || ''; }
+    var CODE = B.formater(new URLSearchParams(location.search).get('code') || '');
+    var enConfirm = false;
+
+    function rendre() {
+      var r = CODE ? B.resoudre(CODE) : null;
+      $('db-inconnu').hidden = !!r; $('db-fiche').hidden = !r;
+      if (!r) {
+        // l'autre famille se NOMME (son nom vient du data-layer) : ce n'est pas un code inconnu, c'est un code qui n'a rien à faire ici
+        var autre = CODE ? B.familleAutre(CODE) : null;
+        $('db-inconnu-t').textContent = autre ? 'Ce code n’est pas un bon de marque' : 'Ce code n’est pas connu';
+        $('db-inconnu-txt').textContent = autre ? 'Ce code est un ' + autre + ' : il ne se range pas ici, cette app est celle des bons de marque.'
+          : CODE ? 'Aucune marque du réseau n’a émis le code ' + CODE + '. Vérifie le ticket.' : 'Aucun code n’a été donné à cette page.';
+        return;
+      }
+      var range = B.estRange(r.code);
+      var entree = B.liste().filter(function (x) { return x.code === r.code; })[0] || null;
+      $('db-emetteur').textContent = r.emetteur;
+      $('db-ou').textContent = 'Utilisable uniquement sur ' + r.siteLbl + ' — et nulle part ailleurs';
+      $('db-pill').className = 'pec-pill ' + r.pill; $('db-pill').textContent = r.etatLbl;
+      $('db-detail').hidden = !r.detail; $('db-detail').textContent = r.detail ? r.detail.charAt(0).toUpperCase() + r.detail.slice(1) + '.' : '';
+      // le code, et son flashcode (le QR encode le code tel quel — un scan le ressort)
+      $('db-code').textContent = r.code;
+      if (window.PEC_QR) $('db-qr').innerHTML = PEC_QR.svg(r.code);
+      $('db-reste').textContent = r.solde == null ? '—' : D.eur(r.solde);
+      $('db-montant').textContent = r.montant == null ? '—' : D.eur(r.montant);
+      $('db-validite-l').textContent = r.etat === 'expire' ? 'Expiré le' : 'Valable jusqu’au';
+      $('db-validite').textContent = r.expireLe ? B.dateFr(r.expireLe) : '—';
+      var achat = [];
+      if (r.venduLe) achat.push('le ' + B.dateFr(r.venduLe));
+      if (r.enseigne) achat.push('chez ' + r.enseigne);
+      $('db-achat-row').hidden = !achat.length; $('db-achat').textContent = achat.join(' · ');
+      $('db-range-row').hidden = !(entree && entree.ajouteLe); $('db-range').textContent = entree && entree.ajouteLe ? B.dateFr(entree.ajouteLe) : '';
+      // les mentions du référentiel + le rappel commun
+      $('db-mentions').innerHTML = r.mentions.map(function (m) { return '<li>' + esc(m) + '</li>'; }).join('');   // les mentions du référentiel, une fois — le rappel de la liste les redirait
+      var site = $('db-site');
+      if (/^https?:\/\//.test(r.site || '')) { site.hidden = false; site.href = r.site; site.target = '_blank'; site.rel = 'noopener'; $('db-site-lbl').textContent = 'Ouvrir ' + r.siteLbl; }
+      else site.hidden = true;
+      // la note : PayEnCash a vendu ce bon à travers son réseau — secondaire, une ligne
+      $('db-note').textContent = 'a vendu ce bon à travers son réseau' + (r.enseigne ? ' (' + r.enseigne + ')' : '') + ' : elle ne l’émet pas, ne le tient pas et n’en détient aucune valeur — ce qu’il te reste, c’est ' + r.emetteur + ' qui le tient.';
+      $('db-ranger').hidden = range; $('db-retirer').hidden = !range;
+      if (!enConfirm) $('db-retirer').textContent = 'Retirer de mes bons';
+      rendreProbleme(r);
+    }
+
+    /* ══ UN PROBLÈME AVEC CE BON ? (24/09, soir — décision fondatrice : la marque N'A PAS LE DROIT de refuser un bon valide
+       qu'elle a émis ; la hotline oriente et note le refus) ══
+       La réclamation porte le code du bon en référence, le compte du porteur, et son récit en premier échange. Une
+       réclamation déjà ouverte sur ce code se RELIT (PEC_BUS.demandesSav) : son état, l'hôte qui s'en occupe, sa dernière
+       réponse — et le formulaire s'efface. Le délai vient du référentiel (ref.hotline.rappelDelaiMin), jamais d'ici. */
+    function nomPorteur() { var cl = D.clientCourant ? D.clientCourant() : null; return cl ? (cl.nomComplet || ((cl.prenom || '') + ' ' + (cl.nom || '')).trim()) : ''; }
+    function delaiHotline() { var R = (D.ref && D.ref.hotline) || {}; return R.rappelDelaiMin ? 'sous ' + R.rappelDelaiMin + ' min' : 'dès que possible'; }
+    function reclamation(code) {
+      if (!window.PEC_BUS || !PEC_BUS.demandesSav) return null;
+      return PEC_BUS.demandesSav().filter(function (d) { return d.type === 'reclamation' && d.ref === code; })[0] || null;
+    }
+    function rendreProbleme(r) {
+      var rec = reclamation(r.code), z = $('db-pb-etat');
+      z.hidden = !rec; $('db-pb-ouvrir').hidden = !!rec;
+      if (!rec) return;
+      $('db-pb-form').hidden = true;
+      var clos = /^clot|^resolue/.test(rec.statut || '');
+      var reponse = (rec.echanges || []).filter(function (e) { return e.qui === 'hote'; }).slice(-1)[0];
+      z.textContent = 'Signalé le ' + D.dateHeure(rec.at) + ' (dossier ' + rec.id + ') — '
+        + (clos ? 'dossier clos' : 'la hotline s’en occupe' + (rec.assigne ? ' (' + rec.assigne + ')' : '') + (rec.due ? ', ' + rec.due : '')) + '.'
+        + (reponse ? ' Sa réponse : « ' + reponse.texte + ' »' : '');
+    }
+    $('db-pb-ouvrir').addEventListener('click', function () {
+      var f = $('db-pb-form'); f.hidden = !f.hidden; this.setAttribute('aria-expanded', String(!f.hidden));
+      message($('db-pb-ok'), ''); message($('db-pb-err'), '');
+      if (!f.hidden) $('db-pb-txt').focus();
+    });
+    $('db-pb-annuler').addEventListener('click', function () { $('db-pb-form').hidden = true; $('db-pb-ouvrir').setAttribute('aria-expanded', 'false'); });
+    $('db-pb-go').addEventListener('click', function () {
+      var r = CODE ? B.resoudre(CODE) : null, id = B.porteurId(), texte = $('db-pb-txt').value.trim();
+      if (!r) return;
+      message($('db-pb-ok'), '');
+      if (!texte) { message($('db-pb-err'), 'Dis ce qui s’est passé : c’est ce que la hotline lira avant de te répondre.'); $('db-pb-txt').focus(); return; }
+      if (!id || !window.PEC_BUS || !PEC_BUS.ouvrirDemande) { message($('db-pb-err'), 'Connecte-toi à ton compte pour signaler un problème : la réclamation appartient à un porteur.'); return; }
+      /* (24/09, soir) le signalement porte son MOTIF et sa MARQUE : la hotline contrôle le bon et note le refus chez elle (techRefusNoter) */
+      var dem = PEC_BUS.ouvrirDemande({ type: 'reclamation', motif: 'bon_refuse', marchandId: r.marchandId, ref: r.code, client: nomPorteur(), clientId: id,
+        sujet: 'Bon refusé par ' + r.emetteur, echanges: [{ qui: 'moi', texte: texte, at: Date.now(), par: id }] });
+      if (!dem) { message($('db-pb-err'), 'Le signalement n’a PAS été enregistré (écriture refusée) — libère de la place sur cet appareil et recommence.'); return; }
+      $('db-pb-txt').value = ''; $('db-pb-form').hidden = true; $('db-pb-ouvrir').setAttribute('aria-expanded', 'false');
+      message($('db-pb-err'), '');
+      message($('db-pb-ok'), 'Signalé : la hotline te répond ' + delaiHotline() + ' et prévient ' + r.emetteur + ', qui ne peut pas refuser un bon valide.');
+      rendre();
+    });
+
+    $('db-ranger').addEventListener('click', function () {
+      var r = B.ajouter(CODE);
+      if (!r.ok) { message($('db-ok'), ''); message($('db-err'), r.motif + (r.manque ? ' Tout se passe dans Compte.' : '')); return; }
+      message($('db-err'), ''); message($('db-ok'), '✓ Bon rangé dans ta liste.'); rendre();
+    });
+    // deux touches pour retirer — la seconde confirme (aucune fenêtre système)
+    $('db-retirer').addEventListener('click', function () {
+      if (!enConfirm) { enConfirm = true; this.textContent = 'Retirer — sûr ?'; var b = this; setTimeout(function () { enConfirm = false; b.textContent = 'Retirer de mes bons'; }, 4000); return; }
+      enConfirm = false;
+      var r = B.retirer(CODE);
+      if (!r.ok) { message($('db-ok'), ''); message($('db-err'), r.motif); return; }
+      message($('db-err'), ''); message($('db-ok'), 'Code retiré de ta liste — le bon reste tel quel, tu peux le ranger à nouveau.'); rendre();
+    });
+
+    rendre();
+    window.addEventListener('pec-bus', rendre);   // un usage chez la marque, une réponse de la hotline : la fiche change sous nos yeux
+    window.addEventListener('storage', rendre);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Mon point</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css"><!-- (24/09, nuit) le lecteur des documents, celui de l'inscription -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<script src="../assets/payencash-inscription.js"></script><!-- (24/09, nuit) son lecteur : un document se lit jusqu'au bout avant d'être reconnu -->
+<!-- MON POINT (23/09 — le grossiste). POURQUOI une seule page : tout ce qui conditionne la vente des bons de marque vit ici.
+       · la FICHE du commerce (référentiel partenaires : enseigne, adresse, SIRET, responsable, statut dérivé) — téléphone,
+         e-mail et responsable se modifient (partenaireEnregistrer, journalisé) ; le reste vient du Kbis contrôlé — et sa
+         FICHE DE VENTE (techRevendeur, dérivée du point par le socle : même identité, jamais ressaisie) ;
+       · le MANDAT DE PRÉLÈVEMENT SEPA (#sepa — commerce sédentaire) : signé une fois (techSepaMandatSigner), c'est lui qui
+         nous autorise à débiter les bons vendus après l'arrêté du soir ; révocable, et le dire ferme la vente ;
+       · l'AVANCE (#avance — distributeur nomade) : la garantie à verser, puis l'avance versée par virement, que nous
+         CONSTATONS à l'arrivée des fonds (avanceSolde, avanceMouvements) — jamais un montant écrit sur une intention ;
+       · CE QU'IL GARDE PAR OFFRE (#part) : la part du point sur chaque offre de paiement des marques (techModes) — c'est sa marge
+         (sédentaire) ou sa commission (nomade), lue, jamais négociée ici ;
+       · la ZONE du distributeur nomade (partenaireZoneSet) — les villes du référentiel, choisies par lui seul ;
+       · (24/09, soir — arbitrage fondatrice : « tarif libre convenu ») le TARIF DE DÉPLACEMENT du distributeur nomade
+         (partenaireTarifSet / partenaireTarifLbl) : il le fixe seul, sans plancher, plafond ni tarif conseillé de la maison ;
+       · le DOSSIER de vérification (#dossier — PEC_DOCS.rendreDossier 'partenaire') ; le KYB affiché au manager se DÉRIVE de ce dossier ;
+       · le CONTRAT DE DISTRIBUTION (#contrat) : généré depuis le référentiel (PEC_DOCS.genererDocument, modèle contrat_partenaire),
+         lu, puis signé — D.contratPartenaireSigner(pointId, { via:'coffre' }) fait passer le point à « contrat signé » puis
+         PEC_DOCS.signer archive le PDF signé. PayEnCash contresigne, contrôle le dossier et active le point ;
+       · les ACCEPTATIONS en vigueur (acceptationsRequises → acceptationsPoser) ; l'assistance (file hotline) ; la demande de
+         RAPPEL (24/09, soir — fondatrice : « organise ça, la hotline gère » : PEC_BUS.demanderAppel) ; la déconnexion.
+     (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : deux colonnes — ce qui ouvre la vente à gauche (à
+     faire, zone et tarif du nomade, mandat SEPA ou avance, parts par offre), l'identité à droite (fiche, dossier, contrat,
+     documents en vigueur) ; puis l'assistance et le rappel côte à côte. Sur téléphone, tout s'empile dans le même ordre. -->
+<style>
+  .mp-kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
+  .mp-kv:first-child{border-top:0}
+  .mp-kv .l{color:var(--color-muted);flex:none}
+  .mp-kv .v{text-align:right;min-width:0;word-break:break-word;font-weight:600}
+  .mp-err{margin:8px 0 0;font-size:12px;font-weight:700;color:#B3372B;line-height:1.45}
+  .mp-ok{margin:8px 0 0;font-size:12px;font-weight:700;color:var(--color-primary-dark);line-height:1.45}
+  .mp-todo{display:flex;gap:8px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--color-sep);font-size:12.5px;line-height:1.45;color:inherit;text-decoration:none}
+  .mp-todo:first-child{border-top:0}
+  .mp-todo .pt{flex:none;width:8px;height:8px;border-radius:999px;background:var(--color-amber-text);margin-top:5px}
+  .mp-btns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .mp-btns button{font:inherit;font-size:11.5px;font-weight:700;border:1px solid var(--color-sep);background:var(--color-surface);color:var(--color-ink);border-radius:8px;padding:7px 11px;cursor:pointer}
+  .mp-btns button.fort{background:var(--color-primary);border-color:var(--color-primary);color:#fff}
+  .mp-btns button[disabled]{opacity:.45;cursor:not-allowed}
+  .mp-check{display:flex;gap:8px;align-items:flex-start;margin-top:9px;font-size:11.5px;line-height:1.5;color:var(--color-muted)}
+  .mp-check input{margin-top:2px}
+  .meta{font-size:11.5px;color:var(--color-muted)}
+  .mono{font-family:var(--font-mono);font-size:11px;color:var(--color-muted);overflow-wrap:anywhere}
+  .jauge{height:7px;border-radius:99px;background:var(--color-bg);overflow:hidden;margin-top:7px}
+  .jauge i{display:block;height:100%;background:var(--color-ink)}
+  /* (24/09, soir) les classes de mise en page — les styles en ligne des cartes sont partis ici, pour avoir deux échelles */
+  .pt-garde{border-radius:16px;background:var(--color-amber-well);padding:14px;margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--color-amber-text)}
+  .pt-garde .s{margin-top:4px;font-size:12px}
+  /* (24/09, soir) l'en-tête de page vit DANS .pec-info-body, qui n'espace pas ses enfants : sans marge, le sous-titre touchait
+     la première carte (le téléphone avait 14 px sous le sous-titre, on les lui rend) */
+  .mp-tete{margin:0 0 14px}
+  .mp-sub .pec-pill{font-size:9.5px;padding:3px 8px}
+  .mp-titre{font-weight:800;font-size:13.5px}
+  .mp-carte{margin-bottom:14px}
+  .mp-afaire{border:1.5px solid var(--color-amber-text)}
+  .mp-afaire .mp-titre{margin-bottom:4px}
+  .mp-zone .meta{margin:4px 0 10px;line-height:1.5}
+  .mp-zone-villes{display:flex;flex-wrap:wrap;gap:6px}
+  .mp-zone-champs{display:flex;gap:9px;align-items:flex-end;margin-top:10px;flex-wrap:wrap}
+  .mp-zone-champs label{flex:1 1 100%}
+  #mp-zone-rayon{max-width:120px}
+  .mp-zone-etat{margin:8px 0 0;line-height:1.5}
+  /* `.pec-btn` ne vit que dans la feuille du back-office (payencash-manager.css), que cette app ne charge pas : « Enregistrer ma
+     zone » sortait en bouton nu. Défini ici, le temps qu'il rejoigne la feuille commune. */
+  .pec-btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:10px;background:var(--color-primary);color:#fff;font:inherit;font-weight:800;text-decoration:none;cursor:pointer}
+  .pec-btn--sm{min-height:36px;padding:8px 14px;font-size:12.5px;border-radius:10px}
+  .mp-tarif .meta{line-height:1.5}
+  .mp-tarif-actuel{margin:4px 0 10px;font-weight:700;color:var(--color-ink)}
+  .mp-tarif-champs > div + div{margin-top:10px}
+  .mp-tarif-note{margin:8px 0 0}
+  .mp-tarif .pec-btn{margin-top:10px}
+  .mp-h2{margin:16px 0 8px}
+  .mp-pourquoi{margin:0 0 8px;line-height:1.5}
+  .mp-note{margin:8px 0 0;line-height:1.5}
+  .mp-liste{padding:4px 14px}
+  .mp-etat{padding:12px 14px}
+  .mp-etat .pec-cta{width:100%;margin-top:10px}
+  .mp-etat .mp-titre{font-size:13px}
+  .mp-etat-tete{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+  .mp-etat-tete .pec-pill{flex:none;font-size:9.5px;padding:3px 8px}
+  .mp-montant{flex:none;font-size:20px;font-weight:800}
+  .mp-montant.bas{color:var(--color-amber-text)}
+  .mp-form{padding:14px;margin-top:8px}
+  .mp-form .t{font-weight:700;font-size:13px;margin-bottom:8px}
+  .mp-form .pec-input.esp{margin-bottom:10px}
+  .mp-form .pec-cta{width:100%;margin-top:12px}
+  .mp-contrat-sub{margin-top:10px;font-weight:700;font-size:12.5px}
+  .mp-sep{margin:12px 0}
+  .mp-accept-liste{display:grid;gap:8px;font-size:12.5px}
+  .mp-doc{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--color-sep)}
+  .mp-doc:first-of-type{border-top:0}
+  .mp-doc .t{flex:1;min-width:0;line-height:1.4} .mp-doc .t b{display:block;font-size:13px;color:var(--color-ink)}
+  .mp-doc .t small{display:block;font-size:11px;color:var(--color-muted)}
+  .mp-doc .pec-btn-secondary{flex:none;min-height:36px;padding:0 14px}
+  .mp-aide .lbl{font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted);margin-bottom:8px}
+  .mp-aide .meta{margin:0 0 10px;line-height:1.55}
+  .mp-aide textarea{width:100%;resize:vertical}
+  .mp-aide .pec-btn-secondary{margin-top:8px;width:100%}
+  .mp-aide .msg{margin:8px 0 0;font-size:12px;font-weight:700}
+  .mp-rappel .meta{margin:4px 0 0;line-height:1.5}
+  .mp-rappel-btn{margin-top:10px;width:100%}
+  .mp-rappel-etat{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--color-mint);font-size:12.5px;line-height:1.5;color:var(--color-mint-ink)}
+  .mp-rappel-form{margin-top:10px}
+  .mp-rappel-form .fac{font-weight:600;color:var(--color-muted)}
+  .mp-rappel-go{margin-top:10px;width:100%}
+  .mp-bas{margin-top:14px}
+  .mp-rgpd{margin:12px 0 12px}
+  .mp-rgpd .tx{font-size:12.5px;line-height:1.55}
+  .mp-rgpd a{color:var(--color-primary-dark);font-weight:800}
+  .mp-deco{width:100%;margin:0 0 18px}
+  /* ── LE BUREAU : deux colonnes, l'échelle de lecture d'un écran, les boutons à leur taille ── */
+  @media (min-width:1024px){
+    .pt-garde{padding:18px 22px;font-size:15px} .pt-garde .s{font-size:13.5px}
+    .mp-tete{margin-bottom:24px}
+    .mp-sub .pec-pill{font-size:11.5px;padding:4px 10px}
+    .mp-kv{font-size:14px;padding:9px 0}
+    .mp-err,.mp-ok{font-size:13.5px}
+    .mp-todo{font-size:14px;padding:9px 0}
+    .mp-btns button{font-size:13px;padding:9px 14px}
+    .mp-check{font-size:13px}
+    .meta{font-size:13px}
+    .mono{font-size:12.5px}
+    .mp-titre{font-size:16px}
+    .mp-carte{margin-bottom:18px}
+    .pec-btn--sm{font-size:13.5px;min-height:40px;padding:9px 18px}
+    .mp-tarif-champs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:14px}
+    .mp-tarif-champs > div + div{margin-top:0}
+    .mp-h2{margin:22px 0 10px}
+    .mp-h2.premier{margin-top:0}
+    .mp-liste{padding:8px 24px}
+    .mp-etat{padding:20px 24px}
+    .mp-etat .mp-titre{font-size:15px}
+    .mp-etat .pec-cta{width:fit-content}
+    .mp-etat-tete .pec-pill{font-size:11.5px;padding:4px 10px}
+    .mp-montant{font-size:28px;letter-spacing:-.5px}
+    .mp-form{padding:24px 28px;margin-top:12px}
+    .mp-form .t{font-size:15px;margin-bottom:12px}
+    .mp-form .pec-cta{width:fit-content}
+    .mp-contrat-sub{font-size:14px}
+    .mp-accept-liste{font-size:14px}
+    .mp-aide .lbl{font-size:11.5px}
+    .mp-aide .msg{font-size:13.5px}
+    .mp-aide .pec-btn-secondary,.mp-rappel-btn,.mp-rappel-go{width:100%;min-width:0}
+    .mp-rappel-etat{font-size:14px}
+    .mp-bas{margin-top:22px}
+    .mp-rgpd{margin:22px 0 18px} .mp-rgpd .tx{font-size:14px}
+    .mp-deco{width:fit-content}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+
+      <div class="pec-page-tete mp-tete">
+        <div class="tx">
+          <h1 id="mp-enseigne">—</h1>
+          <p class="sous mp-sub" id="mp-sub">—</p>
+        </div>
+      </div>
+
+      <!-- GARDE (socle) : bandeau seulement — le point reste lisible quel que soit son état -->
+      <div id="pt-garde" class="pt-garde" hidden><b id="pt-garde-titre">—</b><div id="pt-garde-txt" class="s">—</div></div>
+
+      <div class="pec-cols pec-cols--2">
+        <div class="pec-colonne">
+
+          <!-- À FAIRE — dérivé (PEC_PART.aFaire) : contrat, dossier, activation, mandat SEPA, avance -->
+          <div class="pec-card mp-carte mp-afaire" id="mp-afaire">
+            <div class="mp-titre">À faire pour que ton point vende</div>
+            <div id="mp-afaire-liste"></div>
+          </div>
+
+          <!-- (19/09, soir — « le distributeur, lorsqu'il s'inscrit, définit lui-même sa zone ; le manager ne définit plus la zone »)
+               MA ZONE DE DÉPLACEMENT — distributeur nomade uniquement. Les villes viennent du référentiel : on en choisit. -->
+          <div class="pec-card mp-carte mp-zone" id="mp-zone" hidden>
+            <div class="mp-titre">Ma zone de déplacement</div>
+            <p class="meta">C'est <b>toi</b> qui la définis, et toi seul : PayEnCash ne t'assigne aucun secteur. Les demandes de rencontre des clients d'une marque te sont proposées dans ta zone.</p>
+            <div id="mp-zone-villes" class="mp-zone-villes"></div>
+            <div class="mp-zone-champs">
+              <label class="pec-input-label" for="mp-zone-rayon">Jusqu'à combien de kilomètres autour ? (facultatif)</label>
+              <input class="pec-input" id="mp-zone-rayon" type="number" min="0" max="100" step="1" placeholder="15">
+              <button type="button" class="pec-btn pec-btn--sm tap" id="mp-zone-ok">Enregistrer ma zone</button>
+            </div>
+            <p id="mp-zone-etat" class="meta mp-zone-etat">—</p>
+          </div>
+
+          <!-- ══ (24/09, soir — arbitrage fondatrice : « tarif libre convenu ») MON TARIF DE DÉPLACEMENT — distributeur nomade seul.
+               Il le fixe, l'affiche et le convient avec son client ; PayEnCash ne pose ni plancher, ni plafond, ni tarif conseillé — un
+               tarif imposé tirerait le contrat de commission vers la subordination. Le data-layer tranche (partenaireTarifSet) et son
+               refus s'affiche tel quel ; l'affichage courant est celui que lit le client (partenaireTarifLbl). ══ -->
+          <div class="pec-card mp-carte mp-tarif" id="mp-tarif" hidden>
+            <div class="mp-titre">Mon tarif de déplacement</div>
+            <p class="meta mp-tarif-actuel" id="mp-tarif-actuel">—</p>
+            <div class="mp-tarif-champs">
+              <div>
+                <label class="pec-input-label" for="mp-tarif-montant">Tarif (euros — vide : « à convenir »)</label>
+                <input class="pec-input" id="mp-tarif-montant" type="text" inputmode="decimal" autocomplete="off" placeholder="à convenir">
+              </div>
+              <div>
+                <label class="pec-input-label" for="mp-tarif-mention">Mention courte (facultatif)</label>
+                <input class="pec-input" id="mp-tarif-mention" type="text" autocomplete="off" placeholder="ex. offert dans ma commune">
+              </div>
+            </div>
+            <div class="mp-err" id="mp-tarif-err" role="alert" hidden>—</div>
+            <div class="mp-ok" id="mp-tarif-ok" hidden>—</div>
+            <button type="button" class="pec-btn pec-btn--sm tap" id="mp-tarif-go">Enregistrer</button>
+            <p class="meta mp-tarif-note">Tu fixes ton tarif librement et tu le conviens avec ton client ; PayEnCash ne pose ni plancher, ni plafond, ni tarif conseillé. Tu le factures en ton nom.</p>
+          </div>
+
+          <!-- ══ LE MANDAT SEPA (#sepa — commerce sédentaire) : signé une fois, réutilisé à chaque prélèvement ══ -->
+          <div id="mp-sepa-z" hidden>
+            <h2 class="pec-h2 mp-h2 premier" id="sepa">Mandat de prélèvement SEPA</h2>
+            <p class="meta mp-pourquoi" id="mp-sepa-pourquoi">—</p>
+            <div class="pec-card mp-etat" id="mp-sepa-etat"></div>
+            <div class="mp-ok" id="mp-sepa-ok" hidden>—</div>
+            <form class="pec-card pec-card--elevated mp-form" id="mp-sepa-form" hidden autocomplete="off">
+              <div class="t">Signer mon mandat</div>
+              <label class="pec-input-label" for="mp-titulaire">Titulaire du compte, tel qu'il figure sur le RIB</label>
+              <input class="pec-input esp" id="mp-titulaire" type="text" placeholder="Raison sociale du commerce">
+              <label class="pec-input-label" for="mp-iban">IBAN du compte du commerce</label>
+              <input class="pec-input esp" id="mp-iban" type="text" inputmode="latin" autocomplete="off" placeholder="FR76 ····">
+              <label class="pec-input-label" for="mp-bic">BIC</label>
+              <input class="pec-input" id="mp-bic" type="text" autocomplete="off" placeholder="CMCIFR2A">
+              <label class="mp-check" for="mp-sepa-sig"><input type="checkbox" id="mp-sepa-sig"><span id="mp-sepa-sig-txt">—</span></label>
+              <div class="mp-err" id="mp-sepa-err" role="alert" hidden>—</div>
+              <button type="submit" class="pec-cta pec-cta--tight tap" id="mp-sepa-signer">Signer le mandat</button>
+              <p class="meta mp-note" id="mp-sepa-mention">—</p>
+            </form>
+          </div>
+
+          <!-- ══ L'AVANCE (#avance — distributeur nomade) : la garantie, l'avance disponible, les virements constatés ══ -->
+          <div id="mp-avance-z" hidden>
+            <h2 class="pec-h2 mp-h2 premier" id="avance">Mon avance</h2>
+            <p class="meta mp-pourquoi" id="mp-avance-pourquoi">—</p>
+            <div class="pec-card mp-etat" id="mp-avance-etat"></div>
+          </div>
+
+          <!-- ══ CE QUE JE GARDE, PAR OFFRE (#part) — la part du point sur chaque offre de paiement des marques ══ -->
+          <h2 class="pec-h2 mp-h2" id="part">Ce que je garde, par offre</h2>
+          <div class="pec-card mp-liste" id="mp-part"></div>
+          <p class="meta mp-note" id="mp-part-note">—</p>
+
+        </div>
+        <div class="pec-colonne">
+
+          <!-- FICHE -->
+          <h2 class="pec-h2 mp-h2 premier" id="fiche">Fiche du commerce</h2>
+          <div class="pec-card mp-liste" id="mp-fiche"></div>
+          <form class="pec-card pec-card--elevated mp-form" id="mp-form" autocomplete="off">
+            <div class="t">Coordonnées modifiables</div>
+            <label class="pec-input-label" for="mp-tel">Téléphone du commerce</label>
+            <input class="pec-input esp" id="mp-tel" type="tel" placeholder="Ligne du commerce">
+            <label class="pec-input-label" for="mp-email">E-mail</label>
+            <input class="pec-input esp" id="mp-email" type="email" placeholder="E-mail du commerce">
+            <label class="pec-input-label" for="mp-responsable">Responsable (gérant·e, tel qu'au Kbis)</label>
+            <input class="pec-input" id="mp-responsable" type="text" placeholder="Prénom Nom">
+            <div class="mp-err" id="mp-fiche-err" role="alert" hidden>—</div>
+            <div class="mp-ok" id="mp-fiche-ok" hidden>—</div>
+            <button type="submit" class="pec-cta pec-cta--tight tap" id="mp-fiche-enregistrer">Enregistrer</button>
+            <p class="meta mp-note">Enseigne, adresse et SIRET viennent du Kbis contrôlé par PayEnCash : pour les changer, dépose un nouvel extrait au dossier et écris à PayEnCash.</p>
+          </form>
+
+          <!-- DOSSIER DE VÉRIFICATION -->
+          <h2 class="pec-h2 mp-h2" id="dossier">Dossier de vérification</h2>
+          <p class="meta mp-pourquoi" id="mp-dossier-intro">—</p>
+          <div id="pd-dossier"></div>
+          <div class="pec-card mp-etat" id="mp-dossier-etat" style="margin-top:10px">
+            <div class="mp-titre" id="mp-dossier-titre">—</div>
+            <div class="meta" id="mp-dossier-txt" style="line-height:1.5;margin-top:3px">—</div>
+            <div class="mp-err" id="mp-dossier-err" role="alert" hidden>—</div>
+            <button type="button" class="pec-cta pec-cta--tight tap" id="mp-dossier-envoyer">Envoyer le dossier au contrôle</button>
+          </div>
+
+          <!-- CONTRAT DE DISTRIBUTION -->
+          <h2 class="pec-h2 mp-h2" id="contrat">Contrat de distribution</h2>
+          <div class="pec-card mp-etat">
+            <div class="mp-etat-tete">
+              <div class="mp-titre" id="mp-contrat-titre">—</div>
+              <span class="pec-pill" id="mp-contrat-etat">—</span>
+            </div>
+            <div class="meta" id="mp-contrat-txt" style="line-height:1.5;margin-top:3px">—</div>
+            <!-- CE QUE TU SIGNES — chaque ligne vient du référentiel (techRef, techModes, ref.juridique) ; une clause absente n'est pas inventée -->
+            <div class="mp-contrat-sub">Ce que tu signes</div>
+            <div id="mp-contrat-conditions"></div>
+            <div class="pec-sep mp-sep"></div>
+            <label class="pec-input-label" for="mp-signataire">Signataire (gérant·e, tel qu'au Kbis)</label>
+            <input class="pec-input" id="mp-signataire" type="text" placeholder="Prénom Nom">
+            <label class="mp-check" for="mp-contrat-lu"><input type="checkbox" id="mp-contrat-lu"><span>J'ai lu l'intégralité du contrat de distribution et je l'approuve. La signature électronique vaut engagement (art. 1367 du code civil) : le PDF est réécrit avec mon nom, la date et une empreinte.</span></label>
+            <div class="mp-btns">
+              <button type="button" class="tap" id="mp-contrat-generer">Générer le document</button>
+              <button type="button" class="tap" id="mp-contrat-lire">Lire</button>
+              <button type="button" class="tap fort" id="mp-contrat-signer">Signer</button>
+            </div>
+            <div class="mp-err" id="mp-contrat-msg" role="alert" hidden>—</div>
+          </div>
+
+          <!-- ACCEPTATIONS EN VIGUEUR -->
+          <h2 class="pec-h2 mp-h2" id="acceptations">Documents en vigueur</h2>
+          <div class="pec-card mp-etat">
+            <div id="mp-accept-liste" class="mp-accept-liste"></div>
+            <div class="mp-err" id="mp-accept-msg" role="alert" hidden>—</div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- L'ASSISTANCE ET LE RAPPEL, CÔTE À CÔTE SUR BUREAU : écrire à la hotline (la réponse revient dans le fil du point), ou
+           se faire rappeler (24/09, soir — fondatrice : « organise ça, la hotline gère »). -->
+      <div class="pec-cols pec-cols--2 mp-bas">
+        <div class="pec-colonne">
+          <!-- L'ASSISTANCE DU POINT : la file de la hotline, marquée espace 'partenaire' — la réponse revient dans le fil du point. -->
+          <div class="pec-card mp-aide">
+            <div class="lbl">Besoin d'aide ?</div>
+            <p class="meta">Dossier bloqué, contrat, mandat SEPA, prélèvement revenu impayé, avance à constater, bon à annuler : écris-nous. La hotline répond dans tes notifications, et l'échange reste attaché à ton point.</p>
+            <textarea class="pec-input" id="mp-sav-txt" rows="3" placeholder="Explique en quelques mots…" aria-label="Ta demande"></textarea>
+            <button type="button" class="pec-btn-secondary tap" id="mp-sav-go">Envoyer à la hotline</button>
+            <p id="mp-sav-msg" class="msg"></p>
+          </div>
+        </div>
+        <div class="pec-colonne">
+          <!-- ══ ÊTRE RAPPELÉ PAR PAYENCASH — un bouton, un sujet facultatif, et la demande part sur le bus (PEC_BUS.demanderAppel,
+               type 'rappel') : la hotline la voit en direct. Le délai annoncé vient du référentiel (ref.hotline.rappelDelaiMin) ;
+               une demande encore à faire pour ce point se relit sur le bus à chaque peinture. La même carte vit sur l'accueil. ══ -->
+          <div class="pec-card mp-rappel" id="mp-rappel">
+            <div class="mp-titre">Être rappelé par PayEnCash</div>
+            <p class="meta">Tu préfères en parler ? La hotline te rappelle au numéro de ta fiche.</p>
+            <div class="mp-rappel-etat" id="mp-rappel-etat" hidden>—</div>
+            <button type="button" class="pec-btn-secondary tap mp-rappel-btn" id="mp-rappel-ouvrir">Être rappelé par PayEnCash</button>
+            <div class="mp-rappel-form" id="mp-rappel-form" hidden>
+              <label class="pec-input-label" for="mp-rappel-sujet">À quel sujet ? <span class="fac">(facultatif)</span></label>
+              <input class="pec-input" id="mp-rappel-sujet" type="text" autocomplete="off" placeholder="ex. mon dossier de vérification">
+              <div class="mp-err" id="mp-rappel-err" role="alert" hidden>—</div>
+              <button type="button" class="pec-cta pec-cta--tight tap mp-rappel-go" id="mp-rappel-go">Demander un rappel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="pec-mint-banner mp-rgpd">
+        <div class="tx"><b>Ce que PayEnCash fait de ces données.</b> Le dossier sert au contrôle d'identité du commerce (KYB) et à l'activation du point, au titre de notre politique de prévention de la fraude ; la fiche figure sur les tickets et sur la carte du réseau que les marques et leurs clients consultent. Le mandat SEPA ne garde que l'IBAN et sa référence. Ce qui est conservé, combien de temps et tes droits : <a href="../../documents/politique-confidentialite-partenaire.html" target="_blank" rel="noopener">la politique de confidentialité des partenaires</a>.</div>
+      </div>
+
+      <button type="button" class="pec-btn-secondary tap mp-deco" id="mp-deconnexion"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-power"/></svg>Se déconnecter</button>
+
+    </div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" aria-current="page" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, DOCS = window.PEC_DOCS, P = window.PEC_PART; if (!D || !DOCS || !P) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function dateFr(ts) { var q = new Date(ts); return q.toLocaleDateString('fr-FR') + ' à ' + q.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    function heure(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    function pct(x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; }
+    function dire(id, m, ok) { var e = $(id); if (!e) return; e.hidden = !m; e.textContent = m || '—'; e.className = ok ? 'mp-ok' : 'mp-err'; }
+    var dossierRendu = null, ficheSaisie = false, sepaFormOuvert = false, sepaArme = false, tarifSaisi = false;
+    function par() { return P.par(); }
+    function kv(l, v, brut) { return '<div class="mp-kv"><span class="l">' + esc(l) + '</span><span class="v">' + (brut ? v : (v == null || v === '' ? '—' : esc(v))) + '</span></div>'; }
+    function adresseDe(p) { return [p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(', '); }
+    // le contexte du contrat : la fiche du point, le signataire attendu = le responsable déclaré, et les conditions du réseau
+    function ctxContrat(p, resp) {
+      var R = D.techRef(), modes = D.techModes();
+      return { id: p.id, nom: p.enseigne, enseigne: p.enseigne, ville: p.ville || '', adresse: adresseDe(p), siret: p.siret || '', responsable: resp, signataireAttendu: resp,
+        mode: D.partenaireMode(p), modeLbl: D.partenaireModeLbl(p), arreteHeure: R.paiement.arreteHeure, encoursMaxPoint: R.paiement.encoursMaxPoint,
+        parts: modes.map(function (m) { return { offre: m.libelle, partPointPct: m.partPointPct }; }), garantie: R.avance.garantie };
+    }
+    // LA GARDE DU SOCLE : elle pose et fait suivre la fiche de vente ; sans bandeau à masquer ici, le point reste lisible quel que soit son état
+    P.garde({ desactiver: [] });
+
+    /* ── LA FICHE ─────────────────────────────────────────────────────────────────────────────────────────── */
+    function rendreFiche() {
+      var p = P.point(), c = P.compteSession(), pr = (c && c.profil) || {}, r = P.revendeur();
+      var f = $('mp-form');
+      if (!p) {
+        $('mp-enseigne').textContent = pr.enseigne || 'Aucun point rattaché';
+        $('mp-sub').textContent = c ? 'Compte sans point rattaché — contacte PayEnCash.' : 'Aucune session de point — connecte-toi avec l\'identifiant de ton point.';
+        $('mp-fiche').innerHTML = '<div class="meta" style="padding:6px 0">Aucun point rattaché à cette session.</div>';
+        $('mp-afaire').hidden = true; f.hidden = true; return;
+      }
+      f.hidden = false;
+      $('mp-enseigne').textContent = p.enseigne;
+      $('mp-sub').innerHTML = '<span class="pec-pill ' + esc(D.partenaireStatutPill(p.statut) || 'pec-pill--off') + '">' + esc(D.partenaireStatutLbl(p.statut)) + '</span> ' + esc([D.partenaireModeLbl(p), p.ville, p.id].filter(Boolean).join(' · '));
+      var etat = D.partenaireEtat(p);
+      $('mp-fiche').innerHTML =
+        kv('Enseigne', p.enseigne) +
+        kv('Mode d’exercice', D.partenaireModeLbl(p)) +
+        (D.partenaireEstMobile(p) ? kv('Zone', D.partenaireZoneLbl(p)) + kv('Tarif affiché', D.partenaireTarifLbl(p)) : kv('Adresse', adresseDe(p))) +
+        kv('SIRET', p.siret) +
+        kv('Responsable (signataire)', p.responsable) +
+        kv('Téléphone', p.tel) +
+        kv('E-mail', p.email) +
+        kv('Statut du point', etat.ok ? 'Actif — la vente est ouverte' : etat.titre) +
+        kv('Contrat de distribution', p.contratSigne || /^(contrat_signe|actif|suspendu)$/.test(p.statut || '') ? 'signé' + (p.signeLe ? ' le ' + p.signeLe : '') : 'à signer') +
+        kv('Dossier de vérification', p.kybDetail || (p.kyb === 'valide' ? 'validé' : 'à compléter')) +
+        (p.commercial ? kv('Conseiller', D.commercialNom ? D.commercialNom(p.commercial) : p.commercial) : '') +
+        (p.activeAt ? kv('Activé', dateFr(p.activeAt) + ' par l’équipe PayEnCash') : '') +   // (24/09, nuit) pas l'identifiant d'un membre de l'équipe
+
+        kv('Fiche de vente', r ? r.id + ' · ' + D.techStatutLbl(r.statut) : (P._rvdRefus ? 'non créée — ' + P._rvdRefus : 'créée à l’activation du point')) +
+        kv('Identifiant de connexion', c ? c.identifiant : null);
+      if (!ficheSaisie) { $('mp-tel').value = p.tel || ''; $('mp-email').value = p.email || ''; $('mp-responsable').value = p.responsable || ''; }
+      var todo = P.aFaire(), z = $('mp-afaire');
+      z.hidden = !todo.length;
+      $('mp-afaire-liste').innerHTML = todo.map(function (t) { return '<a class="mp-todo tap" href="' + esc(t.href) + '"><span class="pt"></span><span>' + esc(t.txt) + '</span></a>'; }).join('');
+    }
+    ['mp-tel', 'mp-email', 'mp-responsable'].forEach(function (id) { $(id).addEventListener('input', function () { ficheSaisie = true; $('mp-fiche-ok').hidden = true; $('mp-fiche-err').hidden = true; }); });
+    $('mp-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var p = P.point(); if (!p) return;
+      var tel = $('mp-tel').value.trim(), email = $('mp-email').value.trim(), resp = $('mp-responsable').value.trim();
+      if (tel.replace(/\D/g, '').length < 8) { dire('mp-fiche-err', 'Téléphone du commerce : au moins 8 chiffres.'); $('mp-tel').focus(); return; }
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { dire('mp-fiche-err', 'E-mail invalide.'); $('mp-email').focus(); return; }
+      if (resp.length < 3) { dire('mp-fiche-err', 'Indique le responsable (gérant·e) tel qu\'il figure sur le Kbis.'); $('mp-responsable').focus(); return; }
+      var r = D.partenaireEnregistrer({ id: p.id, tel: tel, email: email, responsable: resp }, par());
+      if (!r) { dire('mp-fiche-err', 'La fiche n\'a PAS été enregistrée — le stockage de cet appareil est plein. Libère de la place et recommence.'); return; }
+      var c = P.compteSession(); if (c && D.compteProfilMaj) { try { D.compteProfilMaj(c.id, { tel: tel, email: email, responsable: resp }); } catch (e) {} }
+      ficheSaisie = false;
+      dire('mp-fiche-ok', '✓ Fiche enregistrée' + (p.contratSigne && resp !== p.responsable ? ' — le signataire du contrat déjà signé reste ' + p.responsable + '.' : '.'), true);
+      tout();
+    });
+
+    /* ── LE MANDAT SEPA (sédentaire) ─────────────────────────────────────────────────────────────────────────
+       Interentreprises (B2B) par défaut, sur décision de la fondatrice — le type et sa mention viennent du référentiel
+       (techRef().mandats, mandatDefaut). Le data-layer contrôle l'IBAN, le BIC, le titulaire et la signature ; son motif
+       s'affiche tel quel sur le champ qu'il désigne. On ne garde que l'IBAN et la RUM. */
+    function rendreSepa() {
+      var p = P.point(), r = P.revendeur(), z = $('mp-sepa-z');
+      var visible = !!(p && r && !D.techPaieParAvance(r));
+      z.hidden = !visible;
+      if (!visible) return;
+      var R = D.techRef(), mdt = D.techSepaMandat('revendeur', r.id), enc = D.techEncours(r.id), typeM = (R.mandats || {})[R.paiement.mandatDefaut] || {};
+      $('mp-sepa-pourquoi').textContent = 'Tu vends d’abord, nous te prélevons ensuite : tes achats de bons sont arrêtés à ' + R.paiement.arreteHeure + ' et débités sur ton mandat SEPA à l’échéance. Sans mandat SEPA actif, aucun bon de marque ne peut être vendu.';
+      var e = $('mp-sepa-etat'), f = $('mp-sepa-form');
+      if (!mdt) {
+        var ancien = D.techSepaMandatToute('revendeur', r.id);
+        e.innerHTML = '<div class="mp-titre" style="color:var(--color-amber-text)">' + (ancien ? 'Mandat SEPA révoqué' + (ancien.revoqueLe ? ' le ' + esc(dateFr(ancien.revoqueLe)) : '') : 'Aucun mandat SEPA signé') + ' — la vente est fermée</div>'
+          + '<div class="meta" style="line-height:1.5;margin-top:3px">C’est le mandat SEPA qui nous autorise à te débiter des bons que tu vends. Signe-le ci-dessous : une minute, une fois.</div>';
+        f.hidden = false; sepaFormOuvert = true;
+      } else {
+        var part = enc.plafond > 0 ? Math.min(100, Math.round(enc.montant / enc.plafond * 100)) : 0;
+        e.innerHTML = '<div class="mp-etat-tete"><div style="min-width:0"><div class="mp-titre">' + esc(mdt.typeLbl) + '</div><div class="mono">' + esc(mdt.rum) + ' · ' + esc(mdt.ibanMasque) + ' · ' + esc(mdt.bic) + '</div></div><span class="pec-pill pec-pill--done">Actif</span></div>'
+          + kv('Titulaire', mdt.titulaire) + kv('Signé le', dateFr(mdt.signeLe) + (mdt.signePar ? ' par ' + mdt.signePar : ''))
+          + kv('Premier prélèvement', mdt.premierPrelevement ? 'remis le ' + dateFr(mdt.premierPrelevement) : 'pas encore')
+          + '<div style="margin-top:10px"><div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline"><div class="mp-titre" style="font-size:inherit">Encours ' + esc(D.eur(enc.montant)) + ' sur ' + esc(D.eur(enc.plafond)) + '</div><div class="meta">' + esc(D.eur(enc.reste)) + ' disponible</div></div><div class="jauge"><i style="width:' + part + '%"></i></div></div>'
+          + (mdt.mention ? '<p class="meta mp-note">' + esc(mdt.mention) + '</p>' : '')
+          + '<div class="mp-btns"><button type="button" class="tap" id="mp-sepa-revoquer">' + (sepaArme ? 'Confirmer la révocation' : 'Révoquer le mandat SEPA') + '</button></div>'
+          + '<div class="mp-err" id="mp-sepa-rev-err" role="alert" hidden>—</div>';
+        f.hidden = true; sepaFormOuvert = false;
+        var bx = $('mp-sepa-revoquer');
+        if (bx) bx.addEventListener('click', function () {
+          var e2 = $('mp-sepa-rev-err');
+          if (!sepaArme) { sepaArme = true; bx.textContent = 'Confirmer la révocation'; if (e2) { e2.hidden = false; e2.textContent = 'Sans mandat SEPA, ton point ne peut plus vendre un seul bon de marque, et ce qui est déjà vendu reste dû : clique une seconde fois pour révoquer ' + mdt.rum + '.'; } return; }
+          var rv = D.techSepaMandatRevoquer('revendeur', r.id, par());
+          sepaArme = false;
+          if (!rv.ok) { if (e2) { e2.hidden = false; e2.textContent = rv.motif; } return; }
+          tout();
+        });
+      }
+      $('mp-sepa-sig-txt').textContent = 'En signant ce mandat, j’autorise ' + R.nom + ' à envoyer des instructions à ma banque pour débiter mon compte, et ma banque à débiter mon compte conformément aux instructions de ' + R.nom + '.' + (typeM.mention ? ' ' + typeM.mention : '');
+      $('mp-sepa-mention').textContent = 'Mandat ' + (typeM.libelle || R.paiement.mandatDefaut) + ' · créancier ' + ((D.ref.societe || {}).nom || R.nom) + (R.paiement.ics ? ' · ICS ' + R.paiement.ics : '') + '. Tes achats de bons y sont prélevés en une fois par arrêté ; la référence du mandat (RUM) est dérivée de ta fiche.';
+      if (!$('mp-titulaire').value && p) $('mp-titulaire').value = p.raisonSociale || p.enseigne || '';
+    }
+    if (D.ibanSaisie) D.ibanSaisie($('mp-iban'));
+    if (D.bicSaisie) D.bicSaisie($('mp-bic'));
+    ['mp-titulaire', 'mp-iban', 'mp-bic'].forEach(function (id) { $(id).addEventListener('input', function () { $('mp-sepa-err').hidden = true; $('mp-sepa-ok').hidden = true; }); });
+    $('mp-sepa-form').addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      var r = P.revendeur(); if (!r) { dire('mp-sepa-err', 'Aucune fiche de vente pour ce point.'); return; }
+      var rs = D.techSepaMandatSigner('revendeur', r.id, { iban: $('mp-iban').value, bic: $('mp-bic').value, titulaire: $('mp-titulaire').value, signature: $('mp-sepa-sig').checked }, par());
+      if (!rs.ok) {
+        dire('mp-sepa-err', rs.motif);
+        var ch = { iban: 'mp-iban', bic: 'mp-bic', titulaire: 'mp-titulaire', signature: 'mp-sepa-sig' }[rs.champ];
+        if (ch) $(ch).focus();
+        return;
+      }
+      $('mp-iban').value = ''; $('mp-bic').value = ''; $('mp-sepa-sig').checked = false;
+      tout();
+      dire('mp-sepa-ok', '✓ Mandat SEPA ' + rs.mandat.rum + ' signé — la vente est ouverte : chaque bon vendu part au prochain arrêté.', true);
+    });
+
+    /* ── L'AVANCE (nomade) ─────────────────────────────────────────────────────────────────────────────────
+       La garantie et l'avance sont des VIREMENTS que nous constatons à l'arrivée des fonds : l'écran dit où virer et
+       avec quelle référence, il ne laisse pas déclarer un paiement qu'on n'a pas vu. */
+    function rendreAvance() {
+      var p = P.point(), r = P.revendeur(), z = $('mp-avance-z');
+      var visible = !!(p && r && D.techPaieParAvance(r));
+      z.hidden = !visible;
+      if (!visible) return;
+      var R = D.techRef(), A = R.avance, Pm = R.paiement, av = D.avanceSolde('revendeur', r.id);
+      $('mp-avance-pourquoi').textContent = 'Tu es commissionnaire : tu paies d’avance la valeur des bons à revendre. Une garantie, versée une fois et restituée intégralement à ton départ, puis une avance que tu verses par virement et sur laquelle chaque bon édité s’impute, de son prix réseau.';
+      $('mp-avance-etat').innerHTML =
+        '<div class="mp-etat-tete"><div><div class="mp-titre">Avance disponible</div><div class="meta">' + (av.bas ? 'sous le seuil d’alerte de ' + esc(D.eur(A.soldeAlerte)) : 'de quoi éditer des bons') + '</div></div><div class="mp-montant' + (av.bas ? ' bas' : '') + '">' + esc(D.eur(av.solde)) + '</div></div>'
+        + kv('Garantie', av.garantieVersee ? D.eur(av.garantie) + ' — versée' : (A.garantie > 0 ? D.eur(av.garantie) + ' versés sur ' + D.eur(A.garantie) + ' — à compléter' : 'aucune garantie demandée'))
+        + kv('Virer', (Pm.banque || '') + (Pm.iban ? ' · ' + D.ibanMasque(Pm.iban) : '') + (Pm.bic ? ' · ' + Pm.bic : ''))
+        + kv('Référence du virement', r.id)
+        + (A.rechargeMin > 0 || A.rechargeMax > 0 ? kv('Virement d’avance', (A.rechargeMin > 0 ? 'de ' + D.eur(A.rechargeMin) : '') + (A.rechargeMax > 0 ? ' à ' + D.eur(A.rechargeMax) + ' par virement' : '')) : '')
+        + '<p class="meta mp-note">Nous constatons chaque virement à l’arrivée des fonds, avec ta référence : ton avance disponible monte à ce moment-là, jamais avant. Le détail des mouvements est dans <a href="05-releves.html" style="color:var(--color-primary-dark);font-weight:800">Mes relevés</a>.</p>';
+    }
+
+    /* ── CE QUE JE GARDE, PAR OFFRE — la part du point sur chaque offre de paiement des marques (techModes) ─── */
+    function rendrePart() {
+      var r = P.revendeur(), nomade = !!(r && D.techPaieParAvance(r)), R = D.techRef();
+      $('mp-part').innerHTML = D.techModes().map(function (m) {
+        return '<div class="mp-kv"><span class="l" style="flex:1;white-space:normal;color:var(--color-ink)"><b>' + esc(m.libelle) + '</b><br><span class="meta">sur 100 € de bons, tu ' + (nomade ? 'perçois ' : 'gardes ') + esc(D.eur(m.partPointPct)) + ' et tu ' + (nomade ? 'paies d’avance ' : 'nous dois ') + esc(D.eur(100 - m.partPointPct)) + '</span></span><span class="v">' + esc(pct(m.partPointPct)) + '</span></div>';
+      }).join('');
+      /* (24/09, soir — relecture juridique) la marge du commerce figure sur son autofacture mensuelle : dire « nulle part » était faux */
+      $('mp-part-note').textContent = 'Chaque marque choisit son offre de paiement chez ' + R.nom + ' ; ta part est celle de l’offre de la marque du bon, figée à la vente. ' + (nomade ? 'C’est ta commission — elle seule constitue ton chiffre d’affaires.' : 'C’est ta marge : nous n’y prélevons rien ; elle figure sur ton autofacture mensuelle (TVA selon le régime du bon).');
+    }
+
+    /* ── LE DOSSIER — pièces sans modèle (le contrat se signe plus bas) ────────────────────────────────────── */
+    function rendreDossier() {
+      var p = P.point(), z = $('pd-dossier'), e = $('mp-dossier-etat');
+      var pieces = DOCS.piecesDe('partenaire').filter(function (x) { return !x.genere; });
+      $('mp-dossier-intro').textContent = 'Les pièces que PayEnCash contrôle avant d\'activer le point : ' + pieces.map(function (x) { return x.label.replace(/\s*\(.*\)$/, '').toLowerCase() + (x.obligatoire ? '' : ' (facultatif)'); }).join(', ') + '. Chaque pièce déposée est lue et conservée — PayEnCash contrôle ce que tu as réellement fourni.';
+      if (!p) { z.textContent = 'Aucun point rattaché : le dossier ne peut pas être ouvert.'; e.hidden = true; return; }
+      e.hidden = false;
+      if (dossierRendu !== p.id) {
+        dossierRendu = p.id;
+        DOCS.rendreDossier('pd-dossier', 'partenaire', p.id, {
+          par: par(), pieces: pieces.map(function (x) { return x.id; }),
+          onChange: function () { rendreEtatDossier(); rendreFiche(); }
+        });
+      }
+      rendreEtatDossier();
+    }
+    /* L'ÉTAT DU DOSSIER — le même calcul que le coffre, à une différence près : le contrat (pièce générée) n'est pas une pièce
+       à envoyer au contrôle, il se signe dans la section suivante (c'est le filtre `candidature` de PEC_DOCS.soumettre). */
+    function rendreEtatDossier() {
+      var p = P.point(); if (!p) return;
+      var et = DOCS.etat('partenaire', p.id), dos = DOCS.dossier('partenaire', p.id);
+      var manq = et.manquantes.filter(function (x) { return !x.genere; });
+      var piecesOk = dos.filter(function (x) { return !x.genere && x.obligatoire; }).every(function (x) { return x.statut === 'validee'; });
+      var contratOk = DOCS.estSigne('partenaire', p.id, 'contrat');
+      var t = $('mp-dossier-titre'), x = $('mp-dossier-txt'), b = $('mp-dossier-envoyer');
+      var statut = et.etat === 'valide' ? 'valide' : et.refusees.length ? 'a_corriger' : manq.length ? 'a_completer' : piecesOk ? 'pieces_ok' : (et.soumisAt ? 'en_verification' : 'a_soumettre');
+      t.textContent = { valide: 'Dossier validé par PayEnCash', a_corriger: 'Une pièce a été refusée', a_completer: 'Dossier incomplet', pieces_ok: 'Pièces validées', en_verification: 'Dossier envoyé — en contrôle', a_soumettre: 'Dossier complet — à envoyer au contrôle' }[statut];
+      x.textContent = statut === 'valide' ? (p.statut === 'actif' ? 'Ton point est actif : la vente est ouverte.' : 'PayEnCash active ton point — tu en es informé dans tes notifications.')
+        : statut === 'a_corriger' ? 'Remplace : ' + et.refusees.map(function (q) { return q.label; }).join(', ') + ' — le motif est écrit sur la pièce.'
+        : statut === 'a_completer' ? 'Il manque ' + manq.length + ' pièce' + (manq.length > 1 ? 's' : '') + ' : ' + manq.map(function (q) { return q.label; }).join(', ') + '.'
+        : statut === 'pieces_ok' ? (contratOk ? 'PayEnCash contresigne le contrat de distribution, puis active ton point.' : 'Il reste le contrat de distribution à signer, ci-dessous.')
+        : statut === 'en_verification' ? 'Envoyé le ' + (et.soumisAt ? dateFr(et.soumisAt) : '—') + ' — PayEnCash contrôle chaque pièce ; une pièce refusée réapparaît ici avec son motif.'
+        : 'Toutes les pièces sont là — envoie le dossier : PayEnCash le contrôle avant l\'activation.';
+      b.hidden = statut !== 'a_soumettre';
+      $('mp-dossier-err').hidden = true;
+    }
+    $('mp-dossier-envoyer').addEventListener('click', function () {
+      var p = P.point(); if (!p) return;
+      var r = DOCS.soumettre('partenaire', p.id, { candidature: true });
+      if (!r.ok) { dire('mp-dossier-err', r.message || r.motif); return; }
+      rendreEtatDossier(); rendreFiche();
+    });
+
+    /* ── LE CONTRAT DE DISTRIBUTION — générer, lire, signer ───────────────────────────────────────────────── */
+    function rendreConditions() {
+      var R = D.techRef(), J = (D.ref && D.ref.juridique) || {}, z = $('mp-contrat-conditions'), p = P.point();
+      var nomade = !!(p && D.partenaireEstMobile(p)), modes = D.techModes();
+      var parts = modes.map(function (m) { return m.partPointPct; }).sort(function (a, b) { return a - b; });
+      var l = function (k, v) { return v == null || v === '' ? '' : kv(k, v); };
+      /* (24/09, soir — relecture juridique) le nomade est COMMISSIONNAIRE (art. L132-1 C. com.) : un contrat de commission, jamais
+         un « mandat » ; il paie d'avance la valeur des bons à revendre */
+      z.innerHTML =
+        l('Nature', nomade
+          ? 'contrat de commission (art. L132-1 C. com.) : tu vends les bons d’achat des marques du réseau pour le compte de ' + R.nom + ', en payant d’avance la valeur des bons à revendre'
+          : 'distribution des bons d’achat des marques du réseau : tu achètes chaque bon à ' + R.nom + ' au moment où tu le vends, et tu le revends pour ton propre compte') +
+        l('Ta part', 'de ' + pct(parts[0]) + ' à ' + pct(parts[parts.length - 1]) + ' de la valeur du bon, selon l’offre de paiement de la marque — figée à la vente') +
+        l(nomade ? 'Ton avance' : 'Ton règlement', nomade
+          ? 'une garantie de ' + D.eur(R.avance.garantie) + ' (dépôt restitué intégralement) puis une avance versée par virement, sur laquelle chaque bon édité s’impute de son prix réseau'
+          : 'prélèvement SEPA sur ton mandat, des bons vendus entre deux arrêtés de ' + R.paiement.arreteHeure + ' — encours plafonné à ' + D.eur(R.paiement.encoursMaxPoint) + (R.paiement.penaliteImpaye > 0 ? ' ; ' + D.eur(R.paiement.penaliteImpaye) + ' de pénalité par prélèvement impayé' : '')) +
+        (nomade && D.partenaireTarifLbl ? l('Ton déplacement', 'tarif libre, fixé par toi et convenu avec ton client, facturé en ton nom — aujourd’hui : ' + D.partenaireTarifLbl(p)) : '') +
+        l('Annulation au comptoir', 'dans les ' + R.annulationMinutes + ' min, bon non utilisé') +
+        l('Validité du bon', D.bonsRef().validiteMois + ' mois, en une ou plusieurs fois, uniquement sur le site de la marque (réseau limité, ' + (D.refArticle ? D.refArticle((R.seuils || {}).reseauLimiteSource || '') : '') + ')') +
+        l('Contestation', J.contestationJours != null ? 'sous ' + J.contestationJours + ' jours, par écrit' : null) +
+        l('Durée · résiliation', J.preavisResiliationMois != null ? 'sans durée déterminée · préavis ' + J.preavisResiliationMois + ' mois' : null) +
+        l('Litige', [J.preavisAmiableJours != null ? 'règlement amiable sous ' + J.preavisAmiableJours + ' jours' : '', J.droitApplicable || ''].filter(Boolean).join(' · ') || null);
+    }
+    function rendreContrat() {
+      var p = P.point(), pill = $('mp-contrat-etat'), t = $('mp-contrat-titre'), x = $('mp-contrat-txt');
+      var bG = $('mp-contrat-generer'), bL = $('mp-contrat-lire'), bS = $('mp-contrat-signer'), sig = $('mp-signataire');
+      rendreConditions();
+      if (!p) { t.textContent = 'Aucun point rattaché'; x.textContent = '—'; pill.textContent = '—'; pill.className = 'pec-pill pec-pill--off'; [bG, bL, bS].forEach(function (b) { b.disabled = true; }); return; }
+      var pc = DOCS.dossier('partenaire', p.id).filter(function (q) { return q.id === 'contrat'; })[0] || {}, d = pc.document || null;
+      if (!sig.value && !sig.getAttribute('data-saisi')) sig.value = p.responsable || '';
+      var signe = !!(d && d.signe);
+      t.textContent = 'Contrat de distribution des bons d’achat de marque';
+      pill.textContent = pc.libelle || '—';
+      pill.className = 'pec-pill ' + (pc.statut === 'validee' ? 'pec-pill--done' : (pc.statut === 'refusee' ? 'pec-pill--off' : (signe ? 'pec-pill--live' : 'pec-pill--wait')));
+      if (signe) {
+        x.textContent = 'Signé par ' + d.signataire + ' le ' + dateFr(d.signeAt) + ' · empreinte ' + d.empreinte + '. ' +
+          (pc.statut === 'validee' ? 'Contresigné par PayEnCash' + (d.contresigne && d.contresigne.at ? ' le ' + dateFr(d.contresigne.at) : '') + '.'
+          : pc.statut === 'a_contresigner' ? 'PayEnCash contresigne, puis contrôle le dossier et active le point.'
+          : pc.statut === 'avenant' ? 'Les conditions ont changé depuis ta signature : un avenant est à signer.'
+          : pc.statut === 'refusee' ? 'Refusé par PayEnCash' + (d.motif ? ' : ' + d.motif : '') + ' — régénère et signe à nouveau.' : '');
+        bG.disabled = pc.statut !== 'refusee'; bL.disabled = !d.data; bS.disabled = !(pc.statut === 'avenant' || pc.statut === 'refusee');
+        bS.textContent = pc.statut === 'avenant' ? 'Signer l\'avenant' : 'Signer à nouveau';
+        bG.textContent = 'Régénérer';
+      } else if (d) {
+        x.textContent = 'Généré le ' + dateFr(d.at) + ' — lis-le, puis signe-le. Rien ne part avant ta signature.' + (/^(contrat_signe|actif|suspendu)$/.test(p.statut || '') ? ' Le référentiel dit le contrat signé (avec ton conseiller) mais le coffre n\'en garde pas la copie signée : signe-la ici pour l\'archiver.' : '');
+        bG.disabled = false; bG.textContent = 'Régénérer'; bL.disabled = !d.data; bS.disabled = false; bS.textContent = 'Signer';
+      } else {
+        x.textContent = 'À générer depuis le référentiel (ta fiche, les conditions du réseau), à lire, puis à signer. PayEnCash contresigne ensuite.';
+        bG.disabled = false; bG.textContent = 'Générer le document'; bL.disabled = true; bS.disabled = true; bS.textContent = 'Signer';
+      }
+    }
+    $('mp-signataire').addEventListener('input', function () { this.setAttribute('data-saisi', '1'); });
+    $('mp-contrat-generer').addEventListener('click', function () {
+      var p = P.point(); if (!p) return; $('mp-contrat-msg').hidden = true;
+      var b = this; b.disabled = true;
+      DOCS.genererDocument('partenaire', p.id, 'contrat', ctxContrat(p, $('mp-signataire').value.trim() || p.responsable || ''))
+        .then(function () { dire('mp-contrat-msg', '✓ Contrat généré — lis-le, puis signe-le.', true); tout(); })
+        .catch(function (e) { b.disabled = false; dire('mp-contrat-msg', e && e.message ? e.message : 'Génération impossible.'); });
+    });
+    $('mp-contrat-lire').addEventListener('click', function () {
+      var p = P.point(); if (!p) return;
+      if (!DOCS.ouvrir('partenaire', p.id, 'contrat')) dire('mp-contrat-msg', 'Aucun contrat généré — génère-le d\'abord.');
+    });
+    /* SIGNER — dans cet ordre : (1) D.contratPartenaireSigner(pointId, { via:'coffre' }) fait passer le point à « contrat signé »
+       SANS signer au coffre — c'est via:'coffre' qui l'en empêche, sinon le contrat serait signé deux fois ; (2) PEC_DOCS.signer
+       archive le PDF signé. Un point déjà « contrat signé » (par le lien du conseiller) ou un avenant ne repasse pas par (1). */
+    $('mp-contrat-signer').addEventListener('click', function () {
+      var p = P.point(); if (!p) return; $('mp-contrat-msg').hidden = true;
+      var resp = $('mp-signataire').value.trim();
+      if (resp.length < 3) { dire('mp-contrat-msg', 'Indique le signataire (gérant·e) tel qu\'il figure sur le Kbis.'); $('mp-signataire').focus(); return; }
+      if (!$('mp-contrat-lu').checked) { dire('mp-contrat-msg', 'Coche « j\'ai lu l\'intégralité du contrat » avant de signer.'); return; }
+      if (p.statut === 'contrat_a_signer') {
+        var r = D.contratPartenaireSigner(p.id, { responsable: resp, via: 'coffre', par: par() });
+        if (!r.ok) { dire('mp-contrat-msg', r.motif); return; }
+      }
+      var b = this; b.disabled = true;
+      DOCS.signer('partenaire', p.id, 'contrat', resp + ' — gérant·e de ' + p.enseigne, ctxContrat(p, resp))
+        .then(function () { $('mp-contrat-lu').checked = false; dire('mp-contrat-msg', '✓ Contrat signé et archivé au coffre — PayEnCash contresigne, contrôle le dossier et active ton point.', true); tout(); })
+        .catch(function (e) { dire('mp-contrat-msg', (e && e.message) || 'Signature impossible.'); tout(); });
+    });
+
+    /* ── LES DOCUMENTS EN VIGUEUR — (24/09, nuit) chacun s'ouvre dans le lecteur de l'inscription (PEC_INSCRIPTION.lecteur) : lu
+       jusqu'au bout, puis reconnu dans SA version (« une case cochée sur un texte jamais ouvert n'est pas un consentement », 23/09).
+       Une politique de confidentialité se lit, elle ne s'accepte pas (documentMots). Tant qu'un document attend, la vente est
+       fermée (techPeutVendre, refus « documents ») — c'est ce que dit l'en-tête du bloc. Clé : l'identifiant du compte. */
+    var lecteurDocs = (window.PEC_INSCRIPTION && PEC_INSCRIPTION.lecteur) ? PEC_INSCRIPTION.lecteur({ pre: 'mp', racine: document.body, espace: 'partenaire',
+      cle: function () { return (P.compteSession() || {}).identifiant; }, par: function () { return (P.compteSession() || {}).identifiant; },
+      retour: 'à Mon point', onChange: function () { rendreAcceptations(); } }) : null;
+    function rendreAcceptations() {
+      var c = P.compteSession(), z = $('mp-accept-liste');
+      if (!z) return;
+      if (!c) { z.innerHTML = '<span class="meta">Aucun compte en session.</span>'; return; }
+      var et = D.documentsEtat('partenaire', c.identifiant), attente = et.filter(function (e) { return !e.aJour; });
+      var tete = attente.length
+        ? '<div class="meta" style="color:var(--color-amber-text);font-weight:700">' + attente.length + ' document' + (attente.length > 1 ? 's' : '') + ' en vigueur à lire'
+          + (attente.some(function (e) { return !e.information; }) ? ' et accepter' : '') + ' — la vente reste fermée tant que ce n’est pas fait.</div>'
+        : '';
+      z.innerHTML = tete + (et.length ? et.map(function (e) {
+        var etat = e.aJour ? e.fait.toLowerCase() + ' le ' + new Date(e.accepteLe).toLocaleDateString('fr-FR')
+          : e.aRelire ? 'nouvelle version — à relire' : e.consulteLe ? 'lu — ' + (e.information ? 'à confirmer' : 'à accepter') : e.aFaire;
+        return '<div class="mp-doc"><span class="t"><b>' + esc(e.titre) + '</b><small>version ' + esc(e.version) + ' · ' + esc(etat) + '</small></span>'
+          + '<button type="button" class="pec-btn-secondary tap" data-mp-doc="' + esc(e.cle) + '">' + (e.aJour ? 'Relire' : 'Lire') + '</button></div>';
+      }).join('') : '<span class="meta">Aucun document au référentiel.</span>');
+    }
+    $('mp-accept-liste').addEventListener('click', function (ev) {
+      var b = ev.target.closest ? ev.target.closest('[data-mp-doc]') : null; if (!b) return;
+      var d = ((D.ref.documents || {}).partenaire || []).filter(function (x) { return x.cle === b.getAttribute('data-mp-doc'); })[0];
+      if (!lecteurDocs) { dire('mp-accept-msg', 'Le lecteur des documents n’est pas chargé — rouvre la page.'); return; }
+      lecteurDocs.ouvrir(d);
+    });
+
+    /* ── L'ASSISTANCE — la demande porte le POINT (client = pointId) : c'est ainsi que filPro ramène la réponse dans le fil ── */
+    $('mp-sav-go').addEventListener('click', function () {
+      var t = $('mp-sav-txt'), m = $('mp-sav-msg'), txt = String(t.value || '').trim(), pt = P.point();
+      if (txt.length < 10) { m.textContent = 'Dis-nous en un peu plus (au moins une phrase) — la hotline doit pouvoir agir.'; m.style.color = '#B3261E'; return; }
+      if (!window.PEC_BUS || !PEC_BUS.ouvrirDemande) { m.textContent = 'Hotline indisponible sur cet appareil.'; m.style.color = '#B3261E'; return; }
+      if (!pt) { m.textContent = 'Aucun point rattaché : la demande ne peut pas être rattachée à ton commerce.'; m.style.color = '#B3261E'; return; }
+      var dm = PEC_BUS.ouvrirDemande({ type: 'information', sujet: (pt.enseigne + ' — ' + txt).slice(0, 90), ref: pt.id, client: pt.id, canal: 'espace', espace: 'partenaire' });
+      var rR = (dm && dm.id) ? PEC_BUS.repondreDemande(dm.id, txt, pt.enseigne, 'moi') : { ok: false, motif: 'Demande non ouverte.' };
+      var passe = !!(dm && rR && rR.ok);
+      m.textContent = passe ? '✓ Demande ' + dm.id + ' transmise — la réponse arrivera dans tes notifications.' : ((rR && (rR.message || rR.motif)) || 'Demande non transmise.');
+      m.style.color = passe ? 'var(--color-primary-dark)' : '#B3261E';
+      if (passe) t.value = '';
+    });
+
+    /* ══ ÊTRE RAPPELÉ PAR PAYENCASH (24/09, soir — fondatrice : « organise ça, la hotline gère ») ═══════════════════════════════
+       Le geste crée une demande de rappel sur le bus (type 'rappel', canal 'app', portée par le point) ; la hotline la voit et la
+       traite. Le délai est celui du référentiel (ref.hotline.rappelDelaiMin) ; une demande encore à faire pour ce point se relit
+       sur le bus (PEC_BUS.appels) à chaque peinture — l'écran ne retient rien lui-même. */
+    function rappelEnAttente() {
+      var id = P.pointId(); if (!id || !window.PEC_BUS || !PEC_BUS.appels) return null;
+      return PEC_BUS.appels().filter(function (a) { return a.ref === id && a.type === 'rappel' && a.statut !== 'fait'; })[0] || null;
+    }
+    function rendreRappel() {
+      var z = $('mp-rappel'), et = $('mp-rappel-etat'), b = $('mp-rappel-ouvrir'), f = $('mp-rappel-form'), p = P.point(); if (!z) return;
+      z.hidden = !p; if (!p) return;
+      var a = rappelEnAttente(), delai = (D.ref && D.ref.hotline) ? D.ref.hotline.rappelDelaiMin : null;
+      et.hidden = !a;
+      if (!a) { if (f.hidden) b.hidden = false; return; }
+      b.hidden = true; f.hidden = true;
+      et.innerHTML = '<b>Demande enregistrée</b> : la hotline te rappelle ' + esc(delai != null ? 'sous ' + delai + ' min' : (a.quand || 'dès que possible')) + (a.tel ? ' au ' + esc(a.tel) : '')
+        + (a.motif ? ' — « ' + esc(a.motif) + ' »' : '') + '.' + (a.at ? '<br>Demandée à ' + esc(heure(a.at)) + '.' : '');
+    }
+    $('mp-rappel-ouvrir').addEventListener('click', function () { $('mp-rappel-form').hidden = false; this.hidden = true; $('mp-rappel-sujet').focus(); });
+    $('mp-rappel-go').addEventListener('click', function () {
+      var p = P.point(), e = $('mp-rappel-err'); e.hidden = true;
+      if (!p) { e.hidden = false; e.textContent = 'Aucun point rattaché : la demande ne peut pas être rattachée à ton commerce.'; return; }
+      if (!window.PEC_BUS || !PEC_BUS.demanderAppel) { e.hidden = false; e.textContent = 'Hotline indisponible sur cet appareil.'; return; }
+      if (!p.tel) { e.hidden = false; e.innerHTML = 'Aucun numéro sur ta fiche : <a href="#fiche">renseigne-le ci-dessus</a> pour être rappelé.'; return; }
+      var sujet = String($('mp-rappel-sujet').value || '').trim();
+      var a = PEC_BUS.demanderAppel({ type: 'rappel', canal: 'app', ref: P.pointId(), client: p.enseigne, tel: p.tel, motif: sujet || 'Demande depuis l’app partenaire', par: P.par() });
+      if (!a || !a.id) { e.hidden = false; e.textContent = 'La demande n’a pas été enregistrée — réessaie.'; return; }
+      $('mp-rappel-sujet').value = '';
+      rendreRappel();
+    });
+
+    $('mp-deconnexion').addEventListener('click', function () { P.deconnexion(); });
+
+    /* ══ LA ZONE, POSÉE PAR LE DISTRIBUTEUR NOMADE LUI-MÊME — le data-layer refuse qu'un commerce en ait une, et refuse une zone
+       vide : les motifs s'affichent tels quels. Les villes sont celles du réseau (ref.villesReseau) — aucune saisie libre. */
+    function rendreZone() {
+      var z = $('mp-zone'), p = P.point();
+      if (!z) return;
+      if (!p || !D.partenaireEstMobile(p)) { z.hidden = true; return; }
+      z.hidden = false;
+      var choisies = ((p.zone || {}).villes) || [];
+      var zv = $('mp-zone-villes');
+      zv.innerHTML = (D.zoneVillesRef() || []).map(function (v) {
+        var on = choisies.indexOf(v.nom) !== -1;
+        return '<button type="button" class="pec-pill tap" data-ville="' + esc(v.nom) + '" aria-pressed="' + on + '" style="border:1.5px solid ' + (on ? 'var(--color-primary)' : 'var(--color-sep)') + ';background:' + (on ? 'var(--color-mint)' : 'var(--color-surface)') + ';font-weight:700;cursor:pointer">' + esc(v.nom) + '</button>';
+      }).join('');
+      [].forEach.call(zv.querySelectorAll('[data-ville]'), function (b) {
+        b.addEventListener('click', function () {
+          var on = b.getAttribute('aria-pressed') === 'true';
+          b.setAttribute('aria-pressed', String(!on));
+          b.style.borderColor = !on ? 'var(--color-primary)' : 'var(--color-sep)';
+          b.style.background = !on ? 'var(--color-mint)' : 'var(--color-surface)';
+        });
+      });
+      var ry = $('mp-zone-rayon');
+      if (document.activeElement !== ry) ry.value = (p.zone && p.zone.rayonKm) ? p.zone.rayonKm : '';
+      $('mp-zone-etat').textContent = choisies.length ? 'Zone actuelle : ' + D.partenaireZoneLbl(p) : 'Aucune zone définie — tant qu\'elle est vide, aucune demande de rencontre ne peut t\'être proposée.';
+    }
+    $('mp-zone-ok').addEventListener('click', function () {
+      var p = P.point(); if (!p) return;
+      var villes = [].filter.call(document.querySelectorAll('#mp-zone-villes [data-ville]'), function (b) { return b.getAttribute('aria-pressed') === 'true'; }).map(function (b) { return b.getAttribute('data-ville'); });
+      var r = D.partenaireZoneSet(p.id, { villes: villes, rayonKm: $('mp-zone-rayon').value }, par());
+      var e = $('mp-zone-etat');
+      if (!r.ok) { e.textContent = r.motif; e.style.color = '#8E2A1E'; return; }
+      e.style.color = ''; rendreZone();
+    });
+
+    /* ══ LE TARIF DE DÉPLACEMENT DU DISTRIBUTEUR NOMADE (24/09, soir) — fixé par lui seul ; le data-layer tranche (partenaireTarifSet :
+       euros de 0 à 1 000, ou vide = « à convenir ») et son refus s'affiche tel quel ; ce que le client lit vient de partenaireTarifLbl.
+       Les champs ne sont repeints que si la main n'y est pas : le bus repeint la page à chaque geste. */
+    function rendreTarif() {
+      var z = $('mp-tarif'), p = P.point(); if (!z) return;
+      if (!p || !D.partenaireEstMobile(p) || !D.partenaireTarifSet) { z.hidden = true; return; }
+      z.hidden = false;
+      $('mp-tarif-actuel').textContent = 'Ce que ton client lit aujourd’hui : ' + D.partenaireTarifLbl(p) + '.';
+      if (!tarifSaisi) {
+        $('mp-tarif-montant').value = p.tarifDeplacement == null ? '' : String(p.tarifDeplacement).replace('.', ',');
+        $('mp-tarif-mention').value = p.tarifMention || '';
+      }
+    }
+    ['mp-tarif-montant', 'mp-tarif-mention'].forEach(function (id) { $(id).addEventListener('input', function () { tarifSaisi = true; $('mp-tarif-ok').hidden = true; $('mp-tarif-err').hidden = true; }); });
+    $('mp-tarif-go').addEventListener('click', function () {
+      var p = P.point(); if (!p) return;
+      var r = D.partenaireTarifSet(p.id, { tarif: $('mp-tarif-montant').value, mention: $('mp-tarif-mention').value }, par());
+      if (!r.ok) { dire('mp-tarif-err', r.motif); if (r.champ === 'tarif') $('mp-tarif-montant').focus(); return; }
+      tarifSaisi = false;
+      tout();
+      dire('mp-tarif-ok', '✓ Enregistré — ' + D.partenaireTarifLbl(D.partenaire(p.id)) + '.', true);
+    });
+
+    function tout() { rendreFiche(); rendreSepa(); rendreAvance(); rendrePart(); rendreDossier(); rendreContrat(); rendreAcceptations(); rendreZone(); rendreTarif(); rendreRappel(); }
+    tout();
+    // (écran non sourd) une pièce validée ou refusée par le manager, le point activé ou suspendu, une recharge constatée, une remise déposée, un rappel passé : l'écran se repeint
+    window.addEventListener('pec-bus', tout);
+    window.addEventListener('storage', tout);
+    // l'ancre (#dossier, #contrat, #sepa, #avance, #fiche) depuis « À faire » ou le fil : on y descend une fois la page peinte
+    if (location.hash) { var anc = document.getElementById(location.hash.slice(1)); if (anc) setTimeout(function () { anc.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 50); }
+  })();
+</script>
+</body>
+</html>

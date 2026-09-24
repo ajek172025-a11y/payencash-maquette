@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Trésorerie</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  TRÉSORERIE — route `/tresorerie`.
+  L'écran répond à une seule question : où est l'argent ? (23/09 — pivot grossiste) LE CIRCUIT EST CELUI D'UN
+  GROSSISTE : le commerce du réseau vend un bon au comptoir, nous l'avons acheté à la marque à ce moment-là ; le
+  commerce nous doit son prix d'achat jusqu'à l'arrêté (à prélever), puis la remise part à la banque (remis, en
+  attente d'échéance), puis le prélèvement est payé (encaissé) — ou revient impayé. De l'autre côté, nous devons
+  à la marque le prix de ses bons jusqu'à l'échéance de son offre, puis nous la payons par virement instantané.
+  Le commissionnaire nomade, lui, paie d'AVANCE : sa vente naît réglée, et nous tenons son dépôt de garantie.
+  Nous ne détenons jamais les fonds des clients : ce qui passe ici, c'est notre propre argent et nos dettes.
+  TOUT EST DÉRIVÉ (PEC_MGR.tresorerie → techVentes, techPenalites, techReglementsDus, techReglements, avanceSolde) :
+  aucun chiffre n'est posé, aucun versement ne se « constate » d'un clic.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `tech_sales`, `tech_dd_files`, `tech_direct_debits`, `tech_penalties`, `tech_payouts`, `tech_advance_movements` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Trésorerie</h1>
+        <p class="sub">Où est l’argent — ce que le réseau nous doit, ce que nous devons aux marques, ce qui est encaissé.</p>
+      </div>
+      <div class="pec-topbar-actions"><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="45-solution-paiements.html">Prélèvements &amp; paiements</a></div>
+    </div>
+
+    <p class="pec-section-label" style="margin:0 0 8px">Ce que le réseau nous doit — dans l’ordre du prélèvement</p>
+    <div class="pec-grid pec-grid--3" style="margin-bottom:16px">
+      <div class="pec-pocket">
+        <div class="step">ÉTAPE 1 — vendu, pas encore arrêté</div>
+        <h3>À prélever</h3>
+        <div class="val" id="tr-aprelever">0,00 €</div>
+        <p class="s" id="tr-aprelever-s">Bons vendus au comptoir par les commerces sédentaires, en attente de l’arrêté du soir — pénalités dues comprises.</p>
+      </div>
+      <div class="pec-pocket">
+        <div class="step">ÉTAPE 2 — remise déposée</div>
+        <h3>Remis à la banque</h3>
+        <div class="val" id="tr-remis">0,00 €</div>
+        <p class="s" id="tr-remis-s">Dans une remise de prélèvements : les fonds arrivent à l’échéance, sauf retour impayé.</p>
+      </div>
+      <div class="pec-pocket pec-pocket--payable">
+        <div class="step">ÉTAPE 3 — prélèvement payé</div>
+        <h3>Encaissé par prélèvement</h3>
+        <div class="val" id="tr-encaisse">0,00 €</div>
+        <p class="s" id="tr-encaisse-s">Retour bancaire « payé » : c’est de la trésorerie, jamais avant.</p>
+      </div>
+    </div>
+
+    <div class="pec-grid pec-grid--3" style="margin-bottom:16px">
+      <div class="pec-pocket pec-pocket--gap" id="tr-impayes-p">
+        <div class="step">ÉCART À TRAITER</div>
+        <h3>Impayés</h3>
+        <div class="val" id="tr-impayes">0,00 €</div>
+        <p class="s" id="tr-impayes-s">Prélèvements revenus impayés — à représenter depuis Prélèvements &amp; paiements ; la pénalité du contrat part dans la remise suivante.</p>
+      </div>
+      <div class="pec-pocket">
+        <div class="step">COMMISSIONNAIRES NOMADES</div>
+        <h3>Payé d’avance</h3>
+        <div class="val" id="tr-avance">0,00 €</div>
+        <p class="s" id="tr-avance-s">Leurs ventes naissent réglées : l’avance disponible et les dépôts de garantie que nous tenons — restituables, jamais une sanction.</p>
+      </div>
+      <div class="pec-pocket">
+        <div class="step">CE QUE LA BANQUE NOUS PREND</div>
+        <h3>Frais bancaires</h3>
+        <div class="val" id="tr-frais">0,00 €</div>
+        <p class="s" id="tr-frais-s">Remises déposées et virements émis, au tarif de Configuration — portés par notre marge.</p>
+      </div>
+    </div>
+
+    <p class="pec-section-label" style="margin:0 0 8px">Ce que nous devons aux marques</p>
+    <div class="pec-grid pec-grid--3" style="margin-bottom:16px">
+      <div class="pec-pocket">
+        <div class="step">VENDU, PAS ENCORE ARRÊTÉ</div>
+        <h3>Pas encore dû</h3>
+        <div class="val" id="tr-nonarrete">0,00 €</div>
+        <p class="s" id="tr-nonarrete-s">L’échéance de la marque se pose à l’arrêté : avant, rien ne court.</p>
+      </div>
+      <div class="pec-pocket pec-pocket--gap" id="tr-du-p">
+        <div class="step">ÉCHÉANCES DE L’OFFRE</div>
+        <h3>Dû aux marques</h3>
+        <div class="val" id="tr-du">0,00 €</div>
+        <p class="s" id="tr-du-s">Par échéance ; ce qui est échu se paie maintenant, par virement instantané, jamais sans RIB.</p>
+      </div>
+      <div class="pec-pocket pec-pocket--payable">
+        <div class="step">VIREMENTS ÉMIS</div>
+        <h3>Payé aux marques</h3>
+        <div class="val" id="tr-paye">0,00 €</div>
+        <p class="s" id="tr-paye-s">Ce que nous avons déjà viré.</p>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Ces poches ne s’additionnent pas en « trésorerie ».</b> Seul l’encaissé par prélèvement (retour bancaire « payé ») et le paiement d’avance des commissionnaires sont sur le compte ; le reste est une créance sur le réseau ou une dette envers une marque. <b>Nous ne détenons jamais les fonds des clients</b> : le client achète son bon au comptoir, chez le commerce, qui l’encaisse pour son propre compte.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-landmark"/></svg>
+      <div><b>Le retour de la banque fait foi.</b> Tant qu’une remise n’a pas son retour « payé », rien n’est encaissé — et en offre « 24 heures », la marque est payée avant que le prélèvement ne soit définitif : c’est exactement le risque que borne le plafond d’encours d’un commerce (Configuration).</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !window.PEC_MGR || !PEC_MGR.tresorerie) return;
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    function maj() {
+      var P = PEC_MGR.tresorerie(); if (!P) return;
+      var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+      set('tr-aprelever', D.eur(P.aPrelever));
+      set('tr-aprelever-s', P.nAPrelever ? pl(P.nAPrelever, 'bon') + ' vendu' + (P.nAPrelever > 1 ? 's' : '') + ' en attente de l’arrêté' + (P.penalitesDues ? ' · dont ' + D.eur(P.penalitesDues) + ' de pénalités dues' : '') + '.' : 'Bons vendus au comptoir par les commerces sédentaires, en attente de l’arrêté du soir — pénalités dues comprises.');
+      set('tr-remis', D.eur(P.remis));
+      set('tr-remis-s', P.nRemis ? pl(P.nRemis, 'bon') + ' dans une remise déposée — les fonds arrivent à l’échéance, sauf retour impayé.' : 'Dans une remise de prélèvements : les fonds arrivent à l’échéance, sauf retour impayé.');
+      set('tr-encaisse', D.eur(P.encaisseSepa));
+      set('tr-encaisse-s', P.encaisseSepa ? 'Retours bancaires « payé » cumulés — c’est de la trésorerie.' : 'Retour bancaire « payé » : c’est de la trésorerie, jamais avant.');
+      set('tr-impayes', D.eur(P.impayes));
+      set('tr-impayes-s', P.nImpayes ? pl(P.nImpayes, 'prélèvement') + ' revenu' + (P.nImpayes > 1 ? 's' : '') + ' impayé' + (P.nImpayes > 1 ? 's' : '') + ' — à représenter depuis Prélèvements & paiements ; la pénalité du contrat part dans la remise suivante.' : 'Aucun impayé en cours.');
+      document.getElementById('tr-impayes-p').classList.toggle('pec-pocket--gap', P.nImpayes > 0);
+      set('tr-avance', D.eur(P.avancesDisponibles + P.garanties));
+      set('tr-avance-s', P.nCommissionnaires ? pl(P.nCommissionnaires, 'commissionnaire') + ' · ' + D.eur(P.avancesDisponibles) + ' d’avance disponible · ' + D.eur(P.garanties) + ' de dépôts de garantie tenus (restituables, jamais une sanction) · ' + D.eur(P.encaisseAvance) + ' de bons payés d’avance.' : 'Aucun commissionnaire nomade — leurs ventes naissent réglées : l’avance disponible et les dépôts de garantie que nous tenons.');
+      set('tr-frais', D.eur(P.frais));
+      set('tr-nonarrete', D.eur(P.nonArrete));
+      set('tr-nonarrete-s', P.nNonArrete ? pl(P.nNonArrete, 'bon') + ' vendu' + (P.nNonArrete > 1 ? 's' : '') + ' depuis le dernier arrêté — l’échéance de la marque se posera à l’arrêté.' : 'L’échéance de la marque se pose à l’arrêté : avant, rien ne court.');
+      set('tr-du', D.eur(P.duMarques));
+      set('tr-du-s', P.nEcheances ? pl(P.nEcheances, 'échéance') + (P.nEchues ? ' · ' + P.nEchues + ' échue' + (P.nEchues > 1 ? 's' : '') + ' — à payer maintenant' : ' · aucune échue') + '.' : 'Par échéance ; ce qui est échu se paie maintenant, par virement instantané, jamais sans RIB.');
+      document.getElementById('tr-du-p').classList.toggle('pec-pocket--gap', P.nEchues > 0);
+      set('tr-paye', D.eur(P.payeMarques));
+      set('tr-paye-s', P.nReglements ? pl(P.nReglements, 'virement') + ' instantané' + (P.nReglements > 1 ? 's' : '') + ' émis.' : 'Ce que nous avons déjà viré.');
+    }
+    maj();
+    window.addEventListener('pec-bus', maj);
+    window.addEventListener('storage', maj);
+  })();
+</script>
+
+</body>
+</html>

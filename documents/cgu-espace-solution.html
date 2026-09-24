@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CGU de l'espace PayEnCash Solution · AJEK</title>
+<style>
+  :root{
+    --ajek:#10A06A; --ajek-d:#0C7F54; --ink:#1a1f1c; --muted:#5b675f;
+    --line:#d9e5dd; --bg:#f4f7f5; --card:#ffffff; --chip:#e8f3ec;
+    --amber:#E39A2E; --amberink:#8a5a00; --amberbg:#FDF1E7;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --ink:#e8efe9; --muted:#9fb0a6; --line:#254034; --bg:#0d1512; --card:#121d18; --chip:#173026; --amberink:#e8c37a; --amberbg:#2a2410; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+  .sheet{max-width:860px;margin:28px auto;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;overflow:hidden;box-shadow:0 6px 30px rgba(0,0,0,.06)}
+  header{background:linear-gradient(115deg,#0F2A24 0%,var(--ajek-d) 55%,var(--ajek) 100%);color:#fff;padding:26px 44px}
+  .brand{font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.9}
+  header h1{margin:6px 0 2px;font-size:22px;line-height:1.25}
+  .doc-id{display:inline-block;margin-top:10px;background:rgba(255,255,255,.18);
+    padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;letter-spacing:.04em}
+  .body{padding:26px 44px 44px}
+  .note{background:var(--chip);border:1px solid var(--line);border-left:3px solid var(--ajek);
+    border-radius:8px;padding:12px 14px;font-size:13.5px;color:var(--muted);margin:0 0 16px}
+  .warn{background:var(--amberbg);border:1px solid var(--amber);border-left:4px solid var(--amber);
+    border-radius:8px;padding:12px 14px;font-size:13px;color:var(--amberink);margin:0 0 20px}
+  h2{font-size:15.5px;margin:26px 0 8px;color:var(--ajek-d);border-bottom:2px solid var(--line);padding-bottom:6px}
+  h2 .art{font-weight:400;color:var(--muted);font-size:12px}
+  @media (prefers-color-scheme: dark){ h2{color:#5fd39a} }
+  table{width:100%;border-collapse:collapse;margin:6px 0;font-size:13.5px}
+  th,td{text-align:left;padding:7px 10px;border:1px solid var(--line);vertical-align:top}
+  th{background:var(--chip);font-weight:600;color:var(--ink)}
+  ul,ol{margin:6px 0 6px 2px;padding-left:20px} li{margin:5px 0} p{margin:7px 0}
+  .fill{color:var(--muted);font-style:italic}
+  .cl{margin:6px 0}
+  .cl b{color:var(--ajek-d)} @media (prefers-color-scheme: dark){ .cl b{color:#5fd39a} }
+  .toc{columns:2;column-gap:26px;font-size:13px;margin:6px 0 4px;padding:12px 16px;background:var(--chip);border:1px solid var(--line);border-radius:8px}
+  .toc a{display:block;color:var(--ink);text-decoration:none;margin:3px 0;break-inside:avoid}
+  .toc a:hover{color:var(--ajek);text-decoration:underline}
+  .foot{margin-top:26px;padding-top:14px;border-top:1px dashed var(--line);font-size:12px;color:var(--muted)}
+  .toolbar{max-width:860px;margin:16px auto 0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;padding:0 8px}
+  .btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:7px 14px;font-size:13px;cursor:pointer;text-decoration:none}
+  .btn.p{background:var(--ajek);color:#fff;border-color:var(--ajek)}
+  code{background:var(--chip);padding:1px 5px;border-radius:4px;font-size:12px}
+  @media print{ body{background:#fff} .toolbar{display:none} .sheet{box-shadow:none;border:none;margin:0} h2{break-after:avoid} .cl{break-inside:avoid} }
+</style>
+<style>
+  .sev{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.04em}
+  .s1{background:#FDECEC;color:#B3261E}.s2{background:#FDF1E7;color:#8a5a00}.s3{background:#E8F3EC;color:#0C7F54}
+  .ok{color:#0C7F54;font-weight:700}.ko{color:#B3261E;font-weight:700}.pa{color:#8a5a00;font-weight:700}
+  .toc a{display:block;padding:3px 0;color:var(--ajek-d);text-decoration:none}
+  h3{font-size:14px;margin:16px 0 6px}
+  .ref{font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="toolbar"><a class="btn" href="../index.html">← payencash.fr</a><a class="btn" href="conditions-bons-de-marque.html">Annexe 1 · Conditions des bons</a><a class="btn" href="conditions-logiciel-solution.html">Annexe 2 · Logiciel</a><a class="btn" href="charte-communication-solution.html">Annexe 3 · Communication</a><button class="btn p" onclick="window.print()">Imprimer / PDF</button></div>
+<div class="sheet">
+<header>
+  <div class="brand">AJEK · marque PayEnCash</div>
+  <h1>Conditions générales d'utilisation<br><span style="font-weight:400;font-size:16px">de l'espace PayEnCash Solution — réservé aux marques partenaires</span></h1>
+  <span class="doc-id">Version 2026-09-24 · en vigueur</span>
+</header>
+<div class="body">
+<!-- (24/09 — relecture juridique) VERSION 2026-09-24 : dossier KYB sans L561-45-1 (RBE au titre de la prévention de la fraude),
+     vidéo du dirigeant regardée puis supprimée, bénéficiaires effectifs déclarés, date et lieu de naissance motivés par la
+     prévention de la fraude ; art. 8.4 facturation (autofacturation, BUU/BUM) et 8.5 facture électronique (Odoo) ; abonnement
+     réglé PAR CARTE, jamais par prélèvement ; art. 11 : bases 6.1.b / 6.1.f / 6.1.c comptable, durées L110-4. -->
+<!-- (23/09, soir) LE TEXTE EST RÉÉCRIT SUR LES DÉCISIONS DU JOUR : AJEK est GROSSISTE (elle achète les bons de la
+     marque à la vente, avec une remise figée, et paie la marque à l'échéance de l'offre choisie) ; le contrat-cadre
+     est signé par le DIRIGEANT une fois sa pièce d'identité contrôlée, et il n'est pas une pièce du dossier KYB ;
+     chaque document se lit jusqu'au bout avant d'être reconnu « lu et accepté » ; le compte reste INACTIF tant que
+     le dossier n'est pas contrôlé ; le « bon proposé » remplace la « demande de paiement ». Les nombres cités le
+     sont « à la date de la présente version » : la source vive est `ref.tech` du data-layer, et l'Espace fait foi. -->
+
+<div class="note"><b>À qui s'adressent ces conditions.</b> Elles régissent l'usage de l'espace en ligne mis à disposition des <b>marques partenaires</b> — les entreprises qui émettent des bons d'achat utilisables sur leur propre site et dont AJEK <b>achète</b> les bons pour les vendre à travers son réseau de commerces. Elles ne régissent <b>pas</b> la relation commerciale elle-même : celle-ci est réglée par le <b>contrat-cadre d’achat et de distribution des bons d’achat</b>, signé séparément par le dirigeant de la Marque, qui prévaut en cas de contradiction.</div>
+
+<h2>Article 1 — Objet, lecture et acceptation</h2>
+<p><b>1.1</b> Les présentes conditions régissent l'accès et l'usage de l'espace PayEnCash Solution (l'« Espace ») exploité par AJEK, société par actions simplifiée, dont le siège figure aux mentions légales.</p>
+<p><b>1.2</b> Chaque document en vigueur — les présentes conditions, les conditions des bons de marque (annexe 1), les conditions du logiciel d'édition des bons (annexe 2), la charte de communication (annexe 3) et la politique de confidentialité — est d'abord <b>consulté dans l'Espace, jusqu'à sa fin</b>, puis reconnu « <b>lu et accepté</b> » par un geste exprès, <b>horodaté</b>. L'acceptation porte sur une <b>version datée</b> : l'Espace conserve, pour chaque acceptation, le document, sa version, la date et l'identifiant du compte. Lorsqu'une nouvelle version entre en vigueur, l'Espace la présente à nouveau à la lecture et en redemande l'acceptation.</p>
+<p><b>1.3</b> Tant qu'un document en vigueur n'est pas lu et accepté, ou que le contrat-cadre n'est pas signé, la Marque <b>ne peut pas travailler avec AJEK</b> : aucun bon n'est édité, aucune clé d'API n'est générée, aucun bon n'est proposé à un client. L'Espace dit ce qui manque et mène à l'endroit où le régler.</p>
+<p><b>1.4</b> L'Espace est réservé aux <b>professionnels</b> agissant pour les besoins de leur activité. Il n'est pas accessible aux consommateurs.</p>
+
+<h2>Article 2 — Ce que l'Espace permet, et ce qu'il ne permet pas</h2>
+<p><b>2.1</b> L'Espace permet à la Marque de : déclarer son dirigeant et déposer son dossier de vérification ; déclarer l'usage exclusif de ses bons ; lire et signer le contrat-cadre ; choisir son offre de paiement ; déposer le relevé d'identité bancaire de la société, qui reçoit ses règlements ; voir le réseau de commerces qui vend ses bons ; suivre les bons édités, vendus et utilisés, les règlements dus et les règlements reçus ; <b>proposer un bon d'achat</b> d'un montant précis à un client (article 6) ; publier des articles et diffuser son lien de vente ; gérer sa formule logicielle, son site web, ses clés d'API et ses comptes de réseaux sociaux.</p>
+<p><b>2.2</b> L'Espace <b>ne permet pas</b>, et AJEK ne fournit à aucun moment : de service de paiement au sens de l'article L314-1 du code monétaire et financier ; d'émission de monnaie électronique au sens de l'article L315-1 ; de détention, de transfert ou de maniement de fonds pour le compte de la Marque. AJEK n'encaisse rien pour le compte de la Marque et ne demande aucun paiement à ses clients : elle <b>achète</b> les bons de la Marque pour son propre compte et les <b>revend</b> à son réseau.</p>
+
+<h2>Article 3 — Accès, identifiants et clés d'API</h2>
+<p><b>3.1</b> L'accès est nominatif. La Marque est responsable de la confidentialité de ses identifiants et de tout usage fait sous son compte.</p>
+<p><b>3.2</b> La <b>clé secrète</b> d'API est affichée <b>une seule fois</b>, à sa génération. AJEK n'en conserve que l'empreinte cryptographique : elle ne peut être ni retrouvée ni redonnée. Perdue, elle se révoque et se régénère. Une seule clé est vivante à la fois.</p>
+<p><b>3.3</b> La Marque signale sans délai toute compromission. AJEK peut suspendre une clé ou un accès en cas de suspicion d'usage frauduleux, en informant la Marque.</p>
+
+<h2>Article 4 — Le dirigeant, le dossier de vérification (KYB) et l'activation du compte</h2>
+<p><b>4.1</b> À l'inscription, la Marque déclare son <b>dirigeant</b> — prénom, nom, date et lieu de naissance (demandés au titre de la prévention de la fraude et de la sécurité de la signature) et qualité telle qu'elle figure sur l'extrait Kbis (gérant·e, président·e, directeur ou directrice général·e, entrepreneur individuel, autre représentant légal). Elle déclare aussi ses <b>bénéficiaires effectifs</b> : une fiche par personne détenant plus de 25 %, avec attestation. C'est lui qui signe le contrat-cadre ; le signataire n'est jamais retapé, il est celui qui a été déclaré. Un changement de dirigeant se déclare dans l'Espace ; le contrat garde le nom de celui qui l'a signé.</p>
+<p><b>4.2</b> Le dossier de vérification comprend : l'extrait Kbis de moins de trois mois, la <b>pièce d'identité du dirigeant</b> (carte nationale d'identité, passeport ou permis de conduire français), la <b>vidéo de vérification</b> du dirigeant — regardée par une personne habilitée puis supprimée ; elle ne sert à aucune comparaison automatique (article 11) —, le relevé d'identité bancaire au nom de la société et l'extrait du registre des bénéficiaires effectifs de moins de douze mois, cohérent avec les bénéficiaires déclarés, demandé au titre de notre politique de prévention de la fraude. AJEK n'est pas assujettie à la lutte contre le blanchiment (art. L561-2 du code monétaire et financier) : ces vérifications sont les siennes. Le contrat-cadre <b>n'est pas une pièce de ce dossier</b> : il se lit et se signe à part (article 5).</p>
+<p><b>4.3</b> Le compte naît <b>inactif</b>. Il le reste tant que le dossier n'est pas contrôlé par AJEK et que la déclaration « réseau limité » (article 7) n'est pas validée ; la Marque peut, dans l'intervalle, lire et accepter les documents et préparer son espace, mais aucun bon n'est édité. L'activation est un geste d'AJEK, notifié à la Marque ; une suspension est motivée, et la Marque en lit la raison.</p>
+<p><b>4.4</b> Les pièces à durée de vie limitée (Kbis, registre des bénéficiaires effectifs) sont <b>redemandées à leur péremption</b>. Une pièce périmée suspend l'édition de nouveaux bons ; elle n'affecte pas les règlements dus.</p>
+<p><b>4.5</b> La Marque informe AJEK, sous quinze jours, de tout changement affectant son identité légale, son dirigeant, ses bénéficiaires effectifs ou son compte bancaire.</p>
+
+<h2>Article 5 — Le contrat-cadre, signé par le dirigeant</h2>
+<p><b>5.1</b> Le contrat-cadre d’achat et de distribution des bons d’achat est généré par l'Espace à partir des mentions du dossier et de l'offre de paiement choisie. Il est <b>lu dans l'Espace jusqu'à sa fin</b>, puis <b>signé par le dirigeant déclaré</b>, en son nom et en sa qualité, <b>une fois sa pièce d'identité contrôlée</b> par AJEK. Sans dirigeant déclaré, ou sans pièce contrôlée, la signature n'est pas proposée.</p>
+<p><b>5.2</b> La signature est horodatée et enregistre le nom et la qualité du signataire. AJEK contresigne ; l'exemplaire signé est conservé dans l'Espace et reste consultable par la Marque.</p>
+<p><b>5.3</b> Le contrat fige la remise de l'offre de paiement choisie au jour de sa signature ; un changement d'offre vaut pour les ventes à venir et fait l'objet d'un avenant (article 8).</p>
+
+<h2>Article 6 — Le bon proposé à un client</h2>
+<p><b>6.1</b> La Marque peut <b>proposer</b> à un client un bon d'achat d'un montant précis — celui de sa commande, de son devis, de sa référence. L'Espace fabrique une page que le client ouvre, avec un ticket et son flashcode. Cette page n'est pas une page de règlement : AJEK n'y demande aucun paiement, n'y encaisse rien et ne tient aucune dette.</p>
+<p><b>6.2</b> Le client achète le bon au comptoir d'un commerce du réseau, par les moyens que ce commerce accepte ; c'est à cet instant qu'AJEK achète le bon à la Marque. Le client l'utilise ensuite <b>chez la Marque, et chez elle seule</b>, depuis l'application « Mes bons », avec son compte : l'application est <b>obligatoire</b> pour utiliser un bon de marque, et chaque usage est retraçable. La commande est « <b>couverte</b> » lorsque les bons utilisés y suffisent ; la Marque en est informée.</p>
+<p><b>6.3</b> Un bon proposé a une durée de validité affichée sur sa page (trente jours à la date de la présente version) ; passé ce délai, ou lorsque la Marque l'annule, la page le dit et ferme les gestes. Une vente s'annule au comptoir, dans le délai prévu par l'application, si le bon n'a pas servi.</p>
+
+<h2>Article 7 — La déclaration « réseau limité »</h2>
+<p><b>7.1</b> La Marque déclare, de façon horodatée et conservée, que ses bons sont utilisables <b>exclusivement sur son propre site</b>. Cette déclaration est la pièce qui fonde l'application de l'exclusion prévue à l'<b>article L521-3 I 1°</b> du code monétaire et financier ; AJEK la statue (validée, ou à corriger avec un motif), et une correction n'efface pas la précédente.</p>
+<p><b>7.2</b> Toute modification du périmètre d'acceptation des bons doit être déclarée <b>avant</b> d'être mise en œuvre. Une acceptation par un tiers ferait tomber l'exclusion et emporterait la suspension immédiate de la distribution.</p>
+<p><b>7.3</b> L'Espace affiche la valeur des bons de la Marque vendus sur les douze derniers mois et prévient à l'approche du seuil de <b>1 000 000 €</b> ; AJEK communique cette valeur à la Marque chaque mois. Il appartient à la Marque, en sa qualité d'<b>émetteur</b>, d'effectuer la déclaration prévue à l'article <b>L521-3 II</b> dès que cette valeur dépasse un million d'euros sur douze mois glissants, et de l'actualiser chaque année ; AJEK l'accompagne dans cette démarche. Au-delà du seuil, l'édition de bons est suspendue tant que la déclaration n'est pas faite.</p>
+
+<h2>Article 8 — Prix d'achat, offre de paiement et règlements</h2>
+<p><b>8.1</b> AJEK achète chaque bon à sa valeur faciale diminuée de la <b>remise</b> de l'offre de paiement choisie par la Marque ; la remise est <b>figée à la vente</b>. La Marque choisit librement son offre parmi celles proposées dans l'Espace ; le délai et la remise de chaque offre figurent à l'écran avant le choix. À la date de la présente version : « Paiement sous 24 heures » (remise 5,5 %), « Paiement sous 7 jours ouvrés » (4,5 %), « Paiement sous 10 jours » (3,5 %) — l'Espace fait foi.</p>
+<p><b>8.2</b> Un changement d'offre vaut pour les <b>ventes à venir</b>. Les bons déjà vendus conservent la remise qu'ils portaient : une évolution tarifaire ne rejoue jamais une vente passée.</p>
+<p><b>8.3</b> AJEK règle la Marque par virement depuis sa banque, au délai de l'offre, sur le compte dont elle a déposé le relevé d'identité bancaire. Aucun règlement ne peut être émis sans relevé déposé et vérifié. Le délai court à compter de l'arrêté quotidien, dont l'heure figure dans l'Espace. AJEK supporte seule le risque d'impayé de son réseau : la créance de la Marque lui est due indépendamment du recouvrement.</p>
+<p><b>8.4</b> <b>Facturation.</b> La Marque donne mandat à AJEK d'établir en son nom et pour son compte les factures de ses ventes de bons à AJEK (art. 289, I-2 du CGI ; art. 242 nonies A de l'annexe II au CGI). Le régime suit la qualification du bon (art. 256 ter du CGI ; annexe 1, article 6), relevée à la signature du contrat-cadre : bon à usage unique, facture avec TVA au taux des biens, la remise portée comme réduction de prix (art. L441-9 du code de commerce) ; bon à usages multiples, document hors champ de TVA, et facture de la prestation de distribution émise par AJEK à la Marque, avec TVA à 20 %, même compensée avec le règlement du bon. Chaque facture établie par AJEK porte la mention « Autofacturation », est mise à disposition dans l'Espace et vaut acceptée à défaut de contestation écrite dans le délai fixé au contrat-cadre. La Marque reste seule redevable de sa TVA ; le mandat est révocable par écrit.</p>
+<p><b>8.5</b> <b>Facture électronique.</b> Les factures sont émises et reçues sous forme électronique par la plateforme agréée qu'utilise AJEK (Odoo, immatriculée le 15/04/2026) — réception obligatoire depuis le 1<sup>er</sup> septembre 2026, émission obligatoire au 1<sup>er</sup> septembre 2027 pour les PME (art. 289 bis du CGI).</p>
+
+<h2>Article 9 — Le logiciel d'édition des bons, vendu à part</h2>
+<p><b>9.1</b> L'abonnement au logiciel est une prestation <b>distincte</b> de l'achat des bons. Il est facturé pour lui-même, soumis à TVA, et ne conditionne ni le prix d'achat des bons, ni le délai de règlement.</p>
+<p><b>9.2</b> Trois formules, selon le nombre de bons édités par mois — un bon s'édite à chaque vente, au montant que le client demande. À la date de la présente version : <b>Offert</b>, 10 bons par mois sans abonnement ; <b>50 bons</b>, 5,90 € HT par mois ; <b>Illimité*</b>, 19,00 € HT par mois, avec le site web de la Marque sur son nom de domaine. <b>* Sans limite de nombre</b>, dans la limite légale de 1 000 000 € de bons vendus sur douze mois glissants (article 7.3). Les formules, leurs prix et leurs quotas sont détaillés dans les conditions du logiciel (annexe 2), lues avant le choix ; les formules payantes se règlent mensuellement <b>par carte bancaire</b>, enregistrée dans l'Espace auprès du prestataire de paiement de la plateforme de facturation d'AJEK — jamais par prélèvement.</p>
+<p><b>9.3</b> La Marque peut changer de formule ou y renoncer à tout moment, sans préavis ni pénalité.</p>
+
+<h2>Article 10 — Disponibilité, maintenance et responsabilité</h2>
+<p><b>10.1</b> AJEK est tenue d'une <b>obligation de moyens</b> sur la disponibilité de l'Espace. Les interruptions programmées sont annoncées ; les interruptions d'urgence sont signalées dès que possible.</p>
+<p><b>10.2</b> AJEK n'est pas responsable des conséquences d'une information erronée fournie par la Marque, d'un usage de ses identifiants par un tiers du fait de la Marque, ni d'une indisponibilité du site de la Marque.</p>
+<p><b>10.3</b> Aucune stipulation n'exclut la responsabilité d'AJEK en cas de faute lourde ou dolosive, ni ne limite les droits que la Marque tient de dispositions d'ordre public.</p>
+
+<h2>Article 11 — Données personnelles</h2>
+<p><b>11.1</b> Responsable de traitement : AJEK. Les données traitées le sont pour l'exécution du contrat (art. 6.1.b du RGPD) et, pour la prévention de la fraude, au titre de l'intérêt légitime d'AJEK (art. 6.1.f) ; l'obligation légale (art. 6.1.c) ne vaut que pour la comptabilité et le fiscal. AJEK n'est pas assujettie à la lutte contre le blanchiment (art. L561-2 du code monétaire et financier) : ses vérifications relèvent de la prévention de la fraude. La vidéo de vérification est regardée par une personne habilitée puis supprimée ; elle ne sert à aucune comparaison automatique.</p>
+<p><b>11.2</b> Conservation : dossier de vérification, la durée de la relation puis cinq ans (art. <b>L110-4</b> du code de commerce) ; copie de la pièce d'identité, six ans au plus, filigranée (référentiel CNIL) ; vidéo, supprimée après contrôle ; pièces comptables et factures, dix ans (art. L123-22 du code de commerce) ; journal des opérations, la durée de la relation puis cinq ans ; compte inactif, supprimé après deux ans sans connexion.</p>
+<p><b>11.3</b> Les droits d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité s'exercent depuis l'Espace ou par écrit. La politique de confidentialité en vigueur complète le présent article.</p>
+
+<h2>Article 12 — Suspension et fin d'accès</h2>
+<p><b>12.1</b> AJEK peut suspendre l'accès en cas de manquement aux présentes conditions ou à la charte de communication, de dossier devenu incomplet, ou de soupçon d'usage frauduleux — après mise en demeure restée sans effet, sauf urgence caractérisée. La suspension est motivée dans l'Espace.</p>
+<p><b>12.2</b> La fin de l'accès n'éteint <b>aucune</b> obligation née avant elle : les règlements dus restent dus, et la Marque demeure tenue d'honorer les bons déjà vendus jusqu'à leur terme de validité.</p>
+
+<h2>Article 13 — Modification des conditions</h2>
+<p>Toute nouvelle version est notifiée dans l'Espace, présentée à la lecture et soumise à acceptation. La version applicable à une opération est celle acceptée <b>au jour de cette opération</b>.</p>
+
+<h2>Article 14 — Droit applicable et différends</h2>
+<p>Les présentes conditions sont soumises au droit français. Avant toute action, la partie la plus diligente notifie son grief par écrit ; les parties disposent de trente jours pour rechercher une solution amiable. À défaut, le litige est porté devant le tribunal de commerce du siège d'AJEK.</p>
+
+<div class="foot"><b>Version 2026-09-24.</b> Document de travail rédigé pour la maquette PayEnCash Solution — <b>à faire relire par un avocat avant tout emploi réel</b>. Les nombres cités « à la date de la présente version » (offres de paiement, formules, validité d'un bon proposé, seuil de déclaration) sont lus dans l'Espace, qui fait foi. Les mentions légales, le siège et l'identité de la société figurent aux mentions légales du site.</div>
+</div></div></body></html>

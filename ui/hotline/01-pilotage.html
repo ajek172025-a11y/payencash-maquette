@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Hotline — Pilotage des appels</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  HOTLINE — l'espace de l'équipe support déléguée. La SUPERVISEURE voit tout et réassigne ;
+  chaque conseiller voit sa file et la prend. Seules les réclamations montent au manager.
+  (23/09 — le grossiste) Trois publics, et seulement eux : les MARQUES de PayEnCash Solution, les
+  PARTENAIRES du réseau (commerces sédentaires et distributeurs nomades) et les UTILISATEURS de l'app
+  Mes bons. Couvre : les appels (entrants 0 805 journalisés ici, rappels), les dossiers d'identité
+  à contrôler (KYB d'une marque ou d'un partenaire, KYC d'un utilisateur), les vérifications
+  d'identité de Mes bons, les demandes (information ouverte depuis un espace, réclamation) et les
+  questionnaires de satisfaction.
+
+  TABLES : `hotline_calls` (la file et son issue), `support_conversations` + `support_messages`
+  (les demandes et leur fil), `satisfaction_requests` (les questionnaires envoyés) et
+  `satisfaction_responses` (les notes reçues), `reclamations` (ouverte automatiquement sous le
+  seuil), `hotline_shifts` (les créneaux du planning), `kyc_checks` (les vérifications
+  d'identité), `manager_users` (l'équipe et les comptes qui signent).
+
+  IDENTITÉ : un geste est signé par le membre d'équipe rattaché au compte connecté ; à défaut,
+  par l'identifiant de la session manager ; à défaut, par l'hôte en poste du planning. Sans
+  session : lecture seule, tous les gestes sont désactivés.
+  DONNÉES : tout vient du bus (appels, demandes, vérifications), du coffre (dossiers) et du référentiel
+  partagé (équipe, planning, délais, seuils) — la page n'écrit aucun état de son côté.
+-->
+<style>
+  .pec-btn[disabled], button[disabled] { opacity: .45; cursor: not-allowed; }
+  .hl-sel { border: 1.5px solid var(--color-sep); border-radius: 8px; padding: 5px 8px; font: inherit; font-size: 11.5px; background: var(--color-card); color: var(--color-ink); }
+  .hl-txt { width: 100%; box-sizing: border-box; border: 1.5px solid var(--color-sep); border-radius: 10px; padding: 8px 10px; font: inherit; font-size: 12px; background: var(--color-card); color: var(--color-ink); }
+  .hl-forme { margin-top: 8px; border-radius: 10px; background: var(--color-bg); padding: 10px; display: grid; gap: 6px; }
+  .hl-puce { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 5px 11px; font-size: 10.5px; font-weight: 700; }
+  .hl-retard { color: var(--color-danger); font-weight: 800; }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<div class="pec-admin">
+  <aside class="pec-aside">
+    <div style="padding:18px 16px 8px;display:flex;align-items:center;gap:9px"><span class="pec-marque--sombre" data-pec-marque="hotline"></span><!-- (21/09) le P générique et le nom écrit --></div>
+    <nav style="padding:10px 8px">
+      <a class="pec-nav-item is-active" href="#appels-panel">Pilotage des appels</a>
+      <a class="pec-nav-item" href="#kyb-panel">Dossiers à contrôler <span id="nav-kyb-n" style="opacity:.7;font-size:10px"></span></a>
+      <a class="pec-nav-item" href="#dem-panel">Demandes <span id="nav-dem-n" style="opacity:.7;font-size:10px"></span></a>
+      <a class="pec-nav-item" href="#sat-panel">Satisfaction <span id="nav-sat-n" style="opacity:.7;font-size:10px"></span></a>
+      <a class="pec-nav-item" href="../manager/27-assistance-reclamations.html">Réclamations (manager) ↗</a>
+    </nav>
+    <div style="padding:12px 16px;border-top:1px solid var(--color-sep)">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-mint-ink);margin-bottom:6px">Connecté·e</div>
+      <div id="session-hote" style="font-size:12.5px;font-weight:800;color:var(--color-card)">—</div>
+      <div id="session-id" style="font-size:10.5px;color:var(--color-mint-soft);margin-top:1px">—</div>
+      <a id="session-action" class="pec-aside-logout" href="00-connexion.html" style="display:inline-block;margin-top:8px;font-size:11.5px;font-weight:700;color:var(--color-card);text-decoration:underline">Se connecter</a>
+    </div>
+    <div style="padding:12px 16px;border-top:1px solid var(--color-sep)">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-mint-ink);margin-bottom:8px">Le planning du jour</div>
+      <div id="planning-jour" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+    </div>
+    <div style="margin-top:auto;padding:14px 16px;border-top:1px solid var(--color-sep)">
+      <div style="font-size:9.5px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--color-mint-ink);margin-bottom:8px">L'équipe · charge en direct</div>
+      <input class="pec-search" type="search" data-fsearch="#equipe > *" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+      <div class="meta" data-fvide="#equipe > *" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+      <div id="equipe" data-fpage="15"></div>
+    </div>
+  </aside>
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Pilotage des appels</h1>
+        <p class="sub">L'assignation suit le planning (l'hôte en poste, le moins chargé) ; chacun peut prendre une ligne, la superviseure réassigne. Seules les réclamations montent au manager. Chaque geste est écrit au bus et tracé au journal.</p>
+      </div>
+    </div>
+    <div id="session-garde" hidden style="margin-bottom:16px;border-radius:12px;background:var(--color-amber-well);color:var(--color-amber-text);padding:10px 14px;font-size:12.5px;font-weight:700"></div>
+
+    <div class="pec-grid pec-grid--3" style="margin-bottom:22px">
+      <div class="pec-kpi"><div class="lbl">Appels en file</div><div class="val" id="k-appels">—</div><div class="hint" id="k-appels-h">—</div></div>
+      <div class="pec-kpi"><div class="lbl">Non assignés</div><div class="val" id="k-nonass">—</div><div class="hint">à prendre — l'assignation du planning n'a trouvé personne en poste</div></div>
+      <div class="pec-kpi"><div class="lbl">En retard</div><div class="val" id="k-retard">—</div><div class="hint" id="k-retard-h">—</div></div>
+      <div class="pec-kpi"><div class="lbl" id="k-sat-lbl">Satisfaction</div><div class="val" id="k-sat">—</div><div class="hint" id="k-sat-h">—</div></div>
+      <div class="pec-kpi"><div class="lbl">Questionnaires</div><div class="val" id="k-quest">—</div><div class="hint" id="k-quest-h">—</div></div>
+      <div class="pec-kpi"><div class="lbl">Dossiers à contrôler</div><div class="val" id="k-dossiers">—</div><div class="hint" id="k-dossiers-h">—</div></div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px" id="kyb-panel">
+      <div class="pec-panel-head"><div><h2>Dossiers d'identité à contrôler <span class="pec-pill" id="kyb-n" style="background:var(--color-mint);color:var(--color-primary-dark)">0</span></h2>
+        <!-- (23/09 — le grossiste) TROIS PORTÉES : la MARQUE (sans KYB validé, elle n'émet aucun bon), le PARTENAIRE du
+             réseau — commerce ou distributeur (sans dossier validé, il ne vend aucun bon) — et l'UTILISATEUR de Mes bons
+             (sa pièce d'identité, au-delà du palier de prévention de la fraude). -->
+        <p class="s">Marque, partenaire du réseau, utilisateur de Mes bons — les pièces s'ouvrent ici avant de statuer. L'urgent d'abord : passé son engagement, un dossier remonte au manager.</p></div></div>
+      <div class="pec-panel-body"><div id="kyb-file"></div></div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px" id="appels-panel">
+      <div class="pec-panel-head"><div><h2>La file — appels et rappels</h2><p class="s">Priorité aux rappels demandés (l'interlocuteur attend), puis à l'échéance la plus proche. <b>La réf est la clé commune (APL-, INF-, REC-, VNT-, MCH-, le code d'un bon…)</b> : l'interlocuteur la donne, tout le monde retrouve le même dossier.</p></div></div>
+      <div class="pec-panel-body">
+        <input id="ref-q" type="search" data-fsearch="#appels-rows > *, #dem-rows > *" placeholder="Chercher par réf ou nom : APL-…, VNT-…, MCH-…" style="width:100%;max-width:380px;border:1.5px solid var(--color-sep);border-radius:10px;background:var(--color-card);padding:9px 12px;font:inherit;font-size:12px;color:var(--color-ink);outline:none;margin-bottom:10px">
+        <table class="pec-table">
+          <thead><tr><th>Réf</th><th>Type</th><th>Interlocuteur</th><th>Dossier</th><th>Canal</th><th>Échéance</th><th>Assigné à</th><th></th></tr></thead>
+          <tbody id="appels-rows" data-fpage="15"></tbody>
+        </table>
+        <div style="margin-top:14px;border-radius:12px;background:var(--color-bg);padding:12px 14px">
+          <div style="font-size:12.5px;font-weight:800;margin-bottom:2px">Journaliser un appel reçu (0 805)</div>
+          <p class="s" style="margin:0 0 8px">Un appel entrant n'a pas de source dans les apps : c'est le conseiller qui l'inscrit. Il entre dans la file déjà passé, signé par lui.</p>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px">
+            <input id="ent-client" class="hl-txt" type="text" placeholder="Interlocuteur (marque, partenaire, utilisateur)">
+            <input id="ent-tel" class="hl-txt" type="tel" placeholder="Téléphone">
+            <input id="ent-ref" class="hl-txt" type="text" placeholder="Réf du dossier (optionnelle)">
+            <input id="ent-motif" class="hl-txt" type="text" placeholder="Motif de l'appel">
+          </div>
+          <textarea id="ent-cr" class="hl-txt" rows="2" placeholder="Compte rendu — ce que l'interlocuteur a dit, ce qui a été fait" style="margin-top:8px"></textarea>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:8px">
+            <button class="pec-btn pec-btn--sm tap" id="ent-ok" type="button">Journaliser l'appel</button>
+            <span id="ent-err" style="font-size:11px;color:var(--color-danger)"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Vérifications d'identité — utilisateurs de Mes bons</h2><p class="s"><b>L'avis du prestataire est consultatif : c'est ton clic qui décide.</b> Valider reconnaît l'identité de l'utilisateur, au-delà du palier de prévention de la fraude ; « Faire refaire » et « Refuser » exigent un motif, qu'il lit tel quel dans son compte. Chaque décision est tracée au journal.</p></div></div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#kyc-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#kyc-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Dossier</th><th>Utilisateur</th><th>Avis prestataire</th><th>Décidé par</th><th>Décision</th></tr></thead>
+          <tbody id="kyc-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px" id="dem-panel">
+      <div class="pec-panel-head"><div><h2>Demandes — information &amp; réclamation</h2><p class="s"><b>Règle de base de la plateforme : chaque tâche est associée au PLANNING</b> — une demande est dispatchée à l'hôte en poste sur le créneau, jamais « au premier qui la voit ». Cycle : en cours → en retard (échéance dépassée, la superviseure est alertée) → close, puis notée par le demandeur : satisfait ou insatisfait (une note basse ouvre une réclamation).</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Réf</th><th>Type</th><th>Demandeur</th><th>Sujet</th><th>Assigné (planning)</th><th>Échéance</th><th>Statut</th><th></th></tr></thead>
+          <tbody id="dem-rows" data-fpage="15"></tbody>
+        </table>
+        <div id="fil-panneau" style="display:none;margin-top:10px;border-radius:12px;background:var(--color-bg);padding:12px 14px"></div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px" id="sat-panel">
+      <div class="pec-panel-head"><div><h2>Satisfaction — questionnaires envoyés &amp; réponses</h2><p class="s" id="sat-intro">—</p></div></div>
+      <div class="pec-panel-body">
+        <h3 style="font-size:12.5px;font-weight:800;margin:0 0 8px">Questionnaires envoyés</h3>
+        <input class="pec-search" type="search" data-fsearch="#satq-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#satq-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Questionnaire</th><th>À qui</th><th>Envoyé</th><th>Canal</th><th>Réponse</th></tr></thead>
+          <tbody id="satq-rows" data-fpage="15"></tbody>
+        </table>
+        <h3 style="font-size:12.5px;font-weight:800;margin:18px 0 8px">Réponses reçues</h3>
+        <input class="pec-search" type="search" data-fsearch="#sat-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#sat-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Rattachée à</th><th>Note</th><th>Verbatim</th><th>Quand</th><th>Suite donnée</th></tr></thead>
+          <tbody id="sat-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+(function () {
+  var D = window.PEC_DATA, B = window.PEC_BUS, DOCS = window.PEC_DOCS;
+  if (!D || !B) return;
+  var R = (D.ref && D.ref.hotline) || {};
+
+  /* ── QUI EST DERRIÈRE L'ÉCRAN ────────────────────────────────────────────────
+     Le membre d'équipe rattaché au compte connecté signe ; une session manager signe de son
+     identifiant (jamais du nom d'une conseillère) ; sans compte rattaché, l'hôte en poste du
+     planning. Sans session : lecture seule, aucun geste possible. */
+  /* La session est RELUE à chaque geste et à chaque rendu : se connecter dans un autre onglet
+     change qui signe ici, sans recharger la page. */
+  function sess() { return D.session ? D.session() : null; }
+  function estManager() { var s = sess(); return !!(s && /^Manager/.test(s.espace || '')); }
+  function peutAgir() { return !!sess(); }
+  function equipe() { return D.hotlineEquipe ? D.hotlineEquipe() : []; }
+  function membre() { return equipe().filter(function (m) { return m.moi; })[0] || null; }
+  function moi() {
+    var m = membre(); if (m) return m.nom;
+    var s = sess(); if (estManager()) return s.identifiant;
+    var e = D.hoteEnPoste ? D.hoteEnPoste() : null;
+    return e ? e.nom : null;
+  }
+  function estSuper() { var m = membre(); return estManager() || !!(m && m.role === 'superviseure'); }
+
+  function esc(s) { return (window.PEC_DATA && PEC_DATA.esc) ? PEC_DATA.esc(s) : String(s == null ? '' : s); }
+  var TONS = {
+    mint:   ['var(--color-mint)', 'var(--color-primary-dark)'],
+    rouge:  ['var(--color-danger-well)', 'var(--color-danger)'],
+    amber:  ['var(--color-amber-well)', 'var(--color-amber-text)'],
+    neutre: ['var(--color-bg)', 'var(--color-muted)']
+  };
+  function pill(txt, ton) {
+    var t = TONS[ton] || TONS.neutre;
+    return '<span class="pec-pill" style="background:' + t[0] + ';color:' + t[1] + '">' + esc(txt) + '</span>';
+  }
+  function duree(ms) {
+    var tot = Math.max(1, Math.round(Math.abs(ms) / 60000));   // en minutes, arrondi porté (jamais « 23 h 60 »)
+    var j = Math.floor(tot / 1440), h = Math.floor((tot % 1440) / 60), mn = tot % 60;
+    if (j >= 1) return j + ' j' + (h ? ' ' + h + ' h' : '');
+    if (h >= 1) return h + ' h' + (mn ? ' ' + String(mn).padStart(2, '0') : '');
+    return mn + ' min';
+  }
+  /* L'échéance affichée est DÉRIVÉE de dueAt : ni libellé figé, ni statut écrit. */
+  function echeanceHTML(dueAt, replis) {
+    if (!dueAt) return esc(replis || '—');
+    var d = dueAt - Date.now();
+    return d >= 0 ? 'dans ' + duree(d) : '<span class="hl-retard">en retard de ' + duree(d) + '</span>';
+  }
+  function heure(ts) { return ts ? new Date(ts).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—'; }
+  function jour(ts) { return ts ? new Date(ts).toLocaleDateString('fr-FR') : '—'; }
+  function selEquipe(attr, id, courant) {
+    return '<select class="hl-sel" ' + attr + '="' + esc(id) + '"' + (peutAgir() ? '' : ' disabled') + '>' +
+      '<option value="">Réassigner…</option>' +
+      equipe().map(function (m) { return '<option value="' + esc(m.nom) + '"' + (m.nom === courant ? ' selected' : '') + '>' + esc(m.nom) + (m.enPoste ? ' · en poste' : '') + '</option>'; }).join('') +
+      '</select>';
+  }
+  function btnPrendre(attr, id) {
+    return '<button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" ' + attr + '="' + esc(id) + '"' + (peutAgir() ? '' : ' disabled') + '>Prendre</button>';
+  }
+
+  /* ── BROUILLONS : la page se repeint sur le bus ET à la minute (l'heure change). Ce qui est
+        en train d'être saisi est conservé et remis en place après le rendu. */
+  var FORME_APPEL = null, CR_APPEL = '', ISSUE_APPEL = 'fait';
+  var FIL = null, FIL_TXT = '', FIL_ERR = '';   // (11/09) le refus d'envoi se voit dans le fil, il ne disparaît plus
+  var KYC_OUVERT = null, KYC_DECISION = null, KYC_MOTIF = '';
+
+  /* ── SESSION ─────────────────────────────────────────────────────────────── */
+  function rendreSession() {
+    var n = document.getElementById('session-hote'), i = document.getElementById('session-id');
+    var a = document.getElementById('session-action'), g = document.getElementById('session-garde');
+    var m = membre(), s = sess();
+    if (!s) {
+      n.textContent = 'Non connecté·e'; i.textContent = 'aucune session ouverte';
+      a.textContent = 'Se connecter';
+      g.hidden = false;
+      g.innerHTML = 'Lecture seule : sans session, aucun geste n’est possible (prendre, répondre, décider, clôturer sont désactivés). <a href="00-connexion.html" style="color:inherit">Se connecter</a> pour agir en ton nom.';
+      return;
+    }
+    n.textContent = m ? m.nom + ' · ' + m.role : (s.role || s.identifiant);
+    i.textContent = s.identifiant + (m ? '' : ' · non rattaché·e à l’équipe') + (s.at ? ' · depuis ' + new Date(s.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '');
+    a.textContent = 'Se déconnecter';
+    if (estManager() && !m) {
+      g.hidden = false;
+      g.textContent = 'Tu es connecté·e en manager : tes gestes sont signés ' + s.identifiant + '.';
+    } else { g.hidden = true; }
+  }
+  document.getElementById('session-action').addEventListener('click', function (e) {
+    if (!sess()) return;
+    e.preventDefault();
+    if (D.compteDeconnecter) D.compteDeconnecter();
+    location.href = '00-connexion.html';
+  });
+
+  /* ── L'ÉQUIPE ET LE PLANNING ─────────────────────────────────────────────── */
+  function rendreEquipe() {
+    var l = equipe(), m = membre();
+    document.getElementById('equipe').innerHTML = l.map(function (x) {
+      return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;color:var(--color-card)">' +
+        '<span style="width:7px;height:7px;border-radius:999px;background:' + (x.enPoste ? 'var(--color-bright)' : 'var(--color-dot)') + '"></span>' +
+        '<b>' + esc(x.nom) + '</b><span style="opacity:.65">· ' + esc(x.role) + ' · ' + x.charge + ' en charge</span>' +
+        (x.enPoste ? '<span style="margin-left:6px;font-size:10px;font-weight:800;color:var(--color-bright)">en poste</span>' : '') +
+        (m && m.nom === x.nom ? '<span style="margin-left:auto;font-size:10px;font-weight:800;color:var(--color-bright)">toi</span>' : '') +
+        '</div>';
+    }).join('');
+
+    var p = D.hotlinePlanning ? D.hotlinePlanning() : [];
+    var enPoste = p.filter(function (x) { return x.enPoste; });
+    var z = document.getElementById('planning-jour');
+    z.innerHTML = p.map(function (x) {
+      var t = x.enPoste ? ['var(--color-mint)', 'var(--color-primary-dark)'] : ['var(--color-bg)', 'var(--color-muted)'];
+      return '<span class="hl-puce" style="background:' + t[0] + ';color:' + t[1] + '">' +
+        '<span style="width:6px;height:6px;border-radius:999px;background:' + (x.enPoste ? 'var(--color-primary)' : 'var(--color-dot)') + '"></span>' +
+        esc(x.nom) + ' · ' + esc(x.creneau) + ' · ' + esc(x.joursLbl) + (x.enPoste ? ' — en poste' : '') + '</span>';
+    }).join('');
+    if (!enPoste.length) {
+      var repli = D.hoteEnPoste ? D.hoteEnPoste() : null;
+      z.innerHTML += '<div style="width:100%;margin-top:6px;font-size:11px;font-weight:700;color:var(--color-amber-text)">Personne n’est en poste à cette heure' +
+        (repli ? ' — le repli est ' + esc(repli.nom) + ' (' + esc(repli.role) + '), qui reçoit les demandes.' : '.') + '</div>';
+    }
+  }
+
+  /* ── LES DONNÉES DÉRIVÉES DU BUS ─────────────────────────────────────────── */
+  function appelsTries() {
+    var l = B.appels();
+    function rang(a) {
+      if (a.statut === 'fait') return 3;
+      return (a.type === 'rappel' || a.priorite === 'haute') ? 0 : 1;
+    }
+    return l.sort(function (a, b) {
+      var r = rang(a) - rang(b); if (r) return r;
+      var da = a.dueAt || Infinity, db = b.dueAt || Infinity;
+      if (da !== db) return da - db;
+      return (b.at || 0) - (a.at || 0);
+    });
+  }
+  function vifs() { return B.appels().filter(function (a) { return a.statut !== 'fait'; }); }
+  function satRecentes() {
+    /* (24/09, soir) la fenêtre vient du référentiel (ref.hotline.fenetreIndicateursJours) */
+    var FEN = R.fenetreIndicateursJours, limite = Date.now() - FEN * 86400000;
+    var ksl = document.getElementById('k-sat-lbl'); if (ksl) ksl.textContent = 'Satisfaction (' + FEN + ' j)';
+    return (D.satisfactionsGet ? D.satisfactionsGet() : []).filter(function (x) { return (x.at || 0) >= limite; });
+  }
+
+  /* ── LES CHIFFRES ────────────────────────────────────────────────────────── */
+  function rendreKpi() {
+    var v = vifs(), now = Date.now();
+    var rap = v.filter(function (a) { return a.type === 'rappel'; }).length;
+    document.getElementById('k-appels').textContent = String(v.length);
+    document.getElementById('k-appels-h').textContent = rap ? 'dont ' + rap + ' rappel' + (rap > 1 ? 's' : '') + ' demandé' + (rap > 1 ? 's' : '') : 'aucun rappel demandé en attente';
+    document.getElementById('k-nonass').textContent = String(v.filter(function (a) { return !a.assigne; }).length);
+
+    var demRetard = B.demandesSav().filter(function (d) { return d.enRetard; }).length;
+    var aplRetard = v.filter(function (a) { return a.type === 'rappel' && a.dueAt && a.dueAt < now; }).length;
+    document.getElementById('k-retard').textContent = String(demRetard + aplRetard);
+    document.getElementById('k-retard-h').textContent = PEC_DATA.nb(demRetard, 'demande') + ' hors délai · ' + PEC_DATA.nb(aplRetard, 'rappel dépassé', 'rappels dépassés') + ' — engagement de rappel : ' + R.rappelDelaiMin + ' min';
+
+    var s = satRecentes();
+    var ks = document.getElementById('k-sat');
+    if (s.length) {
+      var moy = s.reduce(function (a, x) { return a + x.note; }, 0) / s.length;
+      ks.innerHTML = moy.toFixed(1).replace('.', ',') + '<span class="u">/5</span>';
+    } else { ks.textContent = '—'; }
+    document.getElementById('k-sat-h').textContent = s.length ? PEC_DATA.nb(s.length, 'réponse') + ' sur ' + R.fenetreIndicateursJours + ' jours' : 'aucune réponse sur ' + R.fenetreIndicateursJours + ' jours — rien n’est inventé';
+
+    var qs = D.satisfactionDemandesGet ? D.satisfactionDemandesGet() : [];
+    var rep = qs.filter(function (q) { return q.repondueAt; }).length;
+    document.getElementById('k-quest').textContent = qs.length + ' / ' + rep;
+    document.getElementById('k-quest-h').textContent = 'envoyés / répondus';
+
+    var nav = document.getElementById('nav-sat-n');
+    if (nav) nav.textContent = qs.length ? '· ' + qs.length : '';
+
+    /* LES DOSSIERS À CONTRÔLER — lus au coffre (PEC_DOCS.aVerifier), la même file que le panneau plus bas. */
+    var f = (DOCS && DOCS.aVerifier) ? DOCS.aVerifier() : [], enRetard = f.filter(function (x) { return x.retard; }).length;
+    document.getElementById('k-dossiers').textContent = String(f.length);
+    document.getElementById('k-dossiers-h').textContent = f.length
+      ? (enRetard ? enRetard + ' hors délai — remonté' + (enRetard > 1 ? 's' : '') + ' au manager' : 'dans les délais')
+      : 'aucun dossier en attente';
+    var nk = document.getElementById('nav-kyb-n'); if (nk) nk.textContent = f.length ? '· ' + f.length : '';
+  }
+
+  /* ── LA FILE D'APPELS ────────────────────────────────────────────────────── */
+  /* LES LIBELLÉS VIENNENT DU RÉFÉRENTIEL (PEC_DATA.APPEL_TYPES) : écrits ici ET chez le manager, ils finissaient par
+     diverger. Un libellé, un seul endroit ; la file ne sait rien d'un type qu'aucune app n'émet. */
+  var TYPES = (function () {
+    var m = {}, R = (window.PEC_DATA && PEC_DATA.APPEL_TYPES) || {};
+    Object.keys(R).forEach(function (k) { m[k] = [R[k].lbl, R[k].ton]; });
+    return m;
+  })();
+  var ISSUES = { fait: 'appel passé', sans_reponse: 'sans réponse — à retenter', rappeler: 'à rappeler' };
+  function ligneAppel(a) {
+    var ty = TYPES[a.type] || TYPES.entrant;
+    var fait = a.statut === 'fait';
+    var issue = ISSUES[a.statut] || null;
+    var etat = fait
+      ? 'appel passé ✓' + (a.faitPar ? ' · ' + esc(a.faitPar) : '')
+      : (a.statut && a.statut !== 'a_faire' ? esc(issue || a.statut) + ' · ' : '') + echeanceHTML(a.dueAt, a.quand);
+    var tent = a.tentatives ? ' <span style="font-size:10px;color:var(--color-muted)">· ' + PEC_DATA.nb(a.tentatives, 'tentative') + '</span>' : '';
+    var forme = FORME_APPEL === a.id
+      ? '<div class="hl-forme">' +
+          '<textarea class="hl-txt" data-cr="' + esc(a.id) + '" rows="2" placeholder="Compte rendu de l’appel">' + esc(CR_APPEL) + '</textarea>' +
+          '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
+            '<select class="hl-sel" data-issue="' + esc(a.id) + '">' +
+              '<option value="fait"' + (ISSUE_APPEL === 'fait' ? ' selected' : '') + '>Appel passé</option>' +
+              '<option value="sans_reponse"' + (ISSUE_APPEL === 'sans_reponse' ? ' selected' : '') + '>Sans réponse</option>' +
+              '<option value="rappeler"' + (ISSUE_APPEL === 'rappeler' ? ' selected' : '') + '>À rappeler</option>' +
+            '</select>' +
+            '<button type="button" class="pec-btn pec-btn--sm tap" data-apl-ok="' + esc(a.id) + '">Enregistrer l’issue</button>' +
+            '<button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" data-apl-annuler="1">Annuler</button>' +
+          '</div>' +
+          '<div class="s" style="margin:0">Une issue « appel passé » envoie le questionnaire de notation par ' + esc(R.satisfactionCanal || 'e-mail') + '.</div>' +
+        '</div>'
+      : '';
+    return '<tr' + (fait ? ' style="opacity:.55"' : ' style="background:var(--color-mint)"') + '>' +
+      '<td><b>' + esc(a.id) + '</b> ' + pill(a.par === 'hotline' || a.type === 'entrant' ? 'programmé ici' : 'reçu de l’app', a.par === 'hotline' || a.type === 'entrant' ? 'neutre' : 'mint') + '</td>' +
+      '<td>' + pill(ty[0], ty[1]) + '</td>' +
+      /* L'INTERLOCUTEUR — une marque, un partenaire du réseau ou un utilisateur de Mes bons : le nom qu'il a donné. */
+      '<td>' + esc(a.client || '—') + (a.tel ? ' <span style="font-size:10px;color:var(--color-muted)">· ' + esc(a.tel) + '</span>' : '') + (a.motif ? '<div class="s" style="margin:0">' + esc(a.motif) + '</div>' : '') + '</td>' +
+      '<td>' + esc(a.ref || '—') + '</td><td>' + esc(a.canal || '—') + '</td>' +
+      '<td>' + etat + tent + (a.compteRendu ? '<div class="s" style="margin:0">« ' + esc(a.compteRendu) + ' »</div>' : '') + '</td>' +
+      '<td>' + (a.assigne ? '<b>' + esc(a.assigne) + '</b> <span style="font-size:10px;color:var(--color-muted)">· ' + esc(a.assigneSource === 'reprise' ? 'reprise' : 'planning') + '</span>'
+                          : '<span style="color:var(--color-muted)">non assigné</span>') +
+        (fait ? '' : '<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">' + btnPrendre('data-apl-prendre', a.id) + (estSuper() ? selEquipe('data-apl-reass', a.id, a.assigne) : '') + '</div>') + '</td>' +
+      '<td>' + (fait ? '—' : '<button type="button" class="pec-btn pec-btn--sm tap" data-apl-forme="' + esc(a.id) + '"' + (peutAgir() ? '' : ' disabled') + '>Appel passé</button>') + forme + '</td></tr>';
+  }
+  function rendreAppels() {
+    var l = appelsTries();
+    document.getElementById('appels-rows').innerHTML = l.length ? l.map(ligneAppel).join('')
+      : '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--color-muted);font-size:12px">Aucun appel en file — un appel reçu au 0 805 se journalise ci-dessous, un rappel demandé arrive ici en direct.</td></tr>';
+  }
+
+  /* Le questionnaire part quand l'échange a bien eu lieu — jamais sur un « sans réponse ». */
+  function envoyerQuestionnaireAppel(a) {
+    if (!D.satisfactionDemander) return;
+    D.satisfactionDemander({ appelId: a.id, ref: a.ref || null, client: a.client || null, clientId: a.clientId || null, tel: a.tel || null }, moi());
+  }
+  window.passerAppel = function (id, o) {
+    if (!peutAgir()) return;
+    o = o || {};
+    var statut = o.statut || 'fait';
+    var a = B.traiterAppel(id, { par: moi(), compteRendu: o.compteRendu || '', statut: statut });
+    if (a && statut === 'fait') envoyerQuestionnaireAppel(a);
+    FORME_APPEL = null; CR_APPEL = ''; ISSUE_APPEL = 'fait';
+    peindre();
+  };
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var f = t.closest('[data-apl-forme]');
+    if (f) { FORME_APPEL = f.getAttribute('data-apl-forme'); CR_APPEL = ''; ISSUE_APPEL = 'fait'; rendreAppels(); return; }
+    if (t.closest('[data-apl-annuler]')) { FORME_APPEL = null; CR_APPEL = ''; rendreAppels(); return; }
+    var ok = t.closest('[data-apl-ok]');
+    if (ok) { window.passerAppel(ok.getAttribute('data-apl-ok'), { compteRendu: CR_APPEL, statut: ISSUE_APPEL }); return; }
+    var pr = t.closest('[data-apl-prendre]');
+    if (pr) { if (!peutAgir()) return; B.assignerAppel(pr.getAttribute('data-apl-prendre'), moi(), moi()); peindre(); return; }
+  });
+  document.addEventListener('input', function (e) {
+    var cr = e.target.closest('[data-cr]'); if (cr) CR_APPEL = cr.value;
+    var ft = e.target.closest('[data-fil-txt]'); if (ft) FIL_TXT = ft.value;
+    var km = e.target.closest('[data-kyc-motif-in]'); if (km) KYC_MOTIF = km.value;
+  });
+  document.addEventListener('change', function (e) {
+    var is = e.target.closest('[data-issue]'); if (is) { ISSUE_APPEL = is.value; return; }
+    var ra = e.target.closest('[data-apl-reass]');
+    if (ra) { if (!peutAgir() || !ra.value) return; B.assignerAppel(ra.getAttribute('data-apl-reass'), ra.value, moi()); peindre(); return; }
+    var rd = e.target.closest('[data-dem-reass]');
+    if (rd) { if (!peutAgir() || !rd.value) return; B.assignerDemande(rd.getAttribute('data-dem-reass'), rd.value, moi()); peindre(); return; }
+  });
+
+  /* L'appel ENTRANT (0 805) : sa seule source, c'est le conseiller qui l'inscrit. */
+  document.getElementById('ent-ok').addEventListener('click', function () {
+    var err = document.getElementById('ent-err');
+    if (!peutAgir()) { err.textContent = 'lecture seule — connecte-toi pour journaliser un appel'; return; }
+    var client = document.getElementById('ent-client').value.trim();
+    var motif = document.getElementById('ent-motif').value.trim();
+    if (!client || !motif) { err.textContent = 'l’interlocuteur et le motif sont obligatoires'; return; }
+    err.textContent = '';
+    B.demanderAppel({
+      type: 'entrant', canal: '0805', client: client,
+      tel: document.getElementById('ent-tel').value.trim() || null,
+      ref: document.getElementById('ent-ref').value.trim() || null,
+      motif: motif, compteRendu: document.getElementById('ent-cr').value.trim() || null,
+      hote: moi()
+    });
+    ['ent-client', 'ent-tel', 'ent-ref', 'ent-motif', 'ent-cr'].forEach(function (i) { document.getElementById(i).value = ''; });
+    peindre();
+  });
+
+  /* ── VÉRIFICATIONS D'IDENTITÉ ────────────────────────────────────────────── */
+  function rendreKyc() {
+    var z = document.getElementById('kyc-rows'); if (!z) return;
+    var l = B.verifications ? B.verifications() : [];
+    var aDecider = function (v) { return v.statut === 'a_controler' || v.statut === 'transmise_pvid'; };
+    var enCours = l.filter(aDecider), passees = l.filter(function (v) { return !aDecider(v); });
+    var LBL = { validee: 'Validée ✓', refusee: 'Refusée', a_refaire: 'À refaire', a_completer: 'Dossier incomplet — chez le client' };
+    function ligne(v) {
+      /* (11/09 — constat C28) L'AVIS DIT CE QU'IL A LU. Il affichait « conforme · score 0,97 » pour toute
+         vérification — l'adaptateur rendait ce verdict sans ouvrir une seule pièce. Quand le dossier est
+         incomplet, il n'y a pas de score : il y a des pièces qui manquent, et on les NOMME. */
+      var avis = '—';
+      if (v.pvid) {
+        avis = esc(v.pvid.resultat) + (v.pvid.score != null ? ' · score ' + String(v.pvid.score).replace('.', ',') : '')
+          + ((v.pvid.manquantes && v.pvid.manquantes.length) ? ' <span style="font-size:10px;color:var(--color-amber-text)">— ' + esc(v.pvid.manquantes.join(', ')) + '</span>' : '')
+          + (v.pvid.motif ? ' <span style="font-size:10px;color:var(--color-muted)">— ' + esc(v.pvid.motif) + '</span>' : '')
+          + (v.pvid.mock ? ' <span style="font-size:9px;color:var(--color-muted)">(adaptateur d’essai)</span>' : '');
+      }
+      var qui = aDecider(v) ? (moi() || '—') : (v.decidePar || '—');
+      var forme = (KYC_OUVERT === v.id)
+        ? '<div style="margin-top:6px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">' +
+            '<input type="text" data-kyc-motif-in="' + esc(v.id) + '" value="' + esc(KYC_MOTIF) + '" placeholder="' + (KYC_DECISION === 'a_refaire' ? 'Motif « à refaire » — ce que l’utilisateur doit recommencer' : 'Motif du refus (obligatoire — l’utilisateur peut contester via le manager)') + '" style="flex:1;min-width:200px;border:1.5px solid var(--color-sep);border-radius:8px;padding:6px 9px;font:inherit;font-size:11.5px">' +
+            '<button type="button" class="pec-btn pec-btn--sm tap" data-kyc-confirmer="' + esc(v.id) + '">Confirmer</button>' +
+            '<span style="font-size:10px;color:var(--color-danger)" data-kyc-err>' + esc(KYC_OUVERT === v.id ? (KYC_ERR || '') : '') + '</span>' +
+          '</div>'
+        : '';
+      return '<tr><td><b>' + esc(v.id) + '</b></td><td>' + esc(v.client || '—') + '</td><td>' + avis + '</td>' +
+        '<td>' + esc(qui) + '</td>' +
+        '<td>' + (aDecider(v)
+          ? '<button type="button" class="pec-btn pec-btn--sm tap" data-kyc-ok="' + esc(v.id) + '"' + (peutAgir() ? '' : ' disabled') + '>✓ Valider l’identité</button> ' +
+            '<button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" data-kyc-refaire="' + esc(v.id) + '"' + (peutAgir() ? '' : ' disabled') + '>Faire refaire</button> ' +
+            '<button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" data-kyc-refus="' + esc(v.id) + '"' + (peutAgir() ? '' : ' disabled') + '>Refuser</button>' + forme
+          : '<span class="pec-pill' + (v.statut === 'validee' ? ' pec-pill--done' : '') + '">' + esc(LBL[v.statut] || v.statut) + '</span>' +
+            (v.motif ? ' <span style="font-size:10px;color:var(--color-muted)">' + esc(v.motif) + '</span>' : '')) + '</td></tr>';
+    }
+    var html = enCours.map(ligne).join('');
+    if (passees.length) {
+      html += '<tr><td colspan="5" style="padding:8px 0 4px;font-size:10.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--color-muted)">Décidés</td></tr>' + passees.map(ligne).join('');
+    }
+    z.innerHTML = html || '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--color-muted);font-size:12px">Aucune vérification à contrôler — elles arrivent ici dès qu’un utilisateur de Mes bons dépose la sienne.</td></tr>';
+  }
+  var KYC_ERR = '';
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var ok = t.closest('[data-kyc-ok]'), re = t.closest('[data-kyc-refaire]'), rf = t.closest('[data-kyc-refus]'), cf = t.closest('[data-kyc-confirmer]');
+    if (!peutAgir()) return;
+    /* (11/09 — C28) LE REFUS DU BUS SE LIT. `deciderVerification` refuse désormais de valider une identité
+       tant que le coffre n'est pas complet — l'écran avalait la réponse et affichait « validée ». */
+    if (ok) {
+      var rk = B.deciderVerification(ok.getAttribute('data-kyc-ok'), 'validee', null, moi());
+      if (rk && rk.ok === false) { KYC_OUVERT = null; KYC_ERR = rk.motif; rendreKyc(); alert(rk.motif); return; }
+      KYC_OUVERT = null; peindre(); return;
+    }
+    if (re || rf) {
+      KYC_OUVERT = (re || rf).getAttribute(re ? 'data-kyc-refaire' : 'data-kyc-refus');
+      KYC_DECISION = re ? 'a_refaire' : 'refusee'; KYC_MOTIF = ''; KYC_ERR = '';
+      rendreKyc();
+      var inp = document.querySelector('[data-kyc-motif-in]'); if (inp) inp.focus();
+      return;
+    }
+    if (cf) {
+      if (!KYC_MOTIF.trim()) { KYC_ERR = 'motif obligatoire'; rendreKyc(); return; }
+      var rc = B.deciderVerification(cf.getAttribute('data-kyc-confirmer'), KYC_DECISION || 'a_refaire', KYC_MOTIF.trim(), moi());
+      if (rc && rc.ok === false) { KYC_ERR = rc.motif; rendreKyc(); return; }
+      KYC_OUVERT = null; KYC_MOTIF = ''; KYC_ERR = ''; peindre();
+    }
+  });
+
+  /* ── LES DEMANDES ────────────────────────────────────────────────────────── */
+  var TYPE_DEM = { reclamation: ['Réclamation', 'amber'], information: ['Information', 'mint'] };
+  /* LE DEMANDEUR PAR SON NOM : un partenaire ouvre sa demande sous l'id de son point (Mon point), une marque sous le sien.
+     On essaie chaque source ; aucune ne s'arrête sur un identifiant quand un nom existe. */
+  function demandeur(d) {
+    var n = null;
+    [d.client, d.clientId].forEach(function (id) {
+      if (n || !id) return;
+      try {
+        var pt = D.partenaire(id);
+        if (pt) { n = pt.enseigne + ' · ' + D.partenaireModeLbl(pt); return; }
+        var m = D.techMarchand(id);
+        if (m) n = m.raisonSociale + ' · marque';
+      } catch (e) {}
+    });
+    return n || d.client || '—';
+  }
+  function ligneDemande(d) {
+    var st = D.statutDemande(d);
+    var ty = TYPE_DEM[d.type] || [d.type || 'Demande', 'neutre'];
+    var close = String(d.statut || '').indexOf('clot') === 0 || d.statut === 'cloturee' || d.statut === 'resolue';
+    return '<tr><td><b>' + esc(d.id) + '</b> ' + pill(d.canal === 'app-auto' ? 'auto-résolue' : 'reçue de l’app', 'neutre') + '</td>' +
+      '<td>' + pill(ty[0], ty[1]) + '</td>' +
+      '<td>' + esc(demandeur(d)) + (d.ref ? ' <span style="font-size:10px;color:var(--color-muted)">· ' + esc(d.ref) + '</span>' : '') + '</td>' +
+      '<td>' + esc(d.sujet || '—') + '</td>' +
+      '<td>' + (d.assigne ? '<b>' + esc(d.assigne) + '</b> <span style="font-size:10px;color:var(--color-muted)">· ' + esc(d.assigneSource === 'reprise' ? 'reprise' : 'planning') + '</span>' : '<span style="color:var(--color-muted)">non assigné</span>') +
+        '<div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap">' + btnPrendre('data-dem-prendre', d.id) + (estSuper() ? selEquipe('data-dem-reass', d.id, d.assigne) : '') + '</div></td>' +
+      '<td>' + (close ? '—' : echeanceHTML(d.dueAt, d.due)) + '</td>' +
+      '<td>' + pill(st.lbl, st.ton) +
+        /* (10/09 — lot 5, constat C1) LE NIVEAU D'ESCALADE, CALCULÉ. « En retard » n'apprenait rien à personne : ni
+           qui doit reprendre, ni depuis combien de temps, ni quand ça monte d'un cran. Le niveau se dérive du
+           silence (le compteur repart à chaque réponse de l'hôte) et le dernier rung est un droit du client. */
+        (function () {
+          var e = D.escaladeDemande ? D.escaladeDemande(d) : null;
+          if (!e || e.cle === 'close' || e.cle === 'hote') return '';
+          var ton = e.cle === 'mediateur' ? 'rouge' : e.cle === 'manager' ? 'rouge' : 'amber';
+          return '<div style="margin-top:4px">' + pill('↑ ' + e.qui, ton) +
+            '<div style="font-size:10px;color:var(--color-muted);margin-top:2px">' + esc(e.libelle) + ' · sans réponse depuis ' + e.heures + ' h' +
+            (e.prochain ? ' · ' + esc(e.prochain.qui) + ' dans ' + e.prochain.dansH + ' h' : '') + '</div></div>';
+        })() +
+        (st.code === 'niveau_manager' ? '<div style="margin-top:4px"><a class="pec-btn pec-btn--ghost pec-btn--sm" href="../manager/27-assistance-reclamations.html">Voir chez le manager ↗</a></div>' : '') + '</td>' +
+      '<td><button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" data-fil="' + esc(d.id) + '">Voir le fil</button>' +
+        (close ? '' : ' <button type="button" class="pec-btn pec-btn--sm tap" data-clore="' + esc(d.id) + '"' + (peutAgir() ? '' : ' disabled') + '>Clôturer</button>') + '</td></tr>';
+  }
+  function rendreDemandes() {
+    var l = B.demandesSav();
+    var nOuv = l.filter(function (d) { return d.statut === 'en_cours'; }).length;
+    var nd = document.getElementById('nav-dem-n'); if (nd) nd.textContent = nOuv ? '· ' + nOuv : '';
+    document.getElementById('dem-rows').innerHTML = l.length ? l.map(ligneDemande).join('')
+      : '<tr><td colspan="8" style="text-align:center;padding:16px;color:var(--color-muted);font-size:12px">Aucune demande — elles n’existent que si un partenaire en ouvre une depuis son espace, ou qu’une note basse ouvre une réclamation.</td></tr>';
+    rendreFil();
+  }
+  /* Le fil : ce que le client a écrit, ce que le conseiller a répondu — et de quoi répondre. */
+  function rendreFil() {
+    var z = document.getElementById('fil-panneau'); if (!z) return;
+    if (!FIL) { z.style.display = 'none'; z.innerHTML = ''; return; }
+    var d = B.demandesSav().filter(function (x) { return x.id === FIL; })[0];
+    if (!d) { FIL = null; z.style.display = 'none'; z.innerHTML = ''; return; }
+    var close = String(d.statut || '').indexOf('clot') === 0 || d.statut === 'cloturee' || d.statut === 'resolue';
+    var lignes = (d.echanges || []).map(function (m) {
+      var qui = m.qui === 'moi' ? demandeur(d) : m.qui === 'hote' ? (m.par || 'Conseiller') : 'Assistant';
+      var col = m.qui === 'moi' ? 'var(--color-ink)' : m.qui === 'hote' ? 'var(--color-primary-dark)' : 'var(--color-muted)';
+      return '<div style="margin:4px 0;font-size:12px;line-height:1.5"><b style="color:' + col + '">' + esc(qui) + ' :</b> ' + esc(m.texte) +
+        (m.at ? ' <span style="font-size:10px;color:var(--color-muted)">· ' + esc(heure(m.at)) + '</span>' : '') + '</div>';
+    }).join('') || '<i style="font-size:12px">Aucun échange consigné.</i>';
+    /* (24/09, soir — décision fondatrice : « la marque n'a pas le droit de refuser un bon émis par elle-même ») LE SCRIPT DU BON REFUSÉ :
+       le bon se contrôle ici (techBonEtatPorteur) ; valide, le refus se note chez la marque d'un geste ; sinon ce n'est pas un refus. */
+    var script = '';
+    if (d.motif === 'bon_refuse' && D.techBonEtatPorteur) {
+      var cb = D.techBonEtatPorteur(d.ref), mq = d.marchandId && D.techMarchand ? D.techMarchand(d.marchandId) : null;
+      script = '<div class="hl-script" style="margin:0 0 10px;border-radius:10px;padding:10px 12px;background:' + (cb.ok ? 'var(--color-mint)' : 'var(--color-amber-well)') + ';font-size:12px;line-height:1.55">'
+        + '<b>Bon refusé' + (mq ? ' par ' + esc(mq.raisonSociale) : '') + ' — contrôle : ' + esc(cb.motif) + '.</b><br>'
+        + (cb.ok
+          ? (d.refusNote
+            ? 'Refus noté le ' + esc(D.dateCourte(d.refusNote.at)) + ' par ' + esc(d.refusNote.par || '—') + ' : la marque le lit dans son espace. Dis au porteur de réessayer, et que la marque est prévenue.'
+            : 'Un bon valide ne peut pas être refusé par la marque qui l’a émis (contrat-cadre, obligations de la marque). Oriente le porteur vers le service client de la marque, puis note le refus : la marque le lira dans son espace.'
+              + '<div style="margin-top:6px"><button type="button" class="pec-btn pec-btn--sm tap" data-refus-noter="' + esc(d.id) + '"' + (peutAgir() ? '' : ' disabled') + '>Noter le refus chez la marque</button></div>')
+          : 'Ce n’est pas un refus de la marque : explique au porteur pourquoi son bon ne passe plus.')
+        + '</div>';
+    }
+    z.style.display = 'block';
+    z.innerHTML = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">' +
+        '<b>Le fil — ' + esc(d.id) + (d.ref ? ' · ' + esc(d.ref) : '') + '</b>' +
+        '<button type="button" class="pec-btn pec-btn--ghost pec-btn--sm tap" data-fil-fermer="1">Fermer</button></div>' + script + lignes +
+      (close
+        ? '<div class="s" style="margin-top:8px">Demande close : le fil ne se poursuit plus ici.</div>'
+        : '<div class="hl-forme"><textarea class="hl-txt" data-fil-txt="' + esc(d.id) + '" rows="2" placeholder="Ta réponse">' + esc(FIL_TXT) + '</textarea>' +
+          '<div style="display:flex;gap:6px;align-items:center"><button type="button" class="pec-btn pec-btn--sm tap" data-fil-envoi="' + esc(d.id) + '"' + (peutAgir() ? '' : ' disabled') + '>Envoyer</button>' +
+          '<span class="s" style="margin:0" id="hl-fil-msg">' + (FIL_ERR ? '✗ ' + esc(FIL_ERR) : 'Signée ' + esc(moi() || '—') + ' — le demandeur la lit dans son espace.') + '</span></div></div>');
+  }
+  window.voirFil = function (id) { FIL = id; FIL_TXT = ''; FIL_ERR = ''; rendreFil(); };
+  window.clore = function (id) {
+    if (!peutAgir()) return;
+    var d = B.demandesSav().filter(function (x) { return x.id === id; })[0];
+    B.cloreDemande(id, 'cloturee', { par: moi() });
+    if (D.satisfactionDemander) {
+      D.satisfactionDemander({ demandeId: id, ref: d && d.ref || null, client: d && d.client || null, clientId: d && d.clientId || null }, moi());
+    }
+    peindre();
+  };
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    /* La navigation de gauche : l'entrée cliquée devient l'entrée active. */
+    var nav = t.closest('.pec-nav-item');
+    if (nav && (nav.getAttribute('href') || '').charAt(0) === '#') {
+      [].forEach.call(document.querySelectorAll('.pec-nav-item'), function (n) { n.classList.remove('is-active'); });
+      nav.classList.add('is-active');
+    }
+    var fi = t.closest('[data-fil]'); if (fi) { window.voirFil(fi.getAttribute('data-fil')); return; }
+    if (t.closest('[data-fil-fermer]')) { FIL = null; FIL_TXT = ''; rendreFil(); return; }
+    var fe = t.closest('[data-fil-envoi]');
+    if (fe) {
+      if (!peutAgir() || !FIL_TXT.trim()) return;
+      // (11/09) l'hôte doit savoir si sa réponse est partie : une demande close ou un stockage plein la refuse
+      var rRep = B.repondreDemande(fe.getAttribute('data-fil-envoi'), FIL_TXT.trim(), moi());
+      if (rRep && rRep.ok === false) { FIL_ERR = rRep.message || rRep.motif; rendreFil(); return; }
+      FIL_ERR = ''; FIL_TXT = ''; peindre(); return;
+    }
+    var rn = t.closest('[data-refus-noter]');
+    if (rn) {
+      if (!peutAgir()) return;
+      var rr = D.techRefusNoter(rn.getAttribute('data-refus-noter'), moi());
+      FIL_ERR = rr.ok ? '' : rr.motif; peindre(); return;
+    }
+    var cl = t.closest('[data-clore]'); if (cl) { window.clore(cl.getAttribute('data-clore')); return; }
+    var dp = t.closest('[data-dem-prendre]');
+    if (dp) { if (!peutAgir()) return; B.assignerDemande(dp.getAttribute('data-dem-prendre'), moi(), moi()); peindre(); return; }
+    var vd = t.closest('[data-voir-dem]');
+    if (vd) { window.voirFil(vd.getAttribute('data-voir-dem')); return; }
+  });
+
+  /* ── SATISFACTION ────────────────────────────────────────────────────────── */
+  function rendreSat() {
+    document.getElementById('sat-intro').textContent =
+      'Chaque appel passé et chaque demande close déclenche un questionnaire envoyé par ' + (R.satisfactionCanal || 'e-mail') +
+      '. La réponse fait foi : une note inférieure ou égale à ' + R.satisfactionSeuilReclamation +
+      ' sur 5 ouvre automatiquement une réclamation, visible ici et chez le manager.';
+
+    var qs = D.satisfactionDemandesGet ? D.satisfactionDemandesGet() : [];
+    document.getElementById('satq-rows').innerHTML = qs.length ? qs.map(function (q) {
+      return '<tr><td><b>' + esc(q.id) + '</b> <span style="font-size:10px;color:var(--color-muted)">· ' + esc(q.appelId || q.demandeId || '—') + '</span></td>' +
+        '<td>' + esc(q.client || '—') + (q.tel ? ' <span style="font-size:10px;color:var(--color-muted)">· ' + esc(q.tel) + '</span>' : '') + '</td>' +
+        '<td>' + esc(heure(q.at)) + '</td><td>' + esc(q.canal) + '</td>' +
+        '<td>' + (q.repondueAt ? pill('Répondu le ' + heure(q.repondueAt), 'mint') : pill('En attente de la note', 'neutre')) + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--color-muted);font-size:12px">Aucun questionnaire envoyé — il part à la fin d’un appel passé ou d’une demande close.</td></tr>';
+
+    var seuil = R.satisfactionSeuilReclamation;
+    var l = D.satisfactionsGet ? D.satisfactionsGet() : [];
+    document.getElementById('sat-rows').innerHTML = l.length ? l.map(function (x) {
+      var basse = x.note <= seuil;
+      var verbatim = [x.raison, x.suggestions, x.notes].filter(Boolean).join(' · ') || '—';
+      return '<tr><td>' + esc(x.ref || x.appelId || x.demandeId || '—') + '</td>' +
+        '<td><b style="color:' + (basse ? 'var(--color-danger)' : 'var(--color-primary-dark)') + '">' + x.note + '/5</b></td>' +
+        '<td>« ' + esc(verbatim) + ' »</td><td>' + esc(heure(x.at)) + '</td>' +
+        '<td>' + (x.reclamationId
+          ? pill('Réclamation ' + x.reclamationId + ' — ouverte automatiquement', 'amber') +
+            ' <a class="pec-btn pec-btn--ghost pec-btn--sm" href="#dem-panel" data-voir-dem="' + esc(x.reclamationId) + '">Voir la demande</a>'
+          : (x.aRelancer ? pill('À relancer', 'amber') : '<span class="pec-pill pec-pill--done">RAS</span>')) + '</td></tr>';
+    }).join('') : '<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--color-muted);font-size:12px">Aucun formulaire remonté — chaque échange se conclut par un questionnaire de notation, les réponses vivent ici.</td></tr>';
+  }
+
+  /* ── DOSSIERS D'ENTREPRISE ET D'IDENTITÉ (même composant que chez le manager) ── */
+  // (23/09 — le grossiste) les trois portées du coffre que la hotline contrôle
+  var QUI = { marchand: 'Marque', partenaire: 'Partenaire du réseau', client: 'Utilisateur Mes bons' };
+  function nomDe(portee, id) {
+    /* (10/09 — lot 4, constat E6 1.4) UN CANDIDAT N'EST PAS ENCORE AU RÉFÉRENTIEL : son dossier vit sous l'id de son
+       COMPTE, et l'écran affichait son identifiant. Chaque source est essayée, aucune ne s'arrête sur l'id. */
+    var n = null;
+    try {
+      if (portee === 'marchand') n = (D.techMarchand(id) || {}).raisonSociale;
+      else if (portee === 'partenaire') { var pt = D.partenaire(id); if (pt) n = pt.enseigne + ' · ' + D.partenaireModeLbl(pt); }   // un point activé ; avant, le dossier vit sous l'id du compte (ci-dessous)
+    } catch (e) {}
+    if (n) return n;
+    try { var cpt = D.compte ? D.compte(id) : null; if (cpt) { var pr = cpt.profil || {}; return pr.nom || pr.enseigne || cpt.identifiant || id; } } catch (e2) {}
+    return id;
+  }
+  function rendreDossiers() {
+    var z = document.getElementById('kyb-file'); if (!z || !DOCS) return;
+    var file = DOCS.aVerifier();
+    var n = document.getElementById('kyb-n'); if (n) n.textContent = String(file.length);
+    if (!file.length) { z.innerHTML = '<p class="s" style="padding:6px 0">Aucun dossier en attente de contrôle.</p>'; return; }
+    z.innerHTML = file.map(function (f) {
+      var frais = DOCS.fraisRegles(f.portee, f.id);
+      return '<div style="border:1px solid ' + (f.escalade ? 'var(--color-danger)' : 'var(--color-sep)') + ';border-radius:10px;padding:11px 12px;margin-bottom:10px' + (f.escalade ? ';background:var(--color-danger-well)' : '') + '">' +
+        '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">' +
+          '<b>' + esc(QUI[f.portee] || f.portee) + ' · ' + esc(nomDe(f.portee, f.id)) + '</b>' +
+          (f.urgence ? pill('URGENT', 'rouge') : '') +
+          (f.escalade ? pill('ESCALADE MANAGER', 'rouge') : '') +
+          (frais ? '<span class="pec-pill">Examen réglé ' + esc(D.eur ? D.eur(frais.montant) : frais.montant + ' €') + '</span>' : '') +
+          '<span style="flex:1"></span><span class="s">' + PEC_DATA.nb(f.enAttente, 'pièce') + ' à contrôler</span>' +
+        '</div>' +
+        '<div class="s" style="margin-top:3px">' +
+          (f.assigne ? 'Assigné à <b>' + esc(f.assigne) + '</b>' : '<b>Non assigné</b> — personne en poste au moment de l’envoi') +
+          (f.echeance ? ' · à traiter <b' + (f.retard ? ' class="hl-retard"' : '') + '>' + esc(DOCS.resteLbl(f.resteMs)) + '</b> (engagement ' + f.heures + ' h)' : '') +
+          ' <button type="button" class="pec-btn pec-btn--sm tap" data-prendre="' + esc(f.portee) + ':' + esc(f.id) + '" style="margin-left:6px"' + (peutAgir() ? '' : ' disabled') + '>Prendre</button>' +
+        '</div>' +
+        '<div class="kyb-dossier" data-portee="' + esc(f.portee) + '" data-id="' + esc(f.id) + '" style="margin-top:6px"></div></div>';
+    }).join('');
+    [].forEach.call(z.querySelectorAll('[data-prendre]'), function (b) {
+      b.addEventListener('click', function () {
+        if (!peutAgir()) return;
+        var p = b.getAttribute('data-prendre').split(':');
+        DOCS.assigner(p[0], p[1], moi());
+        rendreDossiers();
+      });
+    });
+    [].forEach.call(z.querySelectorAll('.kyb-dossier'), function (h) {
+      DOCS.rendreDossier(h, h.getAttribute('data-portee'), h.getAttribute('data-id'), { manager: true, par: moi(), onChange: rendreDossiers });
+    });
+  }
+
+  /* ── UN SEUL PINCEAU : tout ce qui est affiché est relu (bus, stockage, et la minute qui
+        passe — une échéance vieillit toute seule). ─────────────────────────────────────── */
+  function peindre() {
+    rendreSession();
+    rendreEquipe();
+    rendreKpi();
+    rendreAppels();
+    rendreKyc();
+    rendreDemandes();
+    rendreSat();
+    rendreDossiers();
+  }
+  /* (10/09 — lot 4) ON NE REPEINT PAS SOUS LES DOIGTS : un panneau ouvert dans un dossier (relevé des mentions d'une
+     pièce, signature) est une SAISIE EN COURS — la redessiner l'effacerait. Le repeint attend qu'elle soit close. */
+  function peindreSiLibre() { if (document.querySelector('#kyb-file .pd-sign')) return; peindre(); }
+  peindre();
+  window.addEventListener('pec-bus', peindreSiLibre);
+  window.addEventListener('storage', peindreSiLibre);
+  setInterval(peindreSiLibre, 60000);
+})();
+</script>
+</body>
+</html>

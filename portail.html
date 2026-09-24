@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PayEnCash Solution — le portail des six espaces</title>
+<!-- PORTAIL DE DÉMONSTRATION (23/09/2026, dossier grossiste). Une seule porte d'entrée vers ce que la maquette contient
+     — et rien d'autre : la vitrine, l'app Solution des marques, l'app des commerces partenaires (sédentaires et nomades),
+     l'app Mes bons des utilisateurs, le back-office manager, la hotline, les documents lus par les apps, le banc.
+     Il remplace l'ancien PORTAIL.html du dépôt de documentation (Mode, Fly, fournisseurs, commercial, simulation 360…),
+     dont il garde la forme (une carte par espace, l'identifiant de démo tiré du data-layer) et rien du contenu.
+     ZÉRO DUR : le nom de l'espace Solution, le slogan, la société, les identifiants de démonstration, les titres et les
+     versions des documents sont LUS de PEC_DATA (techRef, slogan, societeLigne, comptesDemo, ref.documents). Ce qui est
+     écrit ici est structurel — les fichiers et les écrans qui existent sur le disque — et ce que chaque espace est,
+     pour qui, pourquoi.
+     La vitrine et ce portail vivent HORS de /ui/ : on pose PEC_LOGOS_BASE avant le data-layer, comme la vitrine. -->
+<link rel="icon" type="image/png" sizes="64x64" href="ui/assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="ui/assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="ui/assets/payencash-v2.css">
+<script src="ui/assets/payencash-icons.js"></script>
+<script>window.PEC_LOGOS_BASE = "ui/assets/logos/";</script>
+<script src="ui/assets/payencash-data.js"></script>
+<style>
+  body{ margin:0; background:var(--color-bg); color:var(--color-ink);
+        font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; font-variant-numeric:tabular-nums }
+  .wrap{ max-width:1100px; margin:0 auto; padding:30px 22px 60px }
+  .hd{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap }
+  .hd .pec-marque b{ font-size:22px }
+  .hd .pec-marque small{ font-size:12.5px }
+  .hd .who{ font-size:12.5px; color:var(--color-muted); text-align:right; line-height:1.5 }
+  .lede{ margin:14px 0 0; font-size:15px; color:var(--color-muted); max-width:70ch }
+  h2{ margin:34px 0 12px; font-size:11.5px; font-weight:800; letter-spacing:.13em; text-transform:uppercase; color:var(--color-muted) }
+  /* ── la vitrine, en tête et en sombre : c'est la page qu'on montre à une marque ── */
+  a.vitrine{ display:block; margin-top:18px; background:var(--color-ink); color:#fff; border-radius:16px; padding:18px 20px; text-decoration:none }
+  a.vitrine .k{ display:block; font-size:10.5px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:var(--color-bright) }
+  a.vitrine .t{ display:block; font-size:16px; font-weight:800; margin-top:6px }
+  a.vitrine .d{ display:block; font-size:13px; line-height:1.55; color:#c9d8d0; margin-top:4px; max-width:78ch }
+  /* ── une carte par espace ── */
+  .grille{ display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px }
+  .carte{ background:var(--color-surface); border:1px solid var(--color-handle); border-radius:16px; padding:16px 17px 14px; display:flex; flex-direction:column; gap:9px }
+  .carte .top{ display:flex; align-items:center; justify-content:space-between; gap:10px }
+  .carte .pec-marque b{ font-size:16px }
+  .carte .ic{ width:34px; height:34px; border-radius:10px; background:var(--color-mint); color:var(--color-primary-dark); display:flex; align-items:center; justify-content:center; flex:none }
+  .carte .ic .pec-ico{ width:18px; height:18px }
+  .carte .qui{ font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; color:var(--color-primary-dark) }
+  .carte .ds{ font-size:13px; color:var(--color-muted); line-height:1.5; flex:1 }
+  .carte .acts{ display:flex; gap:7px; flex-wrap:wrap }
+  .carte .acts a{ display:inline-flex; align-items:center; gap:5px; border-radius:9px; padding:7px 11px; font-size:12px; font-weight:800;
+                  background:var(--color-segment); color:var(--color-ink); text-decoration:none }
+  .carte .acts a.p{ background:var(--color-primary); color:#fff }
+  .carte .acts a.absent{ opacity:.45; text-decoration:line-through; cursor:not-allowed }
+  .carte .id{ font-size:11.5px; color:var(--color-primary-dark); font-weight:700; font-variant-numeric:tabular-nums }
+  .carte .id small{ color:var(--color-muted-2); font-weight:600 }
+  /* ── les documents : une ligne par fichier, la version lue du référentiel ── */
+  .docs{ background:var(--color-surface); border:1px solid var(--color-handle); border-radius:16px; overflow:hidden }
+  .docs a{ display:grid; grid-template-columns:1fr auto; gap:8px 14px; align-items:center; padding:11px 17px; border-top:1px solid var(--color-sep); text-decoration:none; color:inherit }
+  .docs a:first-child{ border-top:0 }
+  .docs a:hover{ background:var(--color-card) }
+  .docs .t{ display:block; font-size:13.5px; font-weight:700 }
+  .docs .s{ display:block; font-size:11.5px; color:var(--color-muted); margin-top:2px }
+  .docs .v{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--color-primary-dark); white-space:nowrap }
+  .docs .v.absente{ color:var(--color-muted-2) }
+  /* ── outils ── */
+  .outil .ic{ background:var(--color-segment); color:var(--color-muted) }
+  .banc{ font-size:12.5px; color:var(--color-muted); line-height:1.6; margin:10px 0 0 }
+  code{ background:var(--color-segment); border-radius:5px; padding:1px 6px; font-size:12px }
+  footer{ margin-top:38px; font-size:12px; color:var(--color-muted-2); line-height:1.7 }
+  @media (max-width:600px){ .hd .who{ text-align:left } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hd">
+    <span data-pec-marque="solution" data-slogan></span>
+    <div class="who">Le portail de démonstration<br><span id="hd-societe"></span></div>
+  </div>
+  <p class="lede">Six espaces, une seule porte. Chaque carte dit <b>qui</b> utilise l'espace et <b>pourquoi</b>, puis ouvre l'écran par lequel on y entre. Les identifiants affichés sont ceux du trousseau de démonstration du data-layer — ils n'existent que dans cette maquette.</p>
+
+  <a class="vitrine" href="index.html">
+    <span class="k">La vitrine · payencash.fr</span>
+    <span class="t" id="vit-titre">PayEnCash Solution — grossiste en bons d’achat de marque</span>
+    <span class="d">Ce que nous achetons aux marques, ce que nous leur payons et à quel délai, le réseau qui vend leurs bons. C'est la page qu'on montre à une marque.</span>
+  </a>
+
+  <h2>Les espaces</h2>
+  <div class="grille" id="g-espaces"></div>
+
+  <h2>Les documents lus par les apps</h2>
+  <div class="docs" id="g-docs"></div>
+
+  <!-- (copie publique) le banc et les audits sont des outils internes : ils ne sont pas publiés -->
+
+  <footer>
+    Serveur local : <code>python3 serve-8778.py</code> à la racine du dossier, puis <code>http://127.0.0.1:8778/portail.html</code>.<br>
+    Aucun secret dans ce dossier : ni clé, ni mot de passe réel — les identifiants ci-dessus sont ceux de la démonstration.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var D = window.PEC_DATA || {};
+  var esc = D.esc ? D.esc.bind(D) : function (v) { return String(v == null ? '' : v).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
+  var nomSolution = (D.techRef ? D.techRef().nom : '') || 'PayEnCash Solution';
+
+  // la marque, le slogan et la société : lus du data-layer, jamais recopiés ici
+  if (D.marqueAppliquer) D.marqueAppliquer(document);
+  var soc = document.getElementById('hd-societe'); if (soc && D.societeLigne) soc.textContent = D.societeLigne();
+  var vt = document.getElementById('vit-titre'); if (vt) vt.textContent = nomSolution + ' — grossiste en bons d’achat de marque';
+
+  // l'identifiant de démo de chaque espace : le trousseau du data-layer (comptesDemo), filtré par le début du nom d'espace
+  function idDe(prefixe) {
+    var l = (D.comptesDemo || []).filter(function (x) { return String(x.espace).indexOf(prefixe) === 0; });
+    return l.map(function (c) { return '<div class="id">' + esc(c.identifiant) + ' · ' + esc(c.motdepasse) + ' <small>— ' + esc(c.role) + '</small></div>'; }).join('');
+  }
+  function ico(id) { return '<span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#' + id + '"/></svg></span>'; }
+  function carte(e, outil) {
+    return '<div class="carte' + (outil ? ' outil' : '') + '"><div class="top">'
+      + (e.marque ? '<span class="pec-marque" data-pec-marque="' + e.marque + '"' + (e.nom ? ' data-nom="' + esc(e.nom) + '"' : '') + '></span>' : '<b style="font-size:15px">' + esc(e.titre) + '</b>')
+      + ico(e.icone) + '</div>'
+      + (e.qui ? '<div class="qui">' + esc(e.qui) + '</div>' : '')
+      + '<div class="ds">' + e.ds + '</div>'
+      + '<div class="acts">' + e.liens.map(function (l, i) { return '<a href="' + esc(l[1]) + '"' + (i === 0 ? ' class="p"' : '') + ' data-verif>' + esc(l[0]) + '</a>'; }).join('') + '</div>'
+      + (e.demo ? idDe(e.demo) : '') + '</div>';
+  }
+
+  /* LES SIX ESPACES — la vitrine est en tête de page ; ici les cinq applications, dans l'ordre de la chaîne : la marque
+     émet, le commerce vend, l’utilisateur utilise, le manager contrôle, la hotline répond. */
+  var ESPACES = [
+    { marque: 'solution', icone: 'i-tag', qui: 'Une marque qui émet ses bons',
+      ds: 'Elle déclare son dirigeant, dépose son dossier, signe le contrat-cadre, choisit son offre de paiement et sa formule logicielle, propose des bons à ses clients et suit ce que le réseau lui achète.',
+      liens: [['Accueil', 'ui/tech/index.html'], ['S’inscrire', 'ui/tech/00-inscription.html'], ['Se connecter', 'ui/tech/01-connexion.html']], demo: nomSolution },
+    { marque: 'partenaire', icone: 'i-store', qui: 'Un commerce du réseau — sédentaire ou nomade',
+      ds: 'Il vend au comptoir les bons des marques sous contrat : mandat de prélèvement SEPA après l’arrêté du soir pour le commerce sédentaire, avance et rencontres pour le distributeur nomade, relevés et dossier du point.',
+      liens: [['S’inscrire', 'ui/partenaire/00-inscription.html'], ['Se connecter', 'ui/partenaire/01-connexion.html']] },
+    { marque: 'bons', icone: 'i-ticket', qui: 'Une personne qui détient un bon',
+      ds: 'Elle range le code de son bon, retrouve ce qu’il lui en reste et sa validité, cherche une marque ou un commerce qui vend ses bons, et utilise son bon chez la marque — l’application est obligatoire pour cela.',
+      liens: [['Mes bons', 'ui/bons/01-mes-bons.html'], ['S’inscrire', 'ui/bons/00-inscription.html'], ['Se connecter', 'ui/bons/06-connexion.html']] },
+    { marque: 'manager', icone: 'i-shield', qui: 'L’équipe AJEK',
+      ds: 'Elle contrôle les dossiers des marques et des commerces, active les points, suit les ventes, les prélèvements et les paiements aux marques, la valeur des douze derniers mois au regard du seuil de déclaration, et règle la configuration.',
+      liens: [['Se connecter', 'ui/manager/01-connexion.html']], demo: 'Manager' },
+    { marque: 'hotline', icone: 'i-headset', qui: 'L’assistance',
+      ds: 'Elle prend les appels et les demandes des marques, des commerces et des utilisateurs, suit les réclamations et répond depuis les mêmes données que le manager.',
+      liens: [['Se connecter', 'ui/hotline/00-connexion.html']], demo: 'Hotline' }
+  ];
+
+  /* LES DOCUMENTS — les fichiers de documents/ (structurel : c'est ce qui est sur le disque) ; le titre et la version sont
+     ceux de ref.documents quand le document y figure (cherché par nom de fichier, tous espaces confondus), et l'espace
+     qui l'accepte se déduit de la liste qui le porte. Le contrat et l'analyse ne s'acceptent pas : ils se signent ou se lisent. */
+  var FICHIERS = [
+    ['cgu-espace-solution.html', "CGU de l'espace PayEnCash Solution"],
+    ['conditions-bons-de-marque.html', 'Conditions des bons de marque'],
+    ['conditions-logiciel-solution.html', "Conditions générales de vente du logiciel d'édition des bons"],
+    ['charte-communication-solution.html', 'Charte de communication'],
+    ['politique-confidentialite-solution.html', 'Politique de confidentialité'],
+    ['cgu-espace-partenaire.html', "CGU de l'espace partenaire"],
+    ['politique-confidentialite-partenaire.html', 'Politique de confidentialité — commerces et distributeurs nomades'],
+    ['contrat-distribution-bons.html', "Contrat de distribution des bons d'achat de marque (se signe)"],
+    ['cgu-mes-bons.html', "Conditions d'utilisation de l'app Mes bons"]
+  ];
+  var ESPACE_LBL = { marchand: 'les marques', partenaire: 'les commerces', bons: 'les utilisateurs' };
+  function refDoc(fichier) {
+    var R = (D.ref && D.ref.documents) || {}, trouves = [];
+    Object.keys(R).forEach(function (esp) {
+      (R[esp] || []).forEach(function (d) { if (String(d.url || '').split('/').pop() === fichier) trouves.push({ espace: esp, d: d }); });
+    });
+    return trouves;
+  }
+  var zd = document.getElementById('g-docs');
+  if (zd) zd.innerHTML = FICHIERS.map(function (f) {
+    var refs = refDoc(f[0]), d = refs.length ? refs[0].d : null;
+    var qui = refs.map(function (r) { return ESPACE_LBL[r.espace] || r.espace; }).filter(function (v, i, a) { return a.indexOf(v) === i; });
+    return '<a href="documents/' + f[0] + '" data-verif><span><span class="t">' + esc(d ? d.titre : f[1]) + '</span>'
+      + '<span class="s">' + (qui.length ? 'accepté par ' + esc(qui.join(' et ')) + ' · ' : '') + 'documents/' + esc(f[0]) + '</span></span>'
+      + '<span class="v' + (d ? '' : ' absente') + '">' + (d ? 'version ' + esc(d.version) : 'hors référentiel') + '</span></a>';
+  }).join('');
+
+  var OUTILS = [
+    { titre: 'Le banc', icone: 'i-check', ds: 'Les scénarios de bout en bout — la vérité sur l’état de la maquette. Banc vert avant tout commit.',
+      liens: [['Lancer le banc', 'tests/test-runner.html?t=60000']] },
+    { titre: 'Audit exhaustif', icone: 'i-search', ds: 'Toutes les pages, tous les clics : erreurs, liens morts, écrans sourds.',
+      liens: [['Ouvrir', 'tests/audit-exhaustif.html'], ['Navigation', 'tests/audit-navigation.html'], ['Design', 'tests/audit-design.html']] },
+    { titre: 'Vérifier un flashcode', icone: 'i-scan', ds: 'Le décodage d’un QR produit par l’encodeur maison, pour contrôler qu’un ticket ou un ordre de vente se lit.',
+      liens: [['Ouvrir', 'tests/qr-verify.html']] }
+  ];
+
+  var ze = document.getElementById('g-espaces'); if (ze) ze.innerHTML = ESPACES.map(function (e) { return carte(e, false); }).join('');
+  var zo = document.getElementById('g-outils'); if (zo) zo.innerHTML = OUTILS.map(function (e) { return carte(e, true); }).join('');
+  if (D.marqueAppliquer) D.marqueAppliquer(document);
+
+  /* CHAQUE LIEN EST VÉRIFIÉ SUR LE DISQUE (HEAD) : un écran que la maquette n'a pas encore se voit barré au lieu de
+     mener à une erreur — le portail dit ce qui existe, il ne le promet pas. */
+  [].forEach.call(document.querySelectorAll('a[data-verif]'), function (a) {
+    var url = a.getAttribute('href').split('?')[0];
+    fetch(url, { method: 'HEAD', cache: 'no-store' }).then(function (r) {
+      if (!r.ok) { a.classList.add('absent'); a.title = 'Page absente du dossier (' + r.status + ')'; a.addEventListener('click', function (e) { e.preventDefault(); }); }
+    }).catch(function () {});
+  });
+})();
+</script>
+</body>
+</html>

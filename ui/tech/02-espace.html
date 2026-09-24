@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Bon d’achat</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css"><!-- (23/09) le look de l’espace des marques : héros léger, trois pas repliés, grands nombres, briques de liste -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : la signature du contrat-cadre lit la pièce d’identité du dirigeant (KYC) -->
+<script src="../assets/payencash-tech.js"></script><!-- (23/09, audit) LE SOCLE : session, menu, entête, héros. Sans lui, `var T = window.PEC_TECH` est undefined et le script SORT en silence — l'écran reste aux tirets. -->
+<link rel="stylesheet" href="../assets/vendor/maplibre-gl.css">
+<script src="../assets/vendor/maplibre-gl.js"></script>
+<link rel="stylesheet" href="../assets/payencash-comment-payer.css"><!-- .mk-pt : le marqueur des commerces, déjà dessiné une fois -->
+<!-- PAYENCASH SOLUTION — BON D'ACHAT, L'ESPACE DE LA MARQUE (22/09 : le menu devient Bon d'achat · Paiement ·
+     Outils · Compte, et cette page ne garde que ce qui touche AUX BONS).
+     Ce qui a déménagé : l'argent (échéances, virements, offre de paiement) vit dans Paiement ; les clés d'API et
+     le bout de code dans Compte › Intégration ; l'identité, la conformité, le contrat, le RIB, les modalités de
+     paiement ET l'abonnement au logiciel dans Compte. Une page qui parle de quatre sujets est une page que
+     personne ne lit jusqu'en bas.
+     TOUT EST DÉRIVÉ : la carte du réseau (PEC_TECH.reseau — les commerces et distributeurs nomades nés d'une inscription), le quota du
+     mois (techQuota), les bons vendus, l'état de chacun, ce que nous devons. Rien n'est écrit ici.
+     (23/09) LA MARQUE NE GÈRE PLUS UN CARNET DE DISTRIBUTEURS : le réseau est à nous, et elle le VOIT.
+     ══ (23/09, fondatrice : « page bon d'achat : affiche les 10 premiers offerts pas d'abonnement, ensuite si
+     abonnement affiche les 50, et 1 million » ; puis : « repense la logique d'émission : nous vendons à des
+     montants variables, c'est à chaque édition de bon, PAS 10 d'avance ») LE BON S'ÉDITE À LA VENTE ══════════
+     Il n'y a ni tranche ni code d'avance : un bon naît au comptoir, au montant que le client demande, et
+     c'est à cet instant que NOUS L'ACHETONS à la marque (prix d'achat = valeur faciale moins la remise de
+     l'offre choisie), payé à l'échéance de cette offre. Chaque vente compte pour UNE édition dans le forfait
+     du mois : les premiers bons sont offerts sans abonnement, au-delà l'abonnement paie le logiciel d'édition.
+     Le nombre de bons par mois et le seuil légal (un million d'euros de bons sur douze mois glissants, au-delà
+     duquel une déclaration à l'ACPR est due) ne sont écrits nulle part ici : `techQuota` les dérive, l'écran
+     les lit. Les mots des états sont ceux du grossiste (`techBonEtatLbl`) : acheté à la marque, vendu au
+     client, utilisé chez la marque — personne n'« alloue » rien à personne.
+     ══ (23/09, soir — audit « doublons, design, logique ») CE QUE LA PAGE DIT UNE SEULE FOIS ══════════════════
+     La mécanique (édité à la vente, acheté, payé à l'échéance) était racontée QUATRE fois sur le même écran :
+     dans le héros, sous l'offre, dans le forfait et en tête de la liste. Elle vit dans « Comment ça marche »
+     (replié) ; l'offre tient en une ligne avec sa porte vers Compte ; le forfait ne dit que le forfait ; la liste
+     ne dit que les bons. Le prix d'achat par vente et l'état de notre paiement sont l'affaire de Paiement. -->
+<style>
+  /* (24/09, soir) la carte du réseau : 210 px sur téléphone, une vraie carte sur bureau ; le panneau de droite garde ses
+     titres de section alignés sur ceux de la colonne principale */
+  .te-carte-wrap{position:relative;margin-top:10px;border-radius:14px;overflow:hidden;height:210px}
+  #te-res-villes{margin-top:9px}
+  @media (min-width:1024px){
+    .te-carte-wrap{height:340px;border-radius:16px}
+    #te-quota-titre{margin-top:0}
+    #te-todo + #te-quota-titre{margin-top:26px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+
+    <div class="pec-info-body">
+      <div class="pec-card" id="te-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace demande une session</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)">Connecte-toi avec l’identifiant de ton compte de marque.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px">Aller à la connexion</a>
+      </div>
+
+      <!-- (24/09, soir) SUR BUREAU, DEUX COLONNES : ce qui se lit (les compteurs, le réseau, les bons) à gauche ; ce qui se
+           fait ou se règle (à faire, le forfait) dans un panneau à droite. Sur téléphone, le panneau passe en premier :
+           ce qui bloque se lit avant les chiffres. -->
+      <div id="te-corps" hidden class="pec-cols pec-cols--principal">
+      <div class="pec-colonne">
+        <!-- QUATRE COMPTEURS, TOUS COMPTÉS : les bons vendus (les ventes vives, figées au comptoir) et leur valeur,
+             ceux encore en circulation avec ce qu'il en reste à dépenser, ceux dépensés chez la marque, et ce que
+             nous les lui achetons. Aucun n'est recopié d'un total écrit ailleurs. -->
+        <div class="tk-kpis" style="margin-top:0">
+          <div class="tk-kpi"><div class="k">Achetés par le réseau</div><div class="v" id="te-k-vte">—</div><div class="s" id="te-k-vte-s">—</div></div>
+          <div class="tk-kpi"><div class="k">En circulation</div><div class="v" id="te-k-circ">—</div><div class="s" id="te-k-circ-s">—</div></div>
+          <div class="tk-kpi"><div class="k">Utilisés chez toi</div><div class="v" id="te-k-use">—</div><div class="s" id="te-k-use-s">—</div></div>
+          <div class="tk-kpi"><div class="k">Prix d’achat</div><div class="v" id="te-k-val">—</div><div class="s" id="te-k-val-s">—</div></div>
+        </div>
+
+        <!-- L'OFFRE EN UNE LIGNE, avec la porte vers l'écran qui la porte : la marque doit savoir, en ouvrant
+             sa page, à quel prix nous lui achetons et quand elle est payée. Le lien mène à Compte › Paiement,
+             carte « Mes modalités de paiement » — Paiement ne fait que montrer l'argent. -->
+        <div class="pec-mint-banner" style="margin:12px 0 0">
+          <div class="tk-note" style="margin:0;color:var(--color-ink)" id="te-offre">—</div>
+        </div>
+
+        <!-- ══ (23/09, fondatrice : « enlève mes points de vente, simplement une carte avec tous les points de
+             vente du réseau PayEnCash ») LE RÉSEAU, PAS SON CARNET ════════════════════════════════════
+             La page listait les commerces sous contrat avec CETTE marque, avec un bouton « Résilier » : elle
+             lui faisait gérer un carnet de distributeurs qui n'est pas le sien — c'est NOUS qui tenons le
+             réseau, et c'est nous qui achetons ses bons. Ce qu'une marque veut voir, c'est OÙ ses bons se
+             vendent : le réseau entier, sur une carte. Les points viennent de `PEC_TECH.reseau()` (les commerces
+             ACTIFS nés d'une inscription, avec leur adresse) ; les distributeurs nomades n'y sont pas épinglés — ils n'ont pas
+             d'adresse, et poser un point au centre d'une ville où ils ne sont pas serait un mensonge : ils
+             sont comptés à part, avec leurs communes. -->
+        <p class="pec-section-label tk-sec">Notre réseau</p>
+        <div class="pec-card">
+          <p class="tk-note" style="margin:0" id="te-res-txt">—</p>
+          <div id="te-map-wrap" class="te-carte-wrap">
+            <div id="te-map" class="pec-map-canvas" style="position:absolute;inset:0"></div>
+          </div>
+          <div id="te-res-villes" class="tk-note"></div>
+        </div>
+
+        <!-- ══ LA LISTE DES BONS — vingt lignes à la fois (« pagination 20 éléments vus »), du plus récent au
+             plus ancien. La page courante vit dans une variable de l'écran : un bon vendu ailleurs repeint la
+             liste sans la ramener en tête. -->
+        <p class="pec-section-label tk-sec">Mes bons</p>
+        <div class="pec-card">
+          <div id="te-bons"></div>
+          <div class="tk-pag" id="te-bons-pag" hidden>
+            <button type="button" class="pp tap" id="te-bons-prev">‹ Plus récents</button>
+            <span class="pl" id="te-bons-page">—</span>
+            <button type="button" class="pp tap" id="te-bons-next">Plus anciens ›</button>
+          </div>
+        </div>
+      </div>
+
+      <aside class="pec-colonne pec-avant-mobile">
+        <!-- CE QUI MANQUE, DÉRIVÉ (PEC_TECH.aFaire) : chaque ligne est un lien vers la carte exacte du compte. -->
+        <div class="tk-todo" id="te-todo" hidden style="margin-top:0"><b id="te-todo-t">Il te reste à faire</b><ul id="te-todo-l"></ul></div>
+
+        <!-- ══ LE QUOTA DU MOIS — tout vient de `techQuota` : la formule, ce qu'elle permet par mois, ce qui
+             est déjà édité (une vente = une édition), ce qui reste, la valeur vendue sur douze mois face au
+             seuil légal. La carte est REPEINTE en entier à chaque événement du bus : son contenu vit dans le
+             script. Aucun geste ici : le bon s'édite au comptoir, à la vente — l'abonnement se change dans Compte. -->
+        <p class="pec-section-label tk-sec" id="te-quota-titre">Mon forfait d’édition</p>
+        <div class="pec-card" id="te-quota"></div>
+      </aside>
+      </div>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  /* LE HAUT DE PAGE EST POSÉ AVANT LA GARDE : sans session, la page garde son titre et sa promesse — pas un tiret. */
+  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '02-espace.html'); T.hero('tk-hero', { teinte: 'bons', titre: 'Tes bons d’achat', idTitre: 'te-nom', idSub: 'te-sub',
+    promesse: 'Édités à la vente, dans tout le réseau — et c’est nous qui te les achetons.',
+    etapes: ['Un client demande un bon, au montant qu’il veut', 'Le commerce l’édite : nous te l’achetons, remise déduite', 'Nous te payons à l’échéance de ton offre'] }); }
+  if (!D || !D.techRef || !T) return;
+  var esc = function (v) { return D.esc(v); };
+  var pc = function (x) { return String(x).replace('.', ',') + ' %'; };
+  var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+  function pill(t, cls) { return '<span class="pec-pill ' + cls + '" style="flex:none;font-size:9.5px;padding:3px 8px">' + esc(t) + '</span>'; }
+  /* LA RÉFÉRENCE D'UN ARTICLE DE LOI — sortie de la phrase de fondement du référentiel (refArticle), le texte
+     complet en infobulle. Aucun article n'est écrit ici : le jour où l'avocat fait bouger un mot, il bouge
+     dans `techRef().seuils`, et cet écran suit. La version et la date de lecture (entre parenthèses) restent
+     dans l'infobulle : sur un téléphone, la référence courte suffit à qui veut vérifier. */
+  function art(src) {
+    if (!src) return '';
+    var court = String(D.refArticle ? D.refArticle(src) : src).split(' (')[0].trim();
+    return '<b title="' + esc(src) + '" style="color:var(--color-ink)">' + esc(court) + '</b>';
+  }
+  /* UN ÉTAT VIDE DIT QUOI FAIRE — la brique du socle, avec l'icône du bon. */
+  function vide(html) { return '<div class="tk-vide"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg><div>' + html + '</div></div>'; }
+  /* LES PORTES VERS COMPTE — l'abonnement, les modalités de paiement et les règles y vivent (23/09) ; `?s=` ouvre
+     l'écran sur la bonne section et `#ancre` sur la carte exacte, pour ne pas faire chercher. */
+  var LIEN_FORFAIT = '<a class="tk-go" href="10-compte.html?s=abonnement#abonnement" id="te-forfait">Changer de forfait ›</a>';
+  var LIEN_REGLES = '<a class="tk-go" href="10-compte.html?s=regles">les règles ›</a>';
+
+  var s = T.session('marchand');
+  if (!s || !D.techMarchand(s.id)) { $('te-garde').hidden = false; return; }
+  $('te-corps').hidden = false;
+
+  /* ══ L'ÉTAT DE L'ÉCRAN — ce qui doit SURVIVRE au repeint ═══════════════════════════════════════════
+     La page se refait à chaque événement du bus (une vente au comptoir, un bon dépensé chez la marque). Si la
+     page courante vivait dans le DOM, chaque repeint ramènerait la marque en tête de liste pendant qu'elle
+     lit la page 4. Elle vit donc ici, et le repeint la ré-applique — en la BORNANT à ce qui existe encore. */
+  var vue = { page: 0 };
+
+  /* LA PASTILLE D'UN ÉTAT — le mot vient du data-layer (`techBonEtatLbl`), seule la couleur est choisie ici :
+     annulé s'éteint, utilisé est accompli, vendu est vivant, le reste attend. */
+  function pillEtat(b) {
+    var cls = b.etat === 'cancelled' ? 'pec-pill--off' : (b.etat === 'redeemed' ? 'pec-pill--done' : (b.etat === 'sold' ? 'pec-pill--live' : 'pec-pill--wait'));
+    return pill(D.techBonEtatLbl(b.etat), cls);
+  }
+  /* DU PLUS RÉCENT AU PLUS ANCIEN, sans ex æquo : deux bons nés à la même seconde se départagent par leur
+     identifiant (la séquence), pour que la liste ne change pas d'ordre d'un repeint à l'autre. */
+  function bonsTries(marchandId) {
+    return D.techBons({ marchandId: marchandId }).slice().sort(function (a, b) {
+      return ((b.emisLe || 0) - (a.emisLe || 0)) || String(b.id || '').localeCompare(String(a.id || ''));
+    });
+  }
+
+  function peindre() {
+    var m = D.techMarchand(s.id);
+    if (!m) { location.href = '01-connexion.html'; return; }
+    var R = D.techRef(), S = R.seuils || {}, mode = D.techMarchandMode(m), q = D.techQuota(m.id);
+    if (!q) return;
+
+    /* ══ À FAIRE — DÉRIVÉ, jamais une liste écrite : ce qui manque, dans l'ordre où il faut le faire. Le titre
+       dit vrai : tant que le compte est inactif rien ne se vend ; validé, ce qui reste sert à être payée et
+       intégrée (offre, RIB, mandat de l'abonnement, clé d'API) — pas à vendre. ══ */
+    var todo = T.aFaire(m.id);
+    $('te-todo').hidden = !todo.length;
+    $('te-todo-t').textContent = m.statut === 'pending' ? 'Compte inactif — à faire avant que le réseau achète tes bons' : 'Il te reste à faire';
+    /* CHAQUE LIGNE MÈNE À L'ENDROIT OÙ AGIR (23/09, soir) : la carte exacte du compte, signalée à l'arrivée. */
+    $('te-todo-l').innerHTML = todo.map(function (t) { return '<li>' + (t.href ? '<a href="' + esc(t.href) + '">' + esc(t.txt) + ' <b>régler ›</b></a>' : esc(t.txt || t)) + '</li>'; }).join('');
+
+    /* ══ LES COMPTEURS — comptés sur les bons et sommés sur les ventes, jamais recopiés ══════════════
+       « Vendus » et « Prix d'achat » viennent de `techVentesTotaux` (les ventes vives, figées au comptoir) :
+       compter les bons à montant donnerait le même nombre aujourd'hui, et un autre le jour où les deux listes
+       divergent — la vente fait foi, c'est elle que nous payons. « En circulation » compte les bons vendus qui
+       gardent de quoi être dépensés ; « Utilisés chez toi », ceux entamés ou épuisés, avec ce qui en a été
+       dépensé (montant moins ce qu'il en reste). */
+    var tous = bonsTries(m.id);
+    var vifs = tous.filter(function (b) { return b.montant != null && b.etat !== 'cancelled'; });
+    var circ = vifs.filter(function (b) { return b.etat !== 'redeemed' && (b.solde == null || b.solde > 0); });
+    var aDepenser = circ.reduce(function (a, b) { return a + (b.solde == null ? b.montant : b.solde); }, 0);
+    var uses = vifs.filter(function (b) { return b.etat === 'redeemed' || (b.solde != null && b.solde < b.montant); });
+    var depense = uses.reduce(function (a, b) { return a + (b.montant - (b.solde || 0)); }, 0);
+    var tot = D.techVentesTotaux({ marchandId: m.id });
+    $('te-k-vte').textContent = tot.ventes;
+    $('te-k-vte-s').textContent = tot.ventes ? D.eur(tot.valeur) + ' de valeur faciale' : 'aucun achat pour l’instant';
+    $('te-k-circ').textContent = circ.length;
+    $('te-k-circ-s').textContent = circ.length ? D.eur(aDepenser) + ' encore à dépenser chez toi' : 'aucun bon en circulation';
+    $('te-k-use').textContent = uses.length;
+    $('te-k-use-s').textContent = uses.length ? D.eur(depense) + ' dépensés chez toi' : 'rien dépensé pour l’instant';
+    $('te-k-val').textContent = D.eur(tot.prixMarque);
+    $('te-k-val-s').textContent = tot.duMarque > 0 ? 'dont ' + D.eur(tot.duMarque) + ' que nous te devons encore' : (tot.ventes ? 'tout t’a été payé' : 'valeur faciale moins ta remise');
+
+    /* CE QUE NOUS TE PAYONS, ET QUAND — une phrase, dérivée de l'offre choisie, avec la porte vers la carte
+       qui permet d'en changer. L'exemple « pour 100 € … » est dit une fois, sur Paiement. */
+    $('te-offre').innerHTML = 'Nous t’achetons tes bons avec <b>' + esc(pc(mode.remisePct)) + '</b> de remise sur la valeur faciale, <b>'
+      + esc(mode.libelle.toLowerCase()) + '</b>. <a class="tk-go" href="10-compte.html?s=paiement#modalites">Changer ›</a>';
+
+    /* ══ LE RÉSEAU SUR UNE CARTE — tous les commerces du réseau, pas le carnet de la marque ══ */
+    peindreReseau();
+
+    /* ══ LE FORFAIT DU MOIS ══ */
+    $('te-quota').innerHTML = quotaHTML(q, S);
+
+    /* ══ LES BONS — ils naissent à la vente, au montant demandé, et nous les achetons à cet instant ══ */
+    peindreBons(tous, q);
+  }
+
+  /* ══ LA CARTE DU FORFAIT — trois formules, trois phrases, ZÉRO nombre écrit ══════════════════════════
+     Ce qui distingue les formules n'est pas leur identifiant mais ce qu'elles SONT : sans limite (`illimite`),
+     sans abonnement (`prix` nul), ou un abonnement pour un nombre de bons par mois (`max`). Le 10, le 50 et
+     le million viennent de `techQuota` : renommer ou re-tarifer une formule dans le référentiel suffit.
+     Il n'y a RIEN à cliquer ici : le bon s'édite au comptoir, à la vente ; la seule porte est le forfait. */
+  function quotaHTML(q, S) {
+    var f = q.formule, abonnement = f.prix > 0;
+    var titre = q.illimite
+      ? 'Sans limite de nombre* — jusqu’à ' + esc(D.eur(q.seuilAcpr)) + ' de bons achetés par le réseau sur douze mois'
+      : (abonnement
+        ? q.max + ' bons par mois — ' + esc(D.eur(f.prix)) + ' /mois HT'
+        : 'Tes ' + q.max + ' premiers bons du mois sont offerts, sans abonnement');
+    var compteur = pl(q.emisMois, 'édité') + ' ce mois' + (q.illimite ? '' : ' · il t’en reste ' + q.reste);
+    var epuise = !q.illimite && q.reste === 0;
+    var pillCls = q.seuilAtteint || epuise ? 'pec-pill--wait' : 'pec-pill--done';
+
+    var h = '<div class="tk-row"><div class="tx"><div class="nm">' + titre + '</div>'
+      + '<span class="sb">' + esc(compteur) + '. Une vente = une édition.</span></div>' + pill(f.nom, pillCls) + '</div>';
+
+    /* LA JAUGE DU MOIS — pour une formule bornée : ce qui est édité sur ce que le forfait permet. */
+    if (!q.illimite && q.max > 0) {
+      h += '<div class="tk-jauge"><i style="width:' + Math.min(100, Math.round(q.emisMois / q.max * 100)) + '%"' + (epuise ? ' class="warn"' : '') + '></i></div>';
+    }
+    /* LE FORFAIT ÉPUISÉ SE DIT AVANT LA VENTE REFUSÉE : le comptoir lira le même refus, mais c'est ici que la
+       marque peut agir. */
+    if (epuise) {
+      h += '<p class="tk-alerte">Tes ' + q.max + ' bons du mois sont édités : le réseau ne peut plus en acheter avant le mois prochain — ou un forfait supérieur. ' + LIEN_FORFAIT + '</p>';
+    }
+    /* LE SEUIL LÉGAL — c'est l'astérisque de l'illimité, et il s'impose à toutes les formules : la valeur
+       vendue sur douze mois glissants, sa jauge, et ce qui arrive au-delà. Prévenir avant, pas après. */
+    h += '<p class="tk-note"><b>' + esc(D.eur(q.valeur12Mois)) + '</b> de bons achetés par le réseau sur les douze derniers mois — '
+      + esc(pc(q.seuilPct)) + ' du seuil de ' + esc(D.eur(q.seuilAcpr)) + '.</p>'
+      + '<div class="tk-jauge"><i style="width:' + Math.min(100, Math.round(q.seuilPct)) + '%"' + (q.seuilProche || q.seuilAtteint ? ' class="warn"' : '') + '></i></div>'
+      + '<p class="tk-note" style="font-size:10.5px;margin-top:7px">'
+      + (q.illimite ? '* ' : '') + 'Au-delà, une déclaration à l’ACPR est due (' + art(S.acprSource) + ') — nous t’accompagnons : ' + LIEN_REGLES + '</p>';
+    if (q.seuilAtteint) {
+      h += '<p class="tk-alerte">Le seuil est atteint : aucun bon ne s’édite avant ta déclaration à l’ACPR. ' + LIEN_REGLES + '</p>';
+    } else if (q.seuilProche) {
+      h += '<p class="tk-alerte">Tu approches du seuil : prépare la déclaration avec nous avant qu’il ne bloque les ventes. ' + LIEN_REGLES + '</p>';
+    }
+    if (!epuise) h += '<p class="tk-note">' + LIEN_FORFAIT + '</p>';
+    return h;
+  }
+
+  /* ══ LA LISTE — vingt lignes à la fois, du plus récent au plus ancien ══════════════════════════════
+     `q.page` vient du référentiel (pageBons) : « 1–20 sur 137 ». « Plus récents » remonte, « Plus anciens »
+     descend ; la page est bornée à chaque repeint, parce que la liste peut avoir grandi ou rétréci entre-temps. */
+  function peindreBons(tous, q) {
+    var N = tous.length, pg = q.page;
+    var pages = Math.max(1, Math.ceil(N / pg));
+    var page = Math.min(Math.max(0, vue.page), pages - 1);
+    vue.page = page;
+
+    if (!N) {
+      /* L'ÉTAT VIDE MÈNE AU GESTE QUI LE REMPLIT : le lien de vente à partager (sur Paiement, carte « Mon lien »). */
+      $('te-bons').innerHTML = vide('<b>Aucun bon pour l’instant.</b> Le premier apparaîtra ici dès qu’un commerce du réseau en vendra un — ou dès qu’un client passera par <a class="tk-go" href="08-paiement.html#tp-lien">ton lien de vente ›</a>');
+      $('te-bons-pag').hidden = true;
+      return;
+    }
+    $('te-bons').innerHTML = tous.slice(page * pg, (page + 1) * pg).map(ligne).join('');
+    $('te-bons-pag').hidden = false;
+    $('te-bons-page').textContent = (page * pg + 1) + '–' + Math.min(N, (page + 1) * pg) + ' sur ' + N;
+    $('te-bons-prev').disabled = page <= 0;
+    $('te-bons-next').disabled = page >= pages - 1;
+  }
+
+  /* UNE LIGNE — le code, son état, son montant et ce qu'il en reste, puis la vente qui l'a fait naître : où,
+     quand, par quelle référence. Tout est relu au repeint : un bon dépensé chez la marque change de ligne sans
+     qu'on écrive rien. Ce que nous l'avons acheté et où en est notre paiement se lisent sur Paiement, par vente. */
+  function ligne(b) {
+    var v = b.venteRef ? D.techVente(b.venteRef) : null;
+    var rv = v && v.revendeurId ? D.techRevendeur(v.revendeurId) : null;
+    var montant = b.montant == null ? '—' : esc(D.eur(b.montant));
+    if (b.etat === 'redeemed') montant += ' · dépensé chez toi' + (b.utiliseLe ? ' le ' + esc(D.dateHeure(b.utiliseLe)) : '');
+    else if (b.montant != null && b.solde != null && b.solde < b.montant) montant += ' · reste ' + esc(D.eur(b.solde)) + ' à dépenser chez toi';
+    var h = '<div class="tk-row"><span class="tx">'
+      + '<span class="nm tk-mono" style="font-size:12px">' + esc(b.code) + '</span> ' + pillEtat(b)
+      + '<span class="sb">' + montant + ' · édité le ' + esc(D.dateHeure(b.emisLe)) + '</span>';
+    if (v) {
+      h += '<span class="sb">Vendu' + (rv ? ' par ' + esc(rv.raisonSociale) + (rv.ville ? ' (' + esc(rv.ville) + ')' : '') : (v.revendeur ? ' par ' + esc(v.revendeur) : ''))
+        + ' · vente ' + esc(v.reference) + '</span>';
+    }
+    if (b.etat === 'cancelled') {
+      h += '<span class="sb">Annulé' + (b.annuleLe ? ' le ' + esc(D.dateHeure(b.annuleLe)) : '') + (b.motifAnnulation ? ' — ' + esc(b.motifAnnulation) : '') + '</span>';
+    }
+    return h + '</span></div>';
+  }
+
+  /* ══ LA CARTE DU RÉSEAU ═════════════════════════════════════════════════════════════════
+     Elle se monte UNE FOIS (PEC_GEO.carte, le même montage que les quatre autres écrans qui en ont une) et
+     ses marqueurs se refont à chaque peinture : remonter une carte MapLibre à chaque événement du bus, c'est
+     une toile WebGL de plus à chaque fois. Le cadrage suit les points — on ne fige aucune ville. */
+  var mapRes = null, mkRes = {};
+  function peindreReseau() {
+    /* (23/09) LES POINTS RÉELS, ceux nés d'une inscription (PEC_TECH.reseau) — le « réseau de départ » du référentiel n'y est pas */
+    var rs = T.reseau(), pts = rs.commerces, mob = rs.nomades;
+    var avecGeo = pts.filter(function (p) { return p.geo && isFinite(p.geo.lat) && isFinite(p.geo.lng); });
+    var villes = {};
+    pts.forEach(function (p) { if (p.ville) villes[p.ville] = (villes[p.ville] || 0) + 1; });
+
+    $('te-res-txt').innerHTML = pts.length
+      ? 'Tes bons s’achètent dans <b style="color:var(--color-ink)">' + pl(pts.length, 'commerce') + '</b> de notre réseau'
+        + (mob.length ? ', et <b style="color:var(--color-ink)">' + mob.length + ' ' + esc(D.terme('nomade', mob.length > 1 ? 'pluriel' : 'nom')) + '</b> qui se déplacent' : '')
+        + '. C’est nous qui le tenons et le faisons grandir — tu n’as personne à recruter.'
+      : 'Le réseau n’a encore aucun commerce actif. Dès qu’un point ouvre, il apparaît ici.';
+
+    var noms = Object.keys(villes).sort(function (a, b) { return villes[b] - villes[a]; });
+    $('te-res-villes').innerHTML = noms.length
+      ? '<b style="color:var(--color-ink)">Où :</b> ' + noms.map(function (v) { return esc(v) + ' (' + villes[v] + ')'; }).join(' · ')
+        + (mob.length ? '<br><b style="color:var(--color-ink)">Qui se déplace :</b> ' + mob.map(function (a) { return esc(a.enseigne || a.nom || a.id); }).join(' · ')
+            + ' — sans adresse fixe, ils ne sont pas épinglés sur la carte.' : '')
+      : '';
+
+    if (!avecGeo.length || typeof maplibregl === 'undefined' || !window.PEC_GEO) return;
+    if (!mapRes) {
+      mapRes = PEC_GEO.carte('te-map', { centre: avecGeo[0].geo, zoom: 11, cadre: $('te-map-wrap'), interactive: true });
+      if (!mapRes) return;
+    }
+    Object.keys(mkRes).forEach(function (k) {
+      if (!avecGeo.some(function (p) { return p.id === k; })) { mkRes[k].remove(); delete mkRes[k]; }
+    });
+    avecGeo.forEach(function (p) {
+      if (mkRes[p.id]) { mkRes[p.id].setLngLat([p.geo.lng, p.geo.lat]); return; }
+      var el = document.createElement('div');
+      el.className = 'mk-pt';
+      el.innerHTML = '<svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>' + esc(p.enseigne);
+      mkRes[p.id] = new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.geo.lng, p.geo.lat]).addTo(mapRes);
+    });
+    /* LE CADRAGE SUIT LES POINTS : un seul point, on le centre ; plusieurs, on les contient tous. */
+    if (avecGeo.length === 1) { mapRes.setCenter([avecGeo[0].geo.lng, avecGeo[0].geo.lat]); mapRes.setZoom(13); return; }
+    var bb = new maplibregl.LngLatBounds([avecGeo[0].geo.lng, avecGeo[0].geo.lat], [avecGeo[0].geo.lng, avecGeo[0].geo.lat]);
+    avecGeo.forEach(function (p) { bb.extend([p.geo.lng, p.geo.lat]); });
+    try { mapRes.fitBounds(bb, { padding: 46, maxZoom: 13, duration: 0 }); } catch (e) {}
+  }
+
+  /* ══ LES GESTES — délégués, parce que la pagination vit sous un corps repeint à chaque événement : un
+     écouteur posé sur le bouton mourrait avec lui. Le seul geste de l'écran : feuilleter. ══ */
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('#te-bons-prev,#te-bons-next') : null;
+    if (!el || el.disabled) return;
+    if (el.id === 'te-bons-prev') { vue.page = Math.max(0, vue.page - 1); peindre(); return; }
+    if (el.id === 'te-bons-next') { vue.page = vue.page + 1; peindre(); }   // borné au repeint
+  });
+
+  peindre();
+  /* L'ÉCRAN N'EST PAS SOURD : un contrat pris, un bon vendu ailleurs, un bon dépensé, et il se refait. */
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Devenir partenaire du réseau</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-inscription.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-entreprise.js"></script><!-- le registre des entreprises : pré-remplit la société et propose le gérant, sans rien prouver -->
+<script src="../assets/payencash-docs.js"></script><!-- le coffre : la pièce du gérant, sa vidéo, le Kbis et le RIB -->
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<script src="../assets/payencash-inscription.js"></script><!-- les briques communes aux deux inscriptions (marque, partenaire) -->
+<!-- App PayEnCash PARTENAIRE — DEVENIR PARTENAIRE DU RÉSEAU (refondue le 24/09).
+     POURQUOI cette page : un commerce du réseau (tabac, presse, boutique) ou un distributeur nomade (il se déplace) VEND les bons
+     d'achat des MARQUES du réseau. Il nous achète chaque bon en le vendant, valeur faciale moins sa part, et le revend au prix
+     affiché ; il n'encaisse jamais pour notre compte.
+     Fondatrice, 24/09 : « pareil pour devenir partenaire : revérifie, audite, améliore, critique » — l'ancienne page était un seul
+     formulaire de treize champs, le gérant un « Prénom Nom » tapé d'un bloc, sa pièce d'identité une pièce parmi d'autres (sans
+     type ni recto/verso), les documents cochés sans être ouverts ; et une candidature interrompue ne se reprenait que dans le même
+     onglet. Elle suit maintenant le parcours des marques et celui des grands (Stripe, Qonto, Mollie — relevé du 24/09) :
+       ① COMPTE — Google, Apple ou e-mail + mot de passe (compteCreer `etapes` / compteSso) : le compte naît « inscription en
+          cours » ; la candidature se reprend depuis la connexion, où qu'on l'ait laissée.
+       ② ACTIVITÉ — commerce du réseau ou distributeur nomade (PARTENAIRE_MODES, mots du glossaire) ; la société trouvée au
+          registre par son nom, son SIREN ou son SIRET ; l'adresse du commerce, ou la zone que le nomade choisit lui-même.
+       ③ GÉRANT — civilité, prénom, nom (et de naissance), date et lieu de naissance, qualité ; le registre propose, la main décide.
+       ③bis BÉNÉFICIAIRES EFFECTIFS (24/09) — une fiche par personne au-delà du seuil, ou le gérant d'office.
+       ④ IDENTITÉ — sa pièce (type, faces, validité), puis la courte vidéo (visage et pièce).
+       ⑤ DOCUMENTS — Kbis et RIB du commerce, au coffre d'un geste.
+       ⑥ ENGAGEMENTS — chaque document lu jusqu'au bout, puis accepté (le contrat de distribution, lui, se SIGNE après la validation).
+       ⑦ ENVOI — un récapitulatif, puis l'envoi : la candidature entre alors, et seulement alors, dans la file du manager.
+     Ce qui suit (contrôle, contrat de distribution, activation, puis mandat SEPA du commerce ou garantie et avance du nomade)
+     est annoncé à la fin, avec les mots du mode choisi. Toutes les règles sont au data-layer (partenaireActiviteSet,
+     partenaireGerantSet, partenaireCandidature, partenaireCandidatureEnvoyer) ; les briques d'écran sont dans payencash-inscription.js. -->
+<style>
+  /* ce qui est propre à cette page — le reste vient de payencash-inscription.css */
+  .pec-ins .zone{display:flex;flex-wrap:wrap;gap:6px}
+  .pec-ins .zone button{border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-card);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer}
+  .pec-ins .zone button[aria-pressed="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+  .pec-ins .pi-consent{margin-top:12px}
+  .pec-ins .pi-consent a{font-weight:800;color:var(--color-primary-dark)}
+  /* (24/09, soir) l'échelle de bureau de ce qui est propre à cette page — la mise en page (fil vertical, formulaire à droite) vient
+     de payencash-inscription.css */
+  @media (min-width:1024px){
+    .pec-ins .zone{gap:8px}
+    .pec-ins .zone button{padding:9px 15px;font-size:13.5px}
+    .pec-ins .pi-consent{margin-top:16px}
+  }
+</style>
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device pec-ins" id="pi-cadre" style="position:relative">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body">
+      <div class="ins">
+        <div class="ins-tete">
+          <!-- (21/09) LA MARQUE — le symbole du métier (Commerce, Coursier, ou Partenaire tant que rien n'est choisi), le nom écrit, le slogan -->
+          <p class="eyebrow" style="margin:0"><span class="pec-marque--grand" data-pec-marque="partenaire" data-pec-marque-part data-slogan></span></p>
+          <h1 id="pi-titre">Devenir partenaire du réseau</h1>
+          <p id="pi-promesse">—</p>
+        </div>
+        <ol class="fil" id="pi-fil" aria-label="Étapes de la candidature"></ol>
+
+        <!-- ① LE COMPTE -->
+        <section class="carte" id="pi-e-compte" data-etape="compte" hidden>
+          <h2>Crée ton compte</h2>
+          <p class="sous">Un compte d’abord : tu termines ta candidature quand tu veux, elle reprend où tu l’as laissée.</p>
+          <div id="pi-sso-boutons" style="margin-top:14px"></div>
+          <div class="ou">ou avec ton adresse e-mail</div>
+          <div class="champ"><label for="pi-email">E-mail</label>
+            <input class="pec-input" id="pi-email" type="email" autocomplete="email" inputmode="email" placeholder="contact@ton-commerce.fr"></div>
+          <div class="champ"><label for="pi-mdp">Mot de passe</label>
+            <input class="pec-input" id="pi-mdp" type="password" autocomplete="new-password">
+            <p class="aide" id="pi-mdp-aide">—</p></div>
+          <div class="champ"><label for="pi-mdp2">Confirme le mot de passe</label>
+            <input class="pec-input" id="pi-mdp2" type="password" autocomplete="new-password"></div>
+          <p class="err" id="pi-compte-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-cta tap" id="pi-compte-go">Créer mon compte</button></div>
+          <!-- (24/09, soir — relecture juridique) CE À QUOI SERVENT SES DONNÉES, dit sous le geste qui crée le compte (Google, Apple ou
+               e-mail) : l'instruction de sa candidature, et la politique entière dans un nouvel onglet — la candidature reste ouverte. -->
+          <p class="aide pi-consent">Tes données servent à instruire ta candidature — le détail est dans la <a href="../../documents/politique-confidentialite-partenaire.html" target="_blank" rel="noopener">politique de confidentialité des partenaires</a>.</p>
+          <div id="pi-code-z" hidden style="margin-top:14px;padding-top:14px;border-top:1px solid var(--color-sep)">
+            <p class="sous" style="margin:0">Un code à <span data-otp-longueur>6</span> chiffres a été envoyé à <b id="pi-code-mail" style="color:var(--color-ink)">—</b>. Saisis-le pour confirmer ton adresse.</p>
+            <div class="champ"><label for="pi-code">Code reçu</label>
+              <input class="pec-input" id="pi-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" style="letter-spacing:.35em;font-size:18px;font-weight:800;text-align:center"></div>
+            <p class="demo">Maquette : aucun e-mail ne part. Code attendu : <b id="pi-code-demo">—</b></p>
+            <p class="err" id="pi-code-err" role="alert" hidden></p>
+            <div class="actions"><button type="button" class="pec-cta tap" id="pi-code-go">Confirmer mon adresse</button></div>
+          </div>
+          <p style="margin:14px 0 0;text-align:center;font-size:12px"><a class="pec-tap-confort" href="01-connexion.html" style="font-weight:800;color:var(--color-primary-dark)">J’ai déjà un compte</a></p>
+        </section>
+
+        <!-- ② L'ACTIVITÉ -->
+        <section class="carte" id="pi-e-activite" data-etape="activite" hidden>
+          <h2>Ton activité</h2>
+          <p class="sous">Comment tu vends, et la société qui signera le contrat de distribution.</p>
+          <div class="champ"><span class="lbl" id="pi-mode-lbl">Comment exerces-tu ?</span>
+            <div class="choix modes" id="pi-modes" role="radiogroup" aria-labelledby="pi-mode-lbl"></div></div>
+          <div class="champ"><label for="pi-cherche">Trouve ta société</label>
+            <input class="pec-input" id="pi-cherche" type="search" autocomplete="off" placeholder="Nom, SIREN ou SIRET" aria-controls="pi-sugg">
+            <div class="sugg" id="pi-sugg" hidden></div></div>
+          <div class="champ"><label for="pi-siret">SIRET</label>
+            <input class="pec-input" id="pi-siret" type="text" inputmode="numeric" autocomplete="off" maxlength="17" placeholder="14 chiffres (ou les 9 du SIREN)">
+            <p class="reg" id="pi-reg" hidden></p></div>
+          <div class="champ"><label for="pi-raison">Raison sociale</label>
+            <input class="pec-input" id="pi-raison" type="text" autocomplete="organization" placeholder="Telle qu’au Kbis"></div>
+          <div class="champ"><label for="pi-enseigne" id="pi-enseigne-lbl">—</label>
+            <input class="pec-input" id="pi-enseigne" type="text" autocomplete="off">
+            <p class="aide" id="pi-enseigne-aide">—</p></div>
+          <div id="pi-adresse-z">
+            <div class="champ"><label for="pi-adresse">Adresse du commerce</label>
+              <input class="pec-input" id="pi-adresse" type="text" autocomplete="street-address" placeholder="N° et rue">
+              <p class="aide">Elle place ton commerce sur la carte où les clients cherchent un point de vente.</p></div>
+            <div class="deux-col">
+              <div class="champ"><label for="pi-cp">Code postal</label><input class="pec-input" id="pi-cp" type="text" inputmode="numeric" autocomplete="postal-code" maxlength="5"></div>
+              <div class="champ"><label for="pi-ville">Ville</label><input class="pec-input" id="pi-ville" type="text" autocomplete="address-level2"></div>
+            </div>
+          </div>
+          <div id="pi-zone-z" hidden>
+            <div class="champ"><span class="lbl" id="pi-zone-lbl">Où te déplaces-tu ?</span>
+              <div class="zone" id="pi-zone-villes" role="group" aria-labelledby="pi-zone-lbl"></div>
+              <p class="aide">C’est <b>toi</b> qui choisis : PayEnCash ne t’assigne aucun secteur, et tu en changes quand tu veux depuis Mon point.</p></div>
+            <div class="champ"><label for="pi-zone-rayon">Jusqu’à combien de kilomètres autour ? <span class="fac">(facultatif)</span></label>
+              <input class="pec-input" id="pi-zone-rayon" type="number" min="0" max="100" step="1" style="max-width:140px"></div>
+          </div>
+          <div class="champ"><label for="pi-tel">Téléphone</label>
+            <input class="pec-input" id="pi-tel" type="tel" autocomplete="tel">
+            <p class="aide">PayEnCash t’appelle à ce numéro au contrôle de ton dossier.</p></div>
+          <p class="err" id="pi-activite-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-cta tap" id="pi-activite-go">Enregistrer et continuer</button></div>
+          <button type="button" class="plus-tard tap" data-plus-tard>Terminer plus tard</button>
+        </section>
+
+        <!-- ③ LE GÉRANT -->
+        <section class="carte" id="pi-e-gerant" data-etape="gerant" hidden>
+          <h2>Le gérant</h2>
+          <p class="sous" id="pi-ger-sous">—</p>
+          <div class="chips" id="pi-ger-chips" hidden></div>
+          <div class="champ"><span class="lbl" id="pi-civ-lbl">Civilité</span>
+            <div class="choix" id="pi-civilite" role="radiogroup" aria-labelledby="pi-civ-lbl"></div></div>
+          <div class="deux-col">
+            <div class="champ"><label for="pi-prenom">Prénom(s)</label><input class="pec-input" id="pi-prenom" type="text" autocomplete="given-name"></div>
+            <div class="champ"><label for="pi-nom">Nom</label><input class="pec-input" id="pi-nom" type="text" autocomplete="family-name"></div>
+          </div>
+          <div class="champ"><label for="pi-nom-naissance">Nom de naissance <span class="fac">(s’il diffère)</span></label>
+            <input class="pec-input" id="pi-nom-naissance" type="text" autocomplete="off"></div>
+          <div class="deux-col">
+            <div class="champ"><label for="pi-naissance">Date de naissance</label><input class="pec-input" id="pi-naissance" type="date" autocomplete="bday"></div>
+            <div class="champ"><label for="pi-lieu-naissance">Lieu de naissance</label><input class="pec-input" id="pi-lieu-naissance" type="text" autocomplete="off" placeholder="Ville (pays)"><p class="aide" id="pi-lieu-motif"></p></div>
+          </div>
+          <div class="champ"><label for="pi-qualite">Qualité (telle qu’au Kbis)</label><select class="pec-input" id="pi-qualite"></select></div>
+          <p class="err" id="pi-gerant-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-btn-secondary tap" data-retour="activite">Retour</button><button type="button" class="pec-cta tap" id="pi-gerant-go">Enregistrer et continuer</button></div>
+          <button type="button" class="plus-tard tap" data-plus-tard>Terminer plus tard</button>
+        </section>
+
+        <!-- ③bis LES BÉNÉFICIAIRES EFFECTIFS (24/09, fondatrice : « oui, marques et partenaires ») -->
+        <section class="carte" id="pi-e-beneficiaires" data-etape="beneficiaires" hidden>
+          <h2>Les bénéficiaires effectifs</h2>
+          <p class="sous" id="pi-benef-sous">—</p>
+          <div id="pi-benef-z"></div>
+          <p class="err" id="pi-beneficiaires-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-btn-secondary tap" data-retour="gerant">Retour</button><button type="button" class="pec-cta tap" id="pi-beneficiaires-go">Enregistrer et continuer</button></div>
+          <button type="button" class="plus-tard tap" data-plus-tard>Terminer plus tard</button>
+        </section>
+
+        <!-- ④ SON IDENTITÉ : LA PIÈCE, PUIS LA VIDÉO -->
+        <section class="carte" id="pi-e-identite" data-etape="identite" hidden>
+          <h2>Son identité</h2>
+          <p class="sous" id="pi-id-sous">—</p>
+          <div id="pi-id-z"></div>
+          <p class="sous" style="margin-top:14px">Puis une courte vidéo : son visage, puis la pièce tenue à côté. Elle est regardée par une personne de PayEnCash, puis supprimée ; elle ne sert à aucune reconnaissance automatique.</p>
+          <div id="pi-video"></div>
+          <p class="err" id="pi-identite-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-btn-secondary tap" data-retour="beneficiaires">Retour</button><button type="button" class="pec-cta tap" id="pi-identite-go">Déposer et continuer</button></div>
+          <button type="button" class="plus-tard tap" data-plus-tard>Terminer plus tard</button>
+        </section>
+
+        <!-- ⑤ LES DOCUMENTS DE LA SOCIÉTÉ -->
+        <section class="carte" id="pi-e-documents" data-etape="documents" hidden>
+          <h2>Les documents de la société</h2>
+          <p class="sous">Le Kbis dit qui signe le contrat ; le RIB est le compte que prélève ton mandat SEPA, ou celui où ta garantie est restituée.</p>
+          <div id="pi-pieces"></div>
+          <p class="err" id="pi-documents-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-btn-secondary tap" data-retour="identite">Retour</button><button type="button" class="pec-cta tap" id="pi-documents-go">Continuer</button></div>
+          <button type="button" class="plus-tard tap" data-plus-tard>Terminer plus tard</button>
+        </section>
+
+        <!-- ⑥ LES ENGAGEMENTS -->
+        <section class="carte" id="pi-e-engagements" data-etape="engagements" hidden>
+          <h2>Tes engagements</h2>
+          <p class="sous">Chaque document se lit jusqu’au bout avant d’être accepté. Le <b>contrat de distribution</b>, lui, se signe après la validation de ton dossier.</p>
+          <div class="docs" id="pi-docs"></div>
+          <p class="err" id="pi-engagements-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-btn-secondary tap" data-retour="documents">Retour</button><button type="button" class="pec-cta tap" id="pi-engagements-go">Continuer</button></div>
+          <button type="button" class="plus-tard tap" data-plus-tard>Terminer plus tard</button>
+        </section>
+
+        <!-- ⑦ LE RÉCAPITULATIF, PUIS L'ENVOI -->
+        <section class="carte" id="pi-e-envoi" data-etape="envoi" hidden>
+          <h2>Vérifie, puis envoie</h2>
+          <p class="sous">Chaque bloc se modifie à sa place. À l’envoi, ta candidature part au contrôle de PayEnCash.</p>
+          <div class="recap" id="pi-recap"></div>
+          <p class="err" id="pi-envoi-err" role="alert" hidden></p>
+          <div class="actions"><button type="button" class="pec-cta tap" id="pi-envoi-go">Envoyer ma candidature</button></div>
+        </section>
+
+        <!-- APRÈS L'ENVOI -->
+        <section class="carte fin" id="pi-fin" hidden>
+          <h2 id="pi-fin-t">Candidature envoyée</h2>
+          <p class="sous" id="pi-fin-s">—</p>
+          <ol class="liste-fin" id="pi-fin-liste"></ol>
+          <div class="actions" style="flex-direction:column">
+            <button type="button" class="pec-cta tap" id="pi-fin-pieces" hidden>Remplacer les pièces</button>
+            <a class="pec-tap-confort" href="01-connexion.html" style="text-align:center;font-weight:800;font-size:12px;color:var(--color-primary-dark)">Aller à la connexion</a>
+          </div>
+        </section>
+
+        <p class="autre-porte" id="pi-autre-porte">—</p>
+      </div>
+    </div>
+  </div>
+  <!-- PAS de tabbar : pas de navigation avant un compte validé et connecté. -->
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, DOCS = window.PEC_DOCS, I = window.PEC_INSCRIPTION, $ = function (i) { return document.getElementById(i); };
+  if (!D || !D.PART_INSCRIPTION_ETAPES || !I) return;
+  var K = (D.ref && D.ref.kyc) || {}, M = D.PARTENAIRE_MODES || {}, esc = D.esc.bind(D);
+  var ETAPES = D.PART_INSCRIPTION_ETAPES, CLE = 'pec-inscription-partenaire', CID = null, ici = 'compte', mdpEnCours = null;
+
+  $('pi-promesse').textContent = 'Vends les bons d’achat des marques du réseau, dans ton ' + D.terme('commerce', 'court') + ' ou comme ' + D.terme('nomade') + '. '
+    + ETAPES.length + ' étapes ; tu peux t’arrêter à tout moment, ta candidature est gardée.';
+  $('pi-mdp-aide').textContent = D.compteMdpMin('partenaire') + ' caractères au moins.';
+  $('pi-autre-porte').innerHTML = 'Tu es une marque et tu veux faire vendre tes bons par le réseau ? Ton inscription se fait dans <a href="../tech/00-inscription.html">' + esc(D.techRef ? D.techRef().nom : 'PayEnCash Solution') + '</a>.';
+
+  function montrer(id, txt) { var z = $(id); if (!z) return; z.hidden = !txt; z.textContent = txt || ''; }
+  function val(id) { return String(($(id) || {}).value || '').trim(); }
+  function c() { return CID ? D.compte(CID) : null; }
+  function p() { return (c() || {}).profil || {}; }
+  function etat() { return CID ? D.partenaireCandidature(CID) : null; }
+  function retenir(id) { CID = id; try { sessionStorage.setItem(CLE, id); } catch (e) {} }
+
+  /* ── LE FIL DES ÉTAPES ── */
+  function peindreFil() {
+    var st = etat(), faits = {};
+    (st ? st.etapes : []).forEach(function (e) { faits[e.cle] = e.ok; });
+    $('pi-fil').innerHTML = ETAPES.map(function (e, i) {
+      var cls = e.cle === ici ? 'ici' : (faits[e.cle] ? 'fait' : '');
+      return '<li class="' + cls + '"><button type="button" data-aller="' + e.cle + '"' + (cls === 'fait' ? '' : ' disabled') + ' aria-current="' + (e.cle === ici ? 'step' : 'false') + '">'
+        + '<span class="barre"></span><span class="lbl">' + (i + 1) + '. ' + esc(e.lbl) + '</span></button></li>';
+    }).join('');
+  }
+  $('pi-fil').addEventListener('click', function (ev) { var b = ev.target.closest ? ev.target.closest('[data-aller]') : null; if (b && !b.disabled && CID) aller(b.getAttribute('data-aller')); });
+  var PEINTRES = {};
+  /* (24/09) on ne fait défiler jusqu'au fil qu'en passant d'une étape à l'autre : à l'ouverture, le titre de la page reste visible */
+  var dejaOuverte = false;
+  function aller(cle) {
+    ici = cle;
+    ETAPES.forEach(function (e) { var s = $('pi-e-' + e.cle); if (s) s.hidden = e.cle !== cle; });
+    $('pi-fin').hidden = true;
+    if (PEINTRES[cle]) PEINTRES[cle]();
+    peindreFil();
+    if (dejaOuverte) { try { $('pi-fil').scrollIntoView({ block: 'start', behavior: 'smooth' }); } catch (e) {} }
+    dejaOuverte = true;
+  }
+  document.addEventListener('click', function (ev) {
+    var r = ev.target.closest ? ev.target.closest('[data-retour]') : null; if (r) { aller(r.getAttribute('data-retour')); return; }
+    if (ev.target.closest && ev.target.closest('[data-plus-tard]')) plusTard();
+  });
+  /* S'ARRÊTER N'EFFACE RIEN : chaque étape est enregistrée sur le compte ; la connexion ramène ici, à l'étape suivante. */
+  function plusTard() {
+    ETAPES.forEach(function (e) { var s = $('pi-e-' + e.cle); if (s) s.hidden = true; });
+    $('pi-fin-t').textContent = 'Candidature gardée';
+    $('pi-fin-s').textContent = 'Tout ce que tu as enregistré est gardé sur ton compte (' + (c() || {}).identifiant + '). Reconnecte-toi quand tu veux : ta candidature reprendra à l’étape suivante.';
+    $('pi-fin-liste').innerHTML = ''; $('pi-fin-pieces').hidden = true; $('pi-fin').hidden = false;
+  }
+
+  /* ══ ① LE COMPTE ══════════════════════════════════════════════════════════════════════════════════════════════ */
+  function ouvrir(compte) {
+    if (!compte) return;
+    retenir(compte.id);
+    if (compte.statut === 'actif') { location.href = '01-connexion.html'; return; }   // un compte déjà validé se connecte
+    var st = etat();
+    if (st.envoyee) { finir(); return; }
+    aller(st.prochaine && st.prochaine !== 'compte' ? st.prochaine : 'activite');
+  }
+  $('pi-compte-go').addEventListener('click', function () {
+    montrer('pi-compte-err', '');
+    if ($('pi-mdp').value !== $('pi-mdp2').value) { montrer('pi-compte-err', 'Les deux mots de passe ne sont pas identiques.'); $('pi-mdp2').focus(); return; }
+    var r = D.compteCreer('partenaire', { email: val('pi-email'), motdepasse: $('pi-mdp').value, motdepasse2: $('pi-mdp2').value, etapes: true });
+    if (!r.ok) { montrer('pi-compte-err', r.motif); return; }
+    retenir(r.compte.id); mdpEnCours = $('pi-mdp').value;
+    $('pi-code-mail').textContent = r.compte.identifiant; $('pi-code-demo').textContent = (r.codes || {}).email || '—';
+    $('pi-code-z').hidden = false; $('pi-compte-go').disabled = true; $('pi-code').focus();
+  });
+  $('pi-code-go').addEventListener('click', function () {
+    montrer('pi-code-err', '');
+    if (!CID) return;
+    var v = D.compteVerifier(CID, 'email', val('pi-code'));
+    if (!v.ok) { montrer('pi-code-err', v.motif === 'Code incorrect' ? 'Ce code ne correspond pas : vérifie les six chiffres.' : v.motif); return; }
+    ouvrir(D.compte(CID));
+  });
+  $('pi-code').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('pi-code-go').click(); });
+  /* GOOGLE / APPLE — le compte naît vérifié (l'adresse vient du fournisseur), sans mot de passe, « inscription en cours » */
+  I.boutonsSso($('pi-sso-boutons'), 'pi');
+  I.sso({ pre: 'pi', racine: $('pi-cadre'), portee: $('pi-sso-boutons'), emailDefaut: function () { return val('pi-email'); },
+    onValider: function (fournisseur, email) {
+      var r = D.compteSso('partenaire', fournisseur, email);
+      var compte = r.compte || D.compteParIdentifiant('partenaire', email);
+      if (r.ok || r.inscription) { ouvrir(compte); return { ok: true }; }
+      return { ok: false, motif: r.motif };
+    } });
+
+  /* ══ ② L'ACTIVITÉ — le mode (mots du glossaire), la société (registre), l'adresse ou la zone ══════════════════════════ */
+  var mode = null, registre = null;
+  function poserMode(k) {
+    mode = k;
+    [].forEach.call($('pi-modes').querySelectorAll('[data-mode]'), function (b) { b.setAttribute('aria-checked', String(b.getAttribute('data-mode') === k)); });
+    var mob = k === 'mobile';
+    $('pi-adresse-z').hidden = mob; $('pi-zone-z').hidden = !mob;
+    $('pi-enseigne-lbl').textContent = mob ? 'Ton nom de ' + D.terme('nomade') : 'Enseigne du commerce';
+    $('pi-enseigne-aide').textContent = mob ? 'Le nom sous lequel tes clients te voient sur la carte. Sans nom, c’est ta raison sociale.' : 'Le nom affiché sur ta devanture, tel que tes clients le connaissent.';
+    if (window.PEC_PART && PEC_PART.marque) PEC_PART.marque(k);   // (21/09) le logo suit le métier choisi
+  }
+  $('pi-modes').innerHTML = Object.keys(M).map(function (k) {
+    return '<button type="button" role="radio" aria-checked="false" data-mode="' + esc(k) + '"><span>' + esc(M[k].lbl) + '</span><small>' + esc(M[k].phrase || '') + '</small></button>';
+  }).join('');
+  $('pi-modes').addEventListener('click', function (ev) { var b = ev.target.closest ? ev.target.closest('[data-mode]') : null; if (b) poserMode(b.getAttribute('data-mode')); });
+  $('pi-zone-villes').innerHTML = (D.zoneVillesRef() || []).map(function (v) { return '<button type="button" data-ville="' + esc(v.nom) + '" aria-pressed="false">' + esc(v.nom) + '</button>'; }).join('');
+  $('pi-zone-villes').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-ville]') : null; if (!b) return;
+    b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'));
+  });
+  function registreInfo(html, cls) { var z = $('pi-reg'); z.hidden = !html; z.className = 'reg' + (cls ? ' ' + cls : ''); z.innerHTML = html || ''; }
+  var numero = I.registreNumero({ champ: $('pi-siret'), onInfo: registreInfo, onFiche: function (e, n) { appliquerRegistre(e, n.length === 9, false); } });
+  function appliquerRegistre(e, siegeSiret, ecraser) {
+    registre = e;
+    if (siegeSiret && e.siret && /^\d{14}$/.test(e.siret)) { $('pi-siret').value = e.siret; numero.oublier(e.siret); }
+    var nomReg = e.raisonSociale || e.nomComplet || '';
+    if (nomReg && (ecraser || !val('pi-raison'))) $('pi-raison').value = nomReg;
+    if (e.codePostal && !val('pi-cp')) $('pi-cp').value = e.codePostal;
+    if (e.ville && !val('pi-ville')) $('pi-ville').value = e.ville;
+    var l = I.registreLigne(e); registreInfo(l.html, l.cls);
+  }
+  I.registre({ champ: $('pi-cherche'), liste: $('pi-sugg'), onChoix: function (e) { appliquerRegistre(e, true, true); $('pi-enseigne').focus(); } });
+  PEINTRES.activite = function () {
+    var x = p();
+    if (x.mode && !mode) poserMode(x.mode);
+    [['siret', 'pi-siret'], ['raisonSociale', 'pi-raison'], ['enseigne', 'pi-enseigne'], ['adresse', 'pi-adresse'], ['cp', 'pi-cp'], ['ville', 'pi-ville'], ['tel', 'pi-tel']].forEach(function (k) {
+      if (x[k[0]] && !val(k[1])) $(k[1]).value = x[k[0]];
+    });
+    if (x.zoneRayonKm && !val('pi-zone-rayon')) $('pi-zone-rayon').value = x.zoneRayonKm;
+    (x.zoneVilles || []).forEach(function (v) { var b = $('pi-zone-villes').querySelector('[data-ville="' + String(v).replace(/"/g, '\\"') + '"]'); if (b) b.setAttribute('aria-pressed', 'true'); });
+  };
+  $('pi-activite-go').addEventListener('click', function () {
+    montrer('pi-activite-err', '');
+    var e = registre || {};
+    var r = D.partenaireActiviteSet(CID, { mode: mode, siret: val('pi-siret'), raisonSociale: val('pi-raison'), enseigne: val('pi-enseigne'), tel: val('pi-tel'),
+      adresse: val('pi-adresse'), cp: val('pi-cp'), ville: val('pi-ville'), zoneRayonKm: val('pi-zone-rayon'),
+      zoneVilles: [].filter.call($('pi-zone-villes').querySelectorAll('[data-ville]'), function (b) { return b.getAttribute('aria-pressed') === 'true'; }).map(function (b) { return b.getAttribute('data-ville'); }),
+      formeJuridique: e.forme || null, naf: e.naf || null });
+    if (!r.ok) {
+      montrer('pi-activite-err', r.motif);
+      var f = { siret: 'pi-siret', raisonSociale: 'pi-raison', tel: 'pi-tel', adresse: 'pi-adresse', cp: 'pi-cp', ville: 'pi-ville', zoneRayonKm: 'pi-zone-rayon' }[r.champ];
+      var cible = f ? $(f) : (r.champ === 'mode' ? $('pi-modes').querySelector('[data-mode]') : r.champ === 'zoneVilles' ? $('pi-zone-villes').querySelector('[data-ville]') : null);
+      if (cible) cible.focus(); return;
+    }
+    aller('gerant');
+  });
+
+  /* ══ ③ LE GÉRANT — les mêmes règles que le dirigeant d'une marque (_techDirigeantControle) ══════════════════════════ */
+  var civilite = '';
+  PEINTRES.gerant = function () {
+    var x = p(), g = x.gerant || {};
+    $('pi-ger-sous').textContent = 'Le représentant légal de ' + (x.raisonSociale || 'ta société') + ' : c’est lui qui signera le contrat de distribution, et sa pièce d’identité se contrôle avec le Kbis.';
+    civilite = civilite || g.civilite || '';
+    $('pi-civilite').innerHTML = (K.civilites || []).map(function (cv) { return '<button type="button" role="radio" aria-checked="' + (cv === civilite) + '" data-civ="' + esc(cv) + '">' + esc(cv) + '</button>'; }).join('');
+    [['prenom', 'pi-prenom'], ['nom', 'pi-nom'], ['nomNaissance', 'pi-nom-naissance'], ['dateNaissance', 'pi-naissance'], ['lieuNaissance', 'pi-lieu-naissance']].forEach(function (k) { if (g[k[0]] && !val(k[1])) $(k[1]).value = g[k[0]]; });
+    var maxN = new Date(); maxN.setFullYear(maxN.getFullYear() - (+K.ageMin)); $('pi-naissance').max = maxN.toISOString().slice(0, 10);
+    $('pi-lieu-motif').textContent = K.lieuNaissanceMotif || '';   // (24/09, soir) pourquoi le lieu de naissance est demandé : lu au référentiel
+    $('pi-qualite').innerHTML = '<option value="">Choisir…</option>' + D.techQualitesDirigeant().map(function (q) { return '<option value="' + esc(q) + '"' + (q === g.qualite ? ' selected' : '') + '>' + esc(q.charAt(0).toUpperCase() + q.slice(1)) + '</option>'; }).join('');
+    var l = (registre && registre.dirigeants) || [];
+    $('pi-ger-chips').hidden = !l.length;
+    $('pi-ger-chips').innerHTML = l.length ? '<span class="t">Au registre :</span>' + l.map(function (d, i) { return '<button type="button" data-dir="' + i + '" aria-pressed="false">' + esc([d.prenom, d.nom].filter(Boolean).join(' ')) + (d.qualiteRegistre ? ' — ' + esc(d.qualiteRegistre) : '') + '</button>'; }).join('') : '';
+  };
+  $('pi-civilite').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-civ]') : null; if (!b) return;
+    civilite = b.getAttribute('data-civ');
+    [].forEach.call(this.querySelectorAll('[data-civ]'), function (x) { x.setAttribute('aria-checked', String(x === b)); });
+  });
+  $('pi-ger-chips').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-dir]') : null; if (!b) return;
+    var d = ((registre && registre.dirigeants) || [])[+b.getAttribute('data-dir')]; if (!d) return;
+    $('pi-prenom').value = d.prenoms || d.prenom || ''; $('pi-nom').value = d.nom || ''; if (d.qualite) $('pi-qualite').value = d.qualite;
+    [].forEach.call(this.querySelectorAll('[data-dir]'), function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+  });
+  $('pi-gerant-go').addEventListener('click', function () {
+    montrer('pi-gerant-err', '');
+    var r = D.partenaireGerantSet(CID, { civilite: civilite, prenom: val('pi-prenom'), nom: val('pi-nom'), nomNaissance: val('pi-nom-naissance'), dateNaissance: val('pi-naissance'), lieuNaissance: val('pi-lieu-naissance'), qualite: val('pi-qualite') });
+    if (!r.ok) {
+      montrer('pi-gerant-err', r.motif);
+      var f = { dirigeantPrenom: 'pi-prenom', dirigeantNom: 'pi-nom', dirigeantNaissance: 'pi-naissance', dirigeantLieuNaissance: 'pi-lieu-naissance', dirigeantQualite: 'pi-qualite' }[r.champ];
+      var cible = f ? $(f) : (r.champ === 'dirigeantCivilite' ? $('pi-civilite').querySelector('[data-civ]') : null);
+      if (cible) cible.focus(); return;
+    }
+    aller('beneficiaires');
+  });
+
+  /* ══ ③bis LES BÉNÉFICIAIRES EFFECTIFS — la brique commune ; le data-layer contrôle et atteste (partenaireBeneficiairesSet) ══ */
+  var benef = I.beneficiaires({ pre: 'pi', conteneur: $('pi-benef-z'), lire: function () { return p().beneficiaires || null; },
+    dirigeant: function () { return p().gerant || null; }, forme: function () { return p().formeJuridique; } });
+  PEINTRES.beneficiaires = function () {
+    $('pi-benef-sous').textContent = 'Qui détient ' + (p().raisonSociale || 'ta société') + ' ? La brique ci-dessous dit pourquoi nous le demandons.';
+    benef.peindre();
+  };
+  $('pi-beneficiaires-go').addEventListener('click', function () {
+    montrer('pi-beneficiaires-err', '');
+    if (benef.ei()) { aller('identite'); return; }
+    var r = D.partenaireBeneficiairesSet(CID, benef.lire());
+    if (!r.ok) { montrer('pi-beneficiaires-err', r.motif); benef.viser(r); return; }
+    aller('identite');
+  });
+
+  /* ══ ④ SON IDENTITÉ — la pièce (brique commune), puis la vidéo (une pièce du coffre, déposée d'un geste) ═════════════ */
+  var piece = I.identite({ pre: 'pi', conteneur: $('pi-id-z'), portee: 'partenaire', id: function () { return CID; } });
+  var video = I.pieces({ pre: 'pi-v', conteneur: $('pi-video'), portee: 'partenaire', id: function () { return CID; }, garder: function (q) { return q.id === 'video'; }, onChange: peindreFil });
+  PEINTRES.identite = function () {
+    var g = p().gerant || {};
+    $('pi-id-sous').textContent = 'Celle de ' + [g.civilite, g.prenom, g.nom].filter(Boolean).join(' ') + ' : le type de pièce, puis ses faces et sa date de fin de validité.';
+    piece.peindre(); video.peindre();
+  };
+  $('pi-identite-go').addEventListener('click', function () {
+    montrer('pi-identite-err', '');
+    var go = this;
+    var suite = function () {
+      go.disabled = false;
+      if (video.manquantes().length) { montrer('pi-identite-err', 'Il reste la vidéo : son visage, puis la pièce tenue à côté.'); video.peindre(); return; }
+      aller('documents');
+    };
+    if (!piece.choisis() && piece.complete()) { suite(); return; }   // la reprise : la pièce est déjà au coffre, complète
+    go.disabled = true;
+    piece.deposer().then(function () { piece.peindre(); suite(); }, function (e) { go.disabled = false; montrer('pi-identite-err', (e && e.message) || 'Dépôt impossible.'); });
+  });
+
+  /* ══ ⑤ LES DOCUMENTS — Kbis et RIB (les pièces obligatoires du coffre, hors identité et contrat) ═════════════════════════ */
+  var pieces = I.pieces({ pre: 'pi', conteneur: $('pi-pieces'), portee: 'partenaire', id: function () { return CID; },
+    garder: function (q) { return q.id !== 'cni' && q.id !== 'video'; }, onChange: peindreFil });
+  PEINTRES.documents = function () { pieces.peindre(); };
+  $('pi-documents-go').addEventListener('click', function () {
+    montrer('pi-documents-err', '');
+    var manq = pieces.manquantes();
+    if (manq.length) { montrer('pi-documents-err', 'Il reste à déposer : ' + manq.map(function (q) { return q.label; }).join(', ') + '. Tu peux aussi terminer plus tard.'); return; }
+    aller('engagements');
+  });
+
+  /* ══ ⑥ LES ENGAGEMENTS — lus jusqu'au bout, puis acceptés, sous l'identifiant du compte (la clé que relit la connexion) ══ */
+  var DOCS_P = (D.ref && D.ref.documents && D.ref.documents.partenaire) || [];
+  var cleAcc = function () { return (c() || {}).identifiant; };
+  var lecteur = I.lecteur({ pre: 'pi', racine: $('pi-cadre'), espace: 'partenaire', cle: cleAcc, par: cleAcc,
+    onChange: function () { if (ici === 'engagements') PEINTRES.engagements(); peindreFil(); } });
+  PEINTRES.engagements = function () {
+    var et = D.documentsEtat('partenaire', cleAcc()), parCle = {}; et.forEach(function (e) { parCle[e.cle] = e; });
+    $('pi-docs').innerHTML = DOCS_P.map(function (d) {
+      var e = parCle[d.cle] || {}, w = D.documentMots(d);   // (24/09, nuit) une politique de confidentialité se lit, elle ne s'accepte pas
+      return '<div class="doc' + (e.aJour ? ' accepte' : '') + '"><div class="t"><b>' + esc(d.titre) + '</b><small>Version ' + esc(d.version)
+        + (e.aJour ? ' · ' + w.fait.toLowerCase() : e.consulteLe ? ' · lu — ' + (w.information ? 'à confirmer' : 'à accepter') : ' · à lire') + '</small></div>'
+        + (e.aJour ? '<span class="etat">' + w.fait + '</span>' : '<button type="button" data-lire="' + esc(d.cle) + '">' + (e.consulteLe ? (w.information ? 'Confirmer' : 'Accepter') : 'Lire') + '</button>') + '</div>';
+    }).join('') || '<p class="aide">Aucun document au référentiel.</p>';
+  };
+  $('pi-docs').addEventListener('click', function (ev) {
+    var b = ev.target.closest ? ev.target.closest('[data-lire]') : null; if (!b) return;
+    lecteur.ouvrir(DOCS_P.filter(function (d) { return d.cle === b.getAttribute('data-lire'); })[0]);
+  });
+  $('pi-engagements-go').addEventListener('click', function () {
+    montrer('pi-engagements-err', '');
+    var reste = D.documentsEtat('partenaire', cleAcc()).filter(function (e) { return !e.aJour; });
+    if (reste.length) { montrer('pi-engagements-err', 'Il reste à lire' + (reste.some(function (e) { return !e.information; }) ? ' et accepter' : '') + ' : ' + reste.map(function (e) { return e.titre; }).join(', ') + '.'); return; }
+    aller('envoi');
+  });
+
+  /* ══ ⑦ LE RÉCAPITULATIF, PUIS L'ENVOI ═══════════════════════════════════════════════════════════════════════ */
+  function dateFr(iso) { var t = Date.parse(iso + (String(iso).length === 10 ? 'T00:00:00' : '')); return isNaN(t) ? '—' : new Date(t).toLocaleDateString('fr-FR'); }
+  PEINTRES.envoi = function () {
+    var x = p(), g = x.gerant || {}, cp = c() || {}, st = etat(), pc = piece.deja(), tp = pc && DOCS.typePiece ? DOCS.typePiece(pc) : null;
+    var et = D.documentsEtat('partenaire', cleAcc()), manq = pieces.manquantes().concat(video.manquantes());
+    var bloc = function (cle, titre, corps, sansModif) { return '<div class="bloc"><div class="h"><b>' + titre + '</b>' + (sansModif ? '' : '<button type="button" data-retour="' + cle + '">Modifier</button>') + '</div>' + corps + '</div>'; };
+    $('pi-recap').innerHTML =
+      bloc('compte', 'Compte', '<p>' + esc(cp.identifiant || '—') + (cp.sso ? ' · avec ' + esc(D.SSO_FOURNISSEURS[cp.sso.fournisseur]) : ' · adresse confirmée') + '</p>', true)
+      + bloc('activite', 'Activité', '<p>' + esc((M[x.mode] || {}).lbl || '—') + ' · ' + esc(x.enseigne || '—') + '<br>' + esc(x.raisonSociale || '—') + ' · SIRET ' + esc(x.siret || '—') + '<br>'
+          + (x.mode === 'mobile' ? 'Zone : ' + esc((x.zoneVilles || []).join(', ')) + (x.zoneRayonKm ? ' (' + x.zoneRayonKm + ' km autour)' : '') : esc([x.adresse, x.cp, x.ville].filter(Boolean).join(' '))) + ' · ' + esc(x.tel || '') + '</p>')
+      + bloc('gerant', 'Gérant', '<p>' + esc([g.civilite, g.prenom, g.nom].filter(Boolean).join(' ') || '—') + '<br>'
+          + (g.dateNaissance ? (g.civilite === 'Madame' ? 'Née' : 'Né') + (g.nomNaissance ? ' ' + esc(g.nomNaissance) : '') + ' le ' + dateFr(g.dateNaissance) + (g.lieuNaissance ? ' à ' + esc(g.lieuNaissance) : '') + ' · ' : '') + esc(g.qualite || '') + '</p>')
+      + bloc('beneficiaires', 'Bénéficiaires effectifs', (function () { var be = D.beneficiairesEtat(x.beneficiaires, g, x.formeJuridique); return be.ok
+          ? '<p>' + (be.ei ? 'Entreprise individuelle : ' + esc([g.prenom, g.nom].filter(Boolean).join(' ')) + ' d’office' : be.aucun ? 'Aucune personne au-delà du seuil : ' + esc([g.prenom, g.nom].filter(Boolean).join(' ')) + ', représentant légal' : be.personnes.map(function (q) { return esc(q.prenom + ' ' + q.nom) + (q.part != null ? ' · ' + q.part + ' %' : ' · contrôle'); }).join('<br>')) + '</p>'
+          : '<p class="manque">À déclarer.</p>'; })())
+      + bloc('identite', 'Identité', pc ? '<p>' + esc(tp ? tp.lbl : 'Pièce') + (pc.deuxFaces ? ' (deux faces dans un fichier)' : pc.verso ? ' · recto et verso' : '') + (pc.expireLe ? ' · valable jusqu’au ' + dateFr(pc.expireLe) : '')
+          + (video.manquantes().length ? '<br><span class="manque">Vidéo à déposer</span>' : ' · vidéo déposée') + '</p>' : '<p class="manque">Pièce d’identité à déposer.</p>')
+      + bloc('documents', 'Documents', pieces.manquantes().length ? '<p class="manque">À déposer : ' + esc(pieces.manquantes().map(function (q) { return q.label; }).join(', ')) + '.</p>' : '<p>Kbis et RIB déposés — ils seront contrôlés.</p>')
+      + bloc('engagements', 'Engagements', '<p>' + PEC_DATA.nb(et.filter(function (e) { return e.aJour; }).length, 'document lu et reconnu', 'documents lus et reconnus') + ' sur ' + et.length + '</p>');
+    $('pi-envoi-go').disabled = !(st && st.pret) || !!manq.length;
+    $('pi-envoi-go').textContent = st && st.envoyee ? 'Renvoyer mon dossier' : 'Envoyer ma candidature';
+  };
+  $('pi-envoi-go').addEventListener('click', function () {
+    montrer('pi-envoi-err', '');
+    var st = etat();
+    /* UNE CANDIDATURE DÉJÀ ENVOYÉE DONT UNE PIÈCE A ÉTÉ REFUSÉE : la pièce remplacée, le dossier repart au contrôle */
+    if (st && st.envoyee) {
+      var s = DOCS && DOCS.soumettre ? DOCS.soumettre('partenaire', CID, { candidature: true }) : null;
+      if (s && !s.ok) { montrer('pi-envoi-err', s.message || s.motif); return; }
+      finir(); return;
+    }
+    var r = D.partenaireCandidatureEnvoyer(CID);
+    if (!r.ok) { montrer('pi-envoi-err', r.motif); return; }
+    finir();
+  });
+
+  /* ══ APRÈS L'ENVOI — ce qui suit, dans l'ordre réel, avec les mots du mode choisi ; une pièce refusée se dit, et se remplace ══ */
+  function finir() {
+    var x = p(), cp = c() || {}, mob = x.mode === 'mobile';
+    ETAPES.forEach(function (e) { var s = $('pi-e-' + e.cle); if (s) s.hidden = true; });
+    ici = 'envoi'; peindreFil();
+    var dos = D.dossierCandidat ? D.dossierCandidat(cp) : { refusees: [], manquantes: [] };
+    var aRefaire = (dos.refusees || []).concat(dos.manquantes || []);
+    $('pi-fin-t').textContent = cp.statut === 'actif' ? 'Candidature validée' : aRefaire.length ? 'Ton dossier est à compléter' : 'Candidature envoyée';
+    $('pi-fin-s').textContent = aRefaire.length
+      ? 'PayEnCash a relevé : ' + aRefaire.join(', ') + '. Remplace ces pièces, puis renvoie ton dossier.'
+      : 'Nous te prévenons à ' + (cp.identifiant || 'ton adresse') + ' à chaque étape. Ce qui suit :';
+    $('pi-fin-liste').innerHTML = aRefaire.length ? '' : [
+      'PayEnCash contrôle ton dossier (Kbis, pièce et vidéo du gérant, RIB).',
+      'Tu signes le contrat de distribution, depuis Mon point.',
+      'PayEnCash active ton ' + (mob ? 'compte de ' + D.terme('nomade') : D.terme('commerce', 'court')) + '.',
+      mob ? 'Tu verses ta garantie puis ton avance : un ' + D.terme('nomade') + ' paie ses bons avant de les vendre.'
+          : 'Tu signes ton mandat de prélèvement SEPA : tes achats de bons sont arrêtés chaque soir et prélevés à l’échéance.',
+      'La vente des bons s’ouvre alors dans ton app.'
+    ].map(function (l) { return '<li>' + esc(l) + '</li>'; }).join('');
+    $('pi-fin-pieces').hidden = !aRefaire.length;
+    $('pi-fin').hidden = false;
+  }
+  $('pi-fin-pieces').addEventListener('click', function () { aller('identite'); });
+
+  /* ══ LA REPRISE — le compte retenu sur cet onglet (la connexion le pose quand une candidature n'est pas terminée) ══ */
+  var enCours = null; try { enCours = sessionStorage.getItem(CLE); } catch (e) {}
+  var c0 = enCours ? D.compte(enCours) : null;
+  if (c0 && c0.espace === 'partenaire') {
+    CID = c0.id;
+    if (c0.statut === 'a_verifier') {
+      aller('compte');
+      $('pi-email').value = c0.identifiant; $('pi-code-mail').textContent = c0.identifiant; $('pi-code-demo').textContent = D.compteCodes(c0).email || '—';
+      $('pi-code-z').hidden = false; $('pi-compte-go').disabled = true;
+    } else if (c0.statut === 'inscription') ouvrir(c0);
+    else if (c0.statut === 'a_valider') finir();
+    else { try { sessionStorage.removeItem(CLE); } catch (e) {} CID = null; aller('compte'); }
+  } else aller('compte');
+  if (!mode) poserMode(Object.keys(M)[0]);
+})();
+</script>
+</body>
+</html>

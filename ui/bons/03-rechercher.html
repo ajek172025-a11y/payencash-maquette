@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash MES BONS — Où acheter un bon d’achat</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/vendor/maplibre-gl.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/vendor/maplibre-gl.js"></script><!-- la carte (MapLibre) : montée par PEC_GEO.carte, le seul montage de carte de la maquette -->
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-garde.js"></script><!-- page PUBLIQUE (PUBLIQUES.bons) : on voit où acheter un bon sans avoir de compte -->
+<script src="../assets/payencash-bus.js"></script><!-- (23/09, nuit — APP·551) le journal : ranger et UTILISER un bon de marque se tracent avec le compte du porteur — sans le bus, l'app agissait en silence -->
+<script src="../assets/payencash-bons.js"></script>
+<!-- LA CARTE — L'ÉCRAN PRINCIPAL DE « MES BONS » (24/09, fondatrice : « sur l'app utilisateur, page principale : la carte avec les
+     points de vente et les agents mobiles ; utilise le vocabulaire adapté, la terminologie qu'on doit employer exclusivement pour
+     les parties prenantes »).
+     CE QU'ELLE MONTRE, TOUT DÉRIVÉ, RIEN DE SEMÉ :
+     · les POINTS DE VENTE (pointsBons) — les commerces du réseau qui peuvent vendre aujourd'hui, épinglés à leur adresse ;
+     · les DISTRIBUTEURS NOMADES (agentsMobiles) — ils n'ont pas d'adresse : on n'épingle pas un point où ils ne sont pas. La
+       carte montre la ville de leur ZONE (et le cercle de leur rayon quand ils en ont posé un) : c'est là qu'ils se déplacent ;
+     · les MARQUES validées (techMarchands) — leurs bons ne s'utilisent que sur leur site, et chaque ligne le dit.
+     Les noms sont ceux du glossaire vus du client (ref.parties : « point de vente », « distributeur nomade », « marque ») —
+     l'écran n'écrit aucun mot à lui. La position n'est demandée qu'au geste (« Me localiser »), jamais au chargement, et
+     elle reste sur l'appareil (PEC_GEO.phraseRetention). Sans carte (hors ligne, sans WebGL), la liste reste juste.
+     Le nom du fichier est resté (03-rechercher) : c'est l'adresse publique de l'app, celle que la garde ouvre sans compte. -->
+<style>
+  .rc-hdr{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:2px 0 0}
+  .rc-hdr-ico{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:999px;background:var(--color-surface);border:1px solid var(--color-sep);color:var(--color-ink);text-decoration:none}
+  .rc-hdr-ico .pec-ico{font-size:17px}
+  .rc-titre{margin:2px 0 0;font-size:20px;line-height:1.2;font-weight:800;letter-spacing:-.02em;color:var(--color-ink);text-wrap:balance}
+  .rc-form{display:flex;align-items:center;gap:9px;border-radius:12px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:3px 5px 3px 13px}
+  .rc-form input{flex:1;min-width:0;border:0;background:none;font:inherit;font-size:13.5px;color:var(--color-ink);padding:11px 0;outline:none}
+  .rc-form button{flex:none;border:0;border-radius:9px;background:var(--color-primary);color:#fff;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+  .rc-filtres{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none}
+  .rc-filtres::-webkit-scrollbar{display:none}
+  .rc-filtres button{flex:none;border:1.5px solid var(--color-sep);border-radius:99px;background:var(--color-surface);padding:7px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer;white-space:nowrap}
+  .rc-filtres button[aria-checked="true"]{border-color:var(--color-primary);background:var(--color-mint)}
+  .rc-filtres .n{font-weight:700;color:var(--color-muted)}
+  /* la carte : un cadre à hauteur fixe dans l'écran — la toile MapLibre mesure son conteneur */
+  .rc-carte{position:relative;height:300px;border-radius:16px;overflow:hidden;box-shadow:var(--shadow-card)}
+  .rc-carte #mb-carte{position:absolute;inset:0}
+  .rc-loc{position:absolute;right:10px;bottom:10px;z-index:3;display:inline-flex;align-items:center;gap:6px;border:0;border-radius:99px;background:var(--color-surface);box-shadow:var(--shadow-card);padding:8px 12px;font:inherit;font-size:12px;font-weight:800;color:var(--color-ink);cursor:pointer}
+  .rc-loc .pec-ico{font-size:14px;color:var(--color-primary-dark)}
+  .rc-legende{position:absolute;left:10px;top:10px;z-index:3;display:flex;flex-direction:column;gap:4px;border-radius:12px;background:rgba(255,255,255,.92);padding:7px 9px;font-size:10.5px;font-weight:700;color:var(--color-ink);box-shadow:var(--shadow-card)}
+  .rc-legende span{display:flex;align-items:center;gap:6px}
+  .rc-legende i{display:inline-block;width:10px;height:10px;border-radius:50%}
+  .rc-aide{margin:0;font-size:11px;line-height:1.55;color:var(--color-muted)}
+  .rc-msg{margin:0;padding:9px 11px;border-radius:11px;background:var(--color-amber-well);color:var(--color-amber-text);font-size:11.5px;font-weight:700;line-height:1.45}
+  .rc-sec{margin:4px 0 -6px}
+  .rc-row{display:flex;align-items:center;gap:11px;padding:11px 14px;text-decoration:none;color:inherit;border:0;background:none;width:100%;font:inherit;text-align:left;cursor:pointer}
+  .rc-row + .rc-row{box-shadow:inset 0 1px 0 var(--color-sep)}
+  .rc-row[aria-current="true"]{background:var(--color-mint)}
+  .rc-row .ic{flex:none;display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:12px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .rc-row .ic.nomade{background:#FFF1DC;color:#9A5B00}
+  .rc-row .ic .pec-ico{font-size:17px}
+  .rc-row .t{min-width:0;flex:1}
+  .rc-row .t b{display:block;font-size:13.5px;color:var(--color-ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .rc-row .t small{display:block;margin-top:2px;font-size:11px;line-height:1.45;color:var(--color-muted)}
+  .rc-row .t small .url{color:var(--color-primary-dark);font-weight:700;word-break:break-all}
+  .rc-row .dist{flex:none;font-size:11px;font-weight:800;color:var(--color-primary-dark);font-variant-numeric:tabular-nums}
+  .rc-plus{padding:9px 14px;font-size:11px;color:var(--color-muted-2)}
+  /* les marqueurs : le point de vente (vert, à son adresse), la zone des distributeurs nomades (ambre, à la ville), toi */
+  .mb-mk-pt{display:flex;align-items:center;gap:5px;background:var(--color-ink);color:#fff;font-size:10.5px;font-weight:800;border-radius:999px;padding:5px 9px;box-shadow:0 4px 10px rgba(15,42,36,.3);white-space:nowrap;cursor:pointer;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+  .mb-mk-pt .pec-ico{font-size:12px;color:var(--color-bright)}
+  .mb-mk-pt.ici{background:var(--color-primary)}
+  .mb-mk-zone{display:flex;align-items:center;gap:5px;background:#FFF1DC;color:#7A4700;border:1.5px solid #E7A64A;font-size:10.5px;font-weight:800;border-radius:999px;padding:4px 9px;white-space:nowrap;cursor:pointer}
+  .mb-mk-user{width:18px;height:18px;border-radius:50%;background:var(--color-primary);box-shadow:0 0 0 5px rgba(16,160,106,.25),0 2px 6px rgba(15,42,36,.3)}
+  button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--color-primary);outline-offset:2px}
+  /* (24/09) SUR BUREAU, LA CARTE À GAUCHE, TOUTE LA HAUTEUR ; la recherche, les filtres et la liste à droite — comme un site
+     de cartographie. Sur téléphone et tablette, l'ordre reste celui de l'écran : recherche, filtres, carte, liste. */
+  #mb-page{padding:14px 18px 8px;display:flex;flex-direction:column;gap:12px}
+  @media (min-width:1024px){
+    #mb-page{padding:28px 40px 40px;display:grid;grid-template-columns:minmax(0,1fr) minmax(340px,420px);column-gap:28px;row-gap:12px;align-content:start}
+    #mb-page > *{grid-column:2;max-width:none;margin:0;width:auto}
+    #mb-page > .rc-hdr,#mb-page > .rc-titre{grid-column:1 / -1}
+    #mb-page > .rc-filtres{flex-wrap:wrap;overflow:visible}
+    #mb-page > .rc-carte{grid-column:1;grid-row:3 / span 8;align-self:start;position:sticky;top:0;height:calc(100dvh - 170px);min-height:420px}
+    /* (24/09, soir) l'en-tête de téléphone effacé par la colonne ne prend plus de rang : la carte part juste sous le titre */
+    .pec-device:has(> .pec-tabbar.pec-nav-complete) #mb-page > .rc-carte{grid-row:2 / span 8;height:calc(100dvh - 130px)}
+  }
+  /* ══ (24/09, soir) L'ÉCHELLE DE BUREAU — la recherche, les filtres et la liste lus à 60 cm ══ */
+  @media (min-width:1024px){
+    .rc-titre{font-size:30px;line-height:1.15}
+    .rc-form{padding:4px 6px 4px 16px} .rc-form input{font-size:15px;padding:13px 0} .rc-form button{width:44px;height:44px}
+    .rc-filtres{gap:8px} .rc-filtres button{font-size:13.5px;padding:9px 15px}
+    .rc-legende{font-size:12px;padding:9px 11px}
+    .rc-loc{font-size:13px;padding:10px 14px}
+    .rc-aide{font-size:13px} .rc-msg{font-size:13.5px;padding:12px 14px}
+    .rc-row{padding:14px 16px;gap:13px}
+    .rc-row .ic{width:42px;height:42px}
+    .rc-row .t b{font-size:15px} .rc-row .t small{font-size:13px}
+    .rc-row .dist{font-size:13px}
+    .rc-plus{font-size:13px;padding:11px 16px}
+    .mb-mk-pt,.mb-mk-zone{font-size:12px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll" id="mb-page">
+
+    <!-- (24/09, soir) pec-entete-app : sur bureau, la colonne porte la marque, et son pied l'utilisateur et la déconnexion -->
+    <header class="rc-hdr pec-entete-app">
+      <span data-pec-marque="pro" data-nom="Mes bons" data-slogan></span>
+      <a href="04-compte.html" class="tap rc-hdr-ico" aria-label="Mon compte"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-user"/></svg></a>
+    </header>
+
+    <h1 class="rc-titre" id="mb-titre">Où acheter un bon d’achat</h1>
+
+    <form class="rc-form" id="rc-form" role="search">
+      <svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;font-size:15px;color:var(--color-muted)"><use href="#i-search"/></svg>
+      <input id="mb-q" type="search" enterkeyhint="search" autocomplete="off" placeholder="—" aria-label="Rechercher">
+      <button type="submit" class="tap" aria-label="Rechercher"><svg class="pec-ico" viewBox="0 0 24 24" style="font-size:15px"><use href="#i-search"/></svg></button>
+    </form>
+    <!-- (24/09, nuit) la loupe sur un champ vide ne restait pas muette : elle dit quoi taper -->
+    <p id="rc-aide" role="status" hidden style="margin:6px 4px 0;font-size:12px;line-height:1.45;color:var(--color-muted)"></p>
+
+    <div class="rc-filtres" id="mb-filtres" role="radiogroup" aria-label="Ce que montre la carte"></div>
+
+    <div class="rc-carte pec-map-canvas" id="mb-carte-cadre">
+      <div id="mb-carte" role="region" aria-label="Carte"></div>
+      <div class="rc-legende" id="mb-legende" aria-hidden="true"></div>
+      <button type="button" class="rc-loc tap" id="mb-localiser"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-locate"/></svg>Me localiser</button>
+    </div>
+    <p class="rc-msg" id="mb-geo-msg" role="status" hidden></p>
+    <p class="rc-aide" id="mb-geo-retention" data-geo-retention="tu" hidden></p>
+
+    <div id="mb-resultats" style="display:flex;flex-direction:column;gap:14px"></div>
+
+    <p class="rc-aide" id="mb-rappel">—</p>
+    <div style="height:6px"></div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-bons-menu="03-rechercher.html"></nav><!-- la barre se pose depuis PEC_BONS.menu : écrite une fois -->
+
+</div>
+</div>
+<script>
+  (function () {
+    'use strict';
+    var D = window.PEC_DATA; if (!D) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function T(partie, forme, maj) { return D.terme(partie, forme, maj); }
+    var LIMITE = 40;   // au-delà, on invite à préciser plutôt que de faire défiler un annuaire entier
+    var q0 = new URLSearchParams(location.search).get('q') || '';
+    if (q0) $('mb-q').value = q0;
+    $('mb-q').placeholder = 'Une marque, un ' + T('commerce', 'client') + ', une ville…';
+    $('mb-rappel').textContent = window.PEC_BONS ? PEC_BONS.RAPPEL : '';
+
+    function norm(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+    function pluriel(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+
+    /* ── LA POSITION : seulement au geste, et seulement le temps que PEC_GEO la garde ── */
+    var pos = (window.PEC_GEO && PEC_GEO.dernierePos) ? PEC_GEO.dernierePos() : null;
+    var filtre = 'tout', choisi = null;
+
+    /* ══ LES DONNÉES — dérivées à chaque peinture ═══════════════════════════════════════════════════════════════ */
+    function points(q) { return D.pointsBons ? D.pointsBons({ q: q || '', pos: pos || null }) : []; }
+    function nomades(q) {
+      var n = norm(q), l = D.agentsMobiles ? D.agentsMobiles({}) : [];
+      if (pos) l.forEach(function (a) { a.vientJusquaToi = D.zoneCouvre(D.partenaire(a.id), { pos: pos }); });
+      if (n) l = l.filter(function (a) { return norm(a.enseigne + ' ' + (a.zoneLbl || '') + ' ' + ((a.zone && a.zone.villes) || []).join(' ')).indexOf(n) !== -1; });
+      return l.sort(function (a, b) { return (b.vientJusquaToi ? 1 : 0) - (a.vientJusquaToi ? 1 : 0); });
+    }
+    function marques(q) {
+      var n = norm(q), l = D.techMarchands ? D.techMarchands({ statut: 'validated' }) : [];
+      if (n) l = l.filter(function (m) { return norm(m.raisonSociale + ' ' + (m.siteUrl || '')).indexOf(n) !== -1; });
+      return l.sort(function (a, b) { return String(a.raisonSociale).localeCompare(String(b.raisonSociale), 'fr'); });
+    }
+
+    /* ══ LES FILTRES — ce que montrent la carte et la liste ═════════════════════════════════════════════════════ */
+    function peindreFiltres(P, N, M) {
+      var F = [['tout', 'Tout', null], ['points', T('commerce', 'clientPluriel', true), P.length], ['nomades', T('nomade', 'clientPluriel', true), N.length], ['marques', T('marque', 'pluriel', true), M.length]];
+      $('mb-filtres').innerHTML = F.map(function (f) {
+        return '<button type="button" role="radio" data-f="' + f[0] + '" aria-checked="' + (filtre === f[0]) + '">' + esc(f[1]) + (f[2] != null ? ' <span class="n">' + f[2] + '</span>' : '') + '</button>';
+      }).join('');
+      $('mb-legende').innerHTML = '<span><i style="background:var(--color-ink)"></i>' + esc(T('commerce', 'clientPluriel', true)) + '</span>'
+        + '<span><i style="background:#E7A64A"></i>' + esc('Zones des ' + T('nomade', 'clientPluriel')) + '</span>';
+    }
+    $('mb-filtres').addEventListener('click', function (e) {
+      var b = e.target.closest ? e.target.closest('[data-f]') : null; if (!b) return;
+      filtre = b.getAttribute('data-f'); rendre();
+    });
+
+    /* ══ LA LISTE ═══════════════════════════════════════════════════════════════════════════════════════════ */
+    function section(titre, sous, lignes, plus) {
+      return '<div><p class="pec-section-label rc-sec">' + esc(titre) + '</p>' +
+        '<div style="font-size:11px;color:var(--color-muted);margin:0 0 8px;line-height:1.5">' + esc(sous) + '</div>' +
+        '<div class="pec-card" style="padding:0;overflow:hidden">' + lignes + (plus ? '<div class="rc-plus">' + esc(plus) + '</div>' : '') + '</div></div>';
+    }
+    function rendre() {
+      var q = $('mb-q').value.trim(), P = points(q), N = nomades(q), M = marques(q), out = '';
+      peindreFiltres(P, N, M);
+      var voir = function (k) { return filtre === 'tout' || filtre === k; };
+      if (voir('points') && P.length) {
+        out += section(T('commerce', 'clientPluriel', true) + ' · ' + P.length,
+          'Tu y achètes le bon d’une marque au comptoir, au montant exact. ' + (pos ? 'Du plus proche au plus loin.' : 'Touche « Me localiser » pour les voir du plus proche au plus loin.'),
+          P.slice(0, LIMITE).map(function (p) {
+            return '<button type="button" class="rc-row tap" data-pt="' + esc(p.id) + '"' + (choisi === p.id ? ' aria-current="true"' : '') + '><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg></span>'
+              + '<span class="t"><b>' + esc(p.enseigne) + '</b><small>' + esc([p.adresse, [p.cp, p.ville].filter(Boolean).join(' ')].filter(Boolean).join(' · ')) + (p.geoApprox ? ' · position approchée' : '') + '</small></span>'
+              + (p.distTxt ? '<span class="dist">' + esc(p.distTxt) + '</span>' : '') + '</button>';
+          }).join(''), P.length > LIMITE ? '… et ' + (P.length - LIMITE) + ' autres — précise ta recherche.' : '');
+      }
+      if (voir('nomades') && N.length) {
+        out += section(T('nomade', 'clientPluriel', true) + ' · ' + N.length,
+          'Ils se déplacent jusqu’à toi, dans la zone qu’ils ont choisie. Tu en demandes un depuis le bon que te propose une marque : « ' + ((D.PARTENAIRE_MODES.mobile || {}).clientLbl || '') + ' ».',
+          N.slice(0, LIMITE).map(function (a) {
+            return '<button type="button" class="rc-row tap" data-nomade="' + esc(a.id) + '"' + (choisi === a.id ? ' aria-current="true"' : '') + '><span class="ic nomade"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-route"/></svg></span>'
+              + '<span class="t"><b>' + esc(a.enseigne) + '</b><small>Se déplace : ' + esc(a.zoneLbl || '—') + '</small>'
+              + '<small>' + (a.note != null ? esc(String(a.note).replace('.', ',')) + ' / 5 · ' + pluriel(a.avis, 'avis') : 'Pas encore d’avis') + (a.vientJusquaToi ? ' · <b style="display:inline;color:var(--color-primary-dark)">vient jusqu’à toi</b>' : '') + '</small></span></button>';
+          }).join(''), N.length > LIMITE ? '… et ' + (N.length - LIMITE) + ' autres — précise ta recherche.' : '');
+      }
+      if (voir('marques') && M.length) {
+        out += section(T('marque', 'pluriel', true) + ' · ' + M.length, 'Chaque bon ne vaut que sur le site de la marque qui l’a émis.',
+          M.slice(0, LIMITE).map(function (m) {
+            var site = String(m.siteUrl || '');
+            return '<a class="rc-row tap" href="' + esc(site) + '" target="_blank" rel="noopener"><span class="ic"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg></span>'
+              + '<span class="t"><b>' + esc(m.raisonSociale) + '</b><small>' + (site ? 'Ses bons s’utilisent uniquement sur <span class="url">' + esc(site.replace(/^https?:\/\//, '')) + '</span>' : 'Ses bons s’utilisent uniquement dans ses propres points de vente') + '</small></span>'
+              + '<svg class="pec-ico pec-row-go" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg></a>';
+          }).join(''), M.length > LIMITE ? '… et ' + (M.length - LIMITE) + ' autres — précise ta recherche.' : '');
+      }
+      if (!out) {
+        out = '<div class="pec-vide"><span class="pec-vide-ico"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-map-pin"/></svg></span>'
+          + '<p class="pec-vide-t">' + (q ? 'Rien pour « ' + esc(q) + ' »' : 'Le réseau se construit') + '</p>'
+          + '<p class="pec-vide-s">' + (q ? 'Essaie un autre mot, ou une ville.' : 'Les ' + esc(T('commerce', 'clientPluriel')) + ' et les ' + esc(T('nomade', 'clientPluriel')) + ' apparaissent ici dès qu’ils peuvent vendre les bons des marques.') + '</p></div>';
+      }
+      $('mb-resultats').innerHTML = out;
+      peindreCarte(P, N);
+    }
+
+    /* ══ LA CARTE — PEC_GEO.carte (un seul montage pour toute la maquette) ═══════════════════════════════════════ */
+    var carte = null, mkPts = [], mkZones = [], mkUser = null, cadree = false;
+    function centreDefaut(P) {
+      if (pos) return { lat: pos.lat, lng: pos.lng };
+      var p = P.filter(function (x) { return x.geo; })[0]; if (p) return p.geo;
+      var v = (D.zoneVillesRef() || [])[0]; return v ? v.centre : null;
+    }
+    /* LES ZONES DES NOMADES — une étiquette par ville couverte (le nombre de distributeurs qui s'y déplacent), et le cercle du
+       rayon quand ils en ont posé un. Jamais un point à une adresse qu'ils n'ont pas. */
+    function zones(N) {
+      var ref = {}, parVille = {}, cercles = [];
+      (D.zoneVillesRef() || []).forEach(function (v) { ref[v.nom] = v; });
+      N.forEach(function (a) {
+        ((a.zone && a.zone.villes) || []).forEach(function (nom) {
+          var v = ref[nom]; if (!v || !v.centre) return;
+          (parVille[nom] = parVille[nom] || { ville: v, ids: [] }).ids.push(a.id);
+          if (a.zone.rayonKm > 0) cercles.push({ centre: v.centre, km: a.zone.rayonKm });
+        });
+      });
+      return { villes: Object.keys(parVille).map(function (k) { return parVille[k]; }), cercles: cercles };
+    }
+    function cercleGeo(c, km) {
+      var pts = [], R = 6371, n = 48;
+      for (var i = 0; i <= n; i++) {
+        var a = (i / n) * 2 * Math.PI, dLat = (km / R) * Math.sin(a), dLng = (km / (R * Math.cos(c.lat * Math.PI / 180))) * Math.cos(a);
+        pts.push([c.lng + dLng * 180 / Math.PI, c.lat + dLat * 180 / Math.PI]);
+      }
+      return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [pts] }, properties: {} };
+    }
+    function peindreCarte(P, N) {
+      if (!window.PEC_GEO || typeof maplibregl === 'undefined') return;
+      var c0 = centreDefaut(P); if (!c0) return;
+      if (!carte) {
+        carte = PEC_GEO.carte('mb-carte', { centre: c0, zoom: pos ? 13 : 11, cadre: $('mb-carte-cadre') });
+        if (!carte) return;
+        carte.on('load', function () { rendre(); });   // les cercles des zones attendent le style ; les marqueurs, non
+      }
+      mkPts.concat(mkZones).forEach(function (m) { m.remove(); }); mkPts = []; mkZones = [];
+      var montrerPts = filtre === 'tout' || filtre === 'points', montrerZones = filtre === 'tout' || filtre === 'nomades';
+      if (montrerPts) P.forEach(function (p) {
+        if (!p.geo) return;
+        var el = document.createElement('button'); el.type = 'button'; el.className = 'mb-mk-pt' + (choisi === p.id ? ' ici' : ''); el.setAttribute('aria-label', p.enseigne);
+        el.innerHTML = '<svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>' + esc(p.enseigne);
+        el.addEventListener('click', function () { choisir(p.id); });
+        mkPts.push(new maplibregl.Marker({ element: el, anchor: 'bottom' }).setLngLat([p.geo.lng, p.geo.lat]).addTo(carte));
+      });
+      var Z = zones(N);
+      if (montrerZones) Z.villes.forEach(function (z) {
+        var el = document.createElement('button'); el.type = 'button'; el.className = 'mb-mk-zone';
+        el.textContent = z.ville.nom + ' · ' + pluriel(z.ids.length, T('nomade', 'court'));
+        el.addEventListener('click', function () { filtre = 'nomades'; $('mb-q').value = z.ville.nom; rendre(); });
+        mkZones.push(new maplibregl.Marker({ element: el }).setLngLat([z.ville.centre.lng, z.ville.centre.lat]).addTo(carte));
+      });
+      try {
+        var geo = { type: 'FeatureCollection', features: montrerZones ? Z.cercles.map(function (x) { return cercleGeo(x.centre, x.km); }) : [] };
+        if (carte.isStyleLoaded && carte.isStyleLoaded()) {
+          if (carte.getSource('mb-zones')) carte.getSource('mb-zones').setData(geo);
+          else {
+            carte.addSource('mb-zones', { type: 'geojson', data: geo });
+            carte.addLayer({ id: 'mb-zones-fond', type: 'fill', source: 'mb-zones', paint: { 'fill-color': '#E7A64A', 'fill-opacity': 0.12 } });
+            carte.addLayer({ id: 'mb-zones-bord', type: 'line', source: 'mb-zones', paint: { 'line-color': '#E7A64A', 'line-width': 1.5, 'line-dasharray': [2, 2] } });
+          }
+        }
+      } catch (eZ) {}
+      if (pos) {
+        if (!mkUser) { var u = document.createElement('div'); u.className = 'mb-mk-user'; u.setAttribute('aria-label', 'Ta position'); mkUser = new maplibregl.Marker({ element: u }); }
+        mkUser.setLngLat([pos.lng, pos.lat]).addTo(carte);
+      }
+      /* LE CADRAGE, UNE FOIS : ce qu'il y a à voir (et toi, si l'on sait où tu es) — ensuite, la carte est à celui qui la touche */
+      if (!cadree) {
+        var coins = P.filter(function (p) { return p.geo; }).map(function (p) { return [p.geo.lng, p.geo.lat]; })
+          .concat(Z.villes.map(function (z) { return [z.ville.centre.lng, z.ville.centre.lat]; }));
+        if (pos) coins.push([pos.lng, pos.lat]);
+        if (coins.length > 1) {
+          var bb = new maplibregl.LngLatBounds(coins[0], coins[0]); coins.forEach(function (x) { bb.extend(x); });
+          carte.fitBounds(bb, { padding: 48, maxZoom: 14, duration: 0 }); cadree = true;
+        } else if (coins.length === 1) { carte.setCenter(coins[0]); cadree = true; }
+      }
+    }
+    /* UN POINT CHOISI — dans la liste ou sur la carte : l'un suit l'autre */
+    function choisir(id) {
+      choisi = id; rendre();
+      var p = points('').filter(function (x) { return x.id === id; })[0];
+      if (carte && p && p.geo) carte.easeTo({ center: [p.geo.lng, p.geo.lat], zoom: Math.max(carte.getZoom(), 14), duration: 400 });
+      var row = document.querySelector('[data-pt="' + id + '"]'); if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+    $('mb-resultats').addEventListener('click', function (e) {
+      var r = e.target.closest ? e.target.closest('[data-pt]') : null;
+      if (r) { choisir(r.getAttribute('data-pt')); try { $('mb-carte-cadre').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (x) {} }
+    });
+
+    /* ══ ME LOCALISER — au geste seulement ; l'échec se dit, avec ce qu'il faut faire ════════════════════════════ */
+    $('mb-localiser').addEventListener('click', function () {
+      if (!window.PEC_GEO) return;
+      var msg = $('mb-geo-msg'); msg.hidden = false; msg.textContent = 'Recherche de ta position…';
+      PEC_GEO.localiser(function (f) {
+        PEC_GEO.noterAccord();
+        pos = PEC_GEO.dernierePos ? (PEC_GEO.dernierePos() || { lat: f.lat, lng: f.lng }) : { lat: f.lat, lng: f.lng };
+        msg.hidden = true; $('mb-geo-retention').hidden = false; if (PEC_GEO.appliquerRetention) PEC_GEO.appliquerRetention();
+        cadree = false; rendre();
+        if (carte) carte.easeTo({ center: [pos.lng, pos.lat], zoom: 13, duration: 500 });
+      }, function (m) { msg.hidden = false; msg.textContent = m; });
+    });
+    if (pos) { $('mb-geo-retention').hidden = false; if (window.PEC_GEO && PEC_GEO.appliquerRetention) PEC_GEO.appliquerRetention(); }
+
+    $('rc-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var aide = $('rc-aide');
+      if (!$('mb-q').value.trim()) { aide.textContent = 'Tape une marque, un ' + T('commerce', 'client') + ' ou une ville : la carte et la liste se resserrent pendant que tu écris.'; aide.hidden = false; $('mb-q').focus(); return; }
+      aide.hidden = true; cadree = false; rendre();   // une recherche lancée recadre la carte sur ce qu'elle a trouvé
+    });
+    $('mb-q').addEventListener('input', function () { $('rc-aide').hidden = true; rendre(); });   // la liste se filtre pendant qu'on tape
+    rendre();
+    window.addEventListener('pec-bus', rendre);    // un point activé, une marque validée : la carte suit
+    window.addEventListener('storage', rendre);
+  })();
+</script>
+</body>
+</html>

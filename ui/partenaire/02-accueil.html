@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Accueil</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<!-- Accueil partenaire (23/09 — le grossiste). LE point de la session (PEC_PART.point()) et sa fiche de vente (PEC_PART.revendeur()).
+     POURQUOI cet écran : le commerce vend au comptoir les bons d'achat des marques du réseau. Il nous achète chaque bon en le
+     vendant (valeur faciale moins sa part), le revend au prix qu'il affiche (la valeur faciale est le prix conseillé), et nous
+     règle ses achats par prélèvement SEPA après l'arrêté (sédentaire) ou d'avance sur son compte (distributeur nomade). Il
+     n'encaisse jamais pour notre compte.
+     4 NOMBRES DÉRIVÉS (jamais écrits) : bons vendus aujourd'hui (nb, €), ce mois (nb, €) — techVentes ; ce que le commerce a GARDÉ
+     ce mois (sa part sur chaque vente) et ce qu'il DOIT (techEncours) ou son SOLDE d'avance (avanceSolde) ; depuis l'ouverture
+     (techVentesTotaux). LES VENTES DU JOUR (heure, marque, montant, état) viennent de la même source que le compteur.
+     « À faire » vient du socle (PEC_PART.aFaire : contrat, dossier, activation, mandat SEPA, garantie, solde, impayé).
+     Les RENCONTRES d'un distributeur nomade (techRencontresRevendeur) se prennent ici et se servent depuis le comptoir.
+     (24/09, soir — fondatrice : « organise ça, la hotline gère ») ÊTRE RAPPELÉ : une demande de rappel sur le bus (demanderAppel),
+     traitée par la hotline ; le délai annoncé est celui du référentiel (ref.hotline.rappelDelaiMin).
+     (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : le bandeau sombre du téléphone s'efface derrière un
+     en-tête de page (enseigne, statut, cloche, action), les quatre nombres sur une ligne, puis deux colonnes — les ventes du jour
+     et les rubriques à gauche, ce qui se fait (à faire, rencontres, être rappelé, dernières notifications) dans un panneau à droite.
+     Sur téléphone, le panneau passe avant les ventes ; les dernières notifications n'y sont pas peintes : la cloche suffit.
+     Sans point rattaché, l'écran le dit — rien n'est inventé. -->
+<style>
+  /* (24/09, soir) LES CLASSES DE LA PAGE — l'échelle du téléphone ici, celle du bureau dans le bloc @media plus bas. Les styles
+     en ligne des cartes sont partis dans ces classes : c'est la seule façon de leur donner deux échelles. */
+  .pt-garde{border-radius:16px;background:var(--color-amber-well);padding:14px;margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--color-amber-text)}
+  .pt-garde .s{margin-top:4px;font-size:12px}
+  .pb-tete{display:none}                                   /* l'en-tête de page du bureau : sur téléphone, le bandeau sombre le dit */
+  .pb-cloche{display:inline-flex}
+  .pb-barre{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-6px 0 10px}
+  .pb-barre .qui{font-size:12px;color:var(--color-muted)}
+  .pb-compte{margin:4px 0 10px}
+  .pb-compte .tx{font-size:12.5px;line-height:1.55}
+  .pb-kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:4px 0 14px}
+  .pb-kpi .k{font-size:11.5px;color:var(--color-muted)}
+  .pb-kpi .v{font-weight:800;font-size:20px}
+  .pb-kpi .v.gagne{color:var(--color-primary)}
+  .pb-kpi .s{font-size:10.5px;color:var(--color-muted);margin-top:2px}
+  .pb-titre{font-weight:800;font-size:13.5px}
+  .pb-note{margin:0;font-size:12px;line-height:1.5;color:var(--color-muted)}
+  .pb-note a{color:var(--color-primary-dark);font-weight:700}
+  .pb-afaire{margin:4px 0 10px;border:1.5px solid var(--color-amber-text)}
+  .pb-afaire a{display:flex;gap:8px;align-items:flex-start;padding:7px 0;border-top:1px solid var(--color-sep);font-size:12.5px;line-height:1.45;color:inherit;text-decoration:none}
+  .pb-afaire a .pt{flex:none;width:8px;height:8px;border-radius:999px;background:var(--color-amber-text);margin-top:5px}
+  .pb-rdv{margin:4px 0 10px}
+  .pb-rdv-tete{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+  .pb-zone{font-size:11px;color:var(--color-muted)}
+  .pb-rdv-liste{margin-top:8px}
+  .pb-rl{display:flex;gap:9px;align-items:flex-start;padding:9px 0;border-top:1px solid var(--color-sep)}
+  .pb-rl .tx{flex:1;min-width:0}
+  .pb-rl b{font-size:13px}
+  .pb-rl .pec-pill{font-size:10px}
+  .pb-rl .s{display:block;font-size:11.5px;color:var(--color-muted);line-height:1.45}
+  .pb-rl .s.fort{font-weight:700;color:var(--color-ink)}
+  .pb-rl .s.ink{color:var(--color-ink)}
+  .pb-rl .tel{display:inline-block;margin-top:3px;font-size:11.5px;font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .pb-rl .ref{display:block;font-size:11px;color:var(--color-muted-2)}
+  .pb-rl .err{display:block;font-size:11.5px;font-weight:700;color:#8E2A1E}
+  .pb-rl .acts{flex:none;display:flex;flex-direction:column;gap:6px}
+  /* `.pec-btn` ne vit que dans la feuille du back-office (payencash-manager.css), que cette app ne charge pas : « Servir » et
+     « Accepter » sortaient en bouton nu. Défini ici, le temps qu'il rejoigne la feuille commune. */
+  .pec-btn{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:10px;background:var(--color-primary);color:#fff;font:inherit;font-weight:800;text-decoration:none;cursor:pointer}
+  .pec-btn--sm{min-height:32px;padding:6px 12px;font-size:12px;border-radius:10px}
+  .pb-rappel{margin:4px 0 10px}
+  .pb-rappel .pb-note{margin-top:4px}
+  .pb-rappel-btn{margin-top:10px;width:100%}
+  .pb-rappel-etat{margin-top:8px;padding:10px 12px;border-radius:12px;background:var(--color-mint);font-size:12.5px;line-height:1.5;color:var(--color-mint-ink)}
+  .pb-rappel-form{margin-top:10px}
+  .pb-rappel-form .fac{font-weight:600;color:var(--color-muted)}
+  .pb-rappel-err{margin:8px 0 0;font-size:12px;font-weight:700;line-height:1.45;color:#8E2A1E}
+  .pb-rappel-go{margin-top:10px;width:100%}
+  .pb-notifs-z{display:none}                               /* téléphone : la cloche suffit */
+  .pb-nt{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--color-sep);text-decoration:none;color:inherit}
+  .pb-nt:first-child{border-top:0}
+  .pb-nt .t{min-width:0;font-size:12.5px;font-weight:800;line-height:1.35}
+  .pb-nt.lu .t{font-weight:600;color:var(--color-muted)}
+  .pb-nt.urg .t{color:var(--color-amber-text)}
+  .pb-nt .q{flex:none;font-size:11px;color:var(--color-muted)}
+  .pb-fil{display:block;margin-top:8px;font-size:12px;font-weight:800;color:var(--color-primary-dark);text-decoration:none}
+  .pb-cta-tel{margin:0 0 6px}
+  .pb-sec{margin:14px 0 8px}
+  .pb-vj{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--color-sep)}
+  .pb-vj:first-child{border-top:0}
+  .pb-vj .h{flex:none;font-family:var(--font-mono);font-size:11px;color:var(--color-muted)}
+  .pb-vj .m{flex:1;min-width:0;font-weight:700;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pb-vj .r{display:block;font-family:var(--font-mono);font-size:10.5px;font-weight:500;color:var(--color-muted-2)}
+  .pb-vj .pec-pill{font-size:10px;padding:3px 8px}
+  .pb-vj .n{flex:none;font-weight:800;font-size:13.5px;white-space:nowrap}
+  .pb-tot{margin:8px 0 0}
+  .pb-h2{margin:16px 0 8px}
+  .pb-rub{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+  .pb-rub .g{display:flex;align-items:center;gap:10px;min-width:0}
+  .pb-rub .g .pec-ico{color:var(--color-primary)}
+  .pb-rub .t{font-weight:700;font-size:13.5px}
+  .pb-rub .s{font-size:11.5px;color:var(--color-muted)}
+  .pb-rub > .pec-ico{color:var(--color-muted)}
+  .pb-regle{margin:4px 0 18px}
+  .pb-regle .tx{font-size:12.5px;line-height:1.55}
+  /* ── LE BUREAU : l'en-tête de page, les nombres sur une ligne, les deux colonnes, l'échelle de lecture d'un écran ── */
+  @media (min-width:1024px){
+    .pt-garde{padding:18px 22px;font-size:15px} .pt-garde .s{font-size:13.5px}
+    .pb-tete{display:flex;margin-bottom:24px}             /* .pec-info-body n'espace pas ses enfants : l'en-tête garde son air */
+    .pb-barre{display:none}                                /* la cloche est dans l'en-tête de page, le compte connecté dans la colonne */
+    .pb-cta-tel{display:none}                              /* l'action vit dans l'en-tête de page */
+    .pb-cloche{align-self:center}
+    .pb-compte{margin:0 0 6px} .pb-compte .tx{font-size:14px}
+    .pb-kpis{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;margin:6px 0 22px}
+    .pb-kpi .k{font-size:13px} .pb-kpi .v{font-size:30px;letter-spacing:-.5px;margin-top:4px} .pb-kpi .s{font-size:12.5px;margin-top:4px}
+    .pb-titre{font-size:16px}
+    .pb-note{font-size:13.5px}
+    .pb-afaire,.pb-rdv,.pb-rappel{margin:0 0 18px}
+    .pb-afaire a{font-size:14px;padding:9px 0}
+    .pb-zone{font-size:12.5px}
+    .pb-rl b{font-size:14.5px} .pb-rl .s,.pb-rl .tel,.pb-rl .err{font-size:13px} .pb-rl .ref{font-size:12px} .pb-rl .pec-pill{font-size:11px}
+    .pec-btn--sm{font-size:13px;min-height:36px;padding:7px 14px}
+    .pb-rappel-btn,.pb-rappel-go{width:100%;min-width:0}     /* dans un panneau, le bouton prend la largeur de la carte */
+    .pb-rappel-etat{font-size:14px}
+    .pb-rappel-err{font-size:13px}
+    .pb-notifs-z{display:block}
+    .pb-nt .t{font-size:14px} .pb-nt .q{font-size:12px} .pb-fil{font-size:13px}
+    .pb-sec{margin:0 0 10px}
+    .pb-vj{padding:10px 0}
+    .pb-vj .h{font-size:13px} .pb-vj .m{font-size:14.5px} .pb-vj .r{font-size:12px} .pb-vj .n{font-size:15px} .pb-vj .pec-pill{font-size:11px;padding:4px 10px}
+    .pb-h2{margin:26px 0 12px}
+    .pb-rubriques{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+    .pb-rub{margin-bottom:0} .pb-rub .t{font-size:15px} .pb-rub .s{font-size:13px}
+    .pb-regle{margin:18px 0 0} .pb-regle .tx{font-size:14px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+
+    <!-- Héro sombre — TÉLÉPHONE : identité du point (enseigne et ville du RÉFÉRENTIEL, statut dérivé). `pec-entete-app` : sur
+         bureau il s'efface, la colonne porte la marque et l'en-tête de page ci-dessous porte l'enseigne. -->
+    <section class="pec-info-hero pec-entete-app">
+      <!-- (21/09) LA MARQUE — le symbole du métier (Commerce, Coursier, ou Partenaire tant que personne n'est entré), le nom
+           écrit, le slogan. PEC_PART.marque la fait suivre le métier. -->
+      <p class="eyebrow"><span class="pec-marque--grand pec-marque--sombre" data-pec-marque="partenaire" data-pec-marque-part data-slogan></span></p>
+      <h1 id="hero-enseigne">—</h1>
+      <p class="sub" id="hero-sub">—</p>
+    </section>
+
+    <div class="pec-info-body">
+
+      <!-- (24/09, soir) L'EN-TÊTE DE PAGE DU BUREAU : l'enseigne, son statut, la cloche et l'action — peint par majFiche, comme le
+           bandeau sombre du téléphone ; masqué sous 1024 px. -->
+      <div class="pec-page-tete pb-tete">
+        <div class="tx"><h1 id="pb-tete-enseigne">—</h1><p class="sous" id="pb-tete-sub">—</p></div>
+        <div class="pec-page-actions">
+          <span id="pb-tete-cloche" class="pb-cloche"></span>
+          <a class="pec-cta tap" id="pb-tete-vendre" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre un bon de marque</a>
+        </div>
+      </div>
+
+      <!-- GARDE (socle) : point non actif (contrat à signer, intégration, suspendu, clos, aucun) → bandeau honnête, sous l'en-tête -->
+      <div id="pt-garde" class="pt-garde" hidden><b id="pt-garde-titre">—</b><div id="pt-garde-txt" class="s">—</div></div>
+
+      <!-- la cloche du fil (PEC_FIL.cloche) posée ICI, visible sur téléphone ; sur bureau elle est dans l'en-tête de page. Le
+           compteur de non-lus est un nombre, jamais un point décoratif. -->
+      <div class="pb-barre">
+        <div class="qui" id="pb-bonjour">—</div>
+        <span id="pb-cloche" class="pb-cloche"></span>
+      </div>
+
+      <!-- COMPTE DE SESSION (protocole comptes 03/09) : compte créé via 00-inscription et validé par le manager -->
+      <div class="pec-mint-banner pb-compte" id="pb-compte" style="display:none">
+        <div class="tx" id="pb-compte-txt">—</div>
+      </div>
+
+      <!-- 4 NOMBRES — DÉRIVÉS des ventes du point : zéro tant que rien n'est réellement vendu. Sur bureau, les quatre sur une ligne. -->
+      <div class="pb-kpis">
+        <div class="pec-card pb-kpi">
+          <div class="k">Bons vendus aujourd'hui</div>
+          <div class="v" id="kp-jour">0</div>
+          <div class="s" id="kp-jour-eur">0 €</div>
+        </div>
+        <div class="pec-card pb-kpi">
+          <div class="k">Ce mois</div>
+          <div class="v" id="kp-mois">0 bon</div>
+          <div class="s" id="kp-mois-eur">0 €</div>
+        </div>
+        <div class="pec-card pb-kpi">
+          <div class="k" id="kp-gagne-lbl">Ta part gardée ce mois-ci</div>
+          <div class="v gagne" id="kp-gagne">—</div>
+          <div class="s" id="kp-gagne-sub">—</div>
+        </div>
+        <div class="pec-card pb-kpi">
+          <div class="k">Depuis l'ouverture</div>
+          <div class="v" id="kp-total">0 bon</div>
+          <div class="s" id="kp-total-eur">0 €</div>
+        </div>
+      </div>
+
+      <!-- (24/09, soir) DEUX COLONNES SUR BUREAU : ce qui se lit à gauche (les ventes du jour, les rubriques, la règle) ; ce qui se
+           fait dans le panneau de droite (à faire, rencontres, être rappelé, dernières notifications). Sur téléphone, le panneau
+           passe avant les ventes : ce qui bloque se lit d'abord. -->
+      <div class="pec-cols pec-cols--principal">
+        <div class="pec-colonne">
+
+          <!-- Action principale — grisée par la garde tant que le point n'est pas actif (le bandeau dit pourquoi) ; sur bureau, elle
+               vit dans l'en-tête de page -->
+          <a class="pec-cta tap pb-cta-tel" id="cta-vendre" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg><span id="cta-vendre-txt">Vendre un bon de marque</span></a>
+
+          <!-- LES VENTES DU JOUR — DÉRIVÉES (techVentes du mois, à partir de minuit, annulées exclues) : l'heure, la marque, le montant, l'état de la vente -->
+          <p class="pec-section-label pb-sec">Les ventes d'aujourd'hui</p>
+          <div class="pec-card" id="pb-jour"></div>
+
+          <h2 class="pec-h2 pb-h2">Ton point</h2>
+          <div class="pb-rubriques">
+            <a class="pec-card tap pb-rub" href="04-bons.html">
+              <div class="g">
+                <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-receipt"/></svg>
+                <div style="min-width:0">
+                  <div class="t">Bons vendus</div>
+                  <div class="s" id="pb-bons-sub">Chaque bon émis ici : état, réimpression, annulation, ce que tu dois</div>
+                </div>
+              </div>
+              <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
+            </a>
+            <a class="pec-card tap pb-rub" href="09-marques.html">
+              <div class="g">
+                <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>
+                <div style="min-width:0">
+                  <div class="t">Les marques du réseau</div>
+                  <div class="s" id="pb-mq-s">—</div>
+                </div>
+              </div>
+              <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
+            </a>
+            <a class="pec-card tap pb-rub" href="05-releves.html">
+              <div class="g">
+                <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>
+                <div style="min-width:0">
+                  <div class="t">Mes relevés</div>
+                  <div class="s" id="pb-rev-sub">Ce que tu as vendu, gardé, et ce qui est prélevé ou débité</div>
+                </div>
+              </div>
+              <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
+            </a>
+            <a class="pec-card tap pb-rub" href="07-mon-point.html">
+              <div class="g">
+                <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>
+                <div style="min-width:0">
+                  <div class="t">Mon point</div>
+                  <div class="s" id="pb-monpoint-sub">Fiche, dossier de vérification, contrat, mandat SEPA ou avance</div>
+                </div>
+              </div>
+              <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-right"/></svg>
+            </a>
+          </div>
+
+          <!-- Rappel de la règle — chiffres du référentiel (techRef, techModes), jamais écrits ici -->
+          <div class="pec-mint-banner pb-regle">
+            <div class="tx" id="pb-regle">—</div>
+          </div>
+
+        </div>
+
+        <aside class="pec-colonne pec-avant-mobile">
+
+          <!-- À FAIRE — dérivé du socle, lien vers le geste -->
+          <div class="pec-card pb-afaire" id="pb-afaire" hidden>
+            <div class="pb-titre">À faire pour que ton point vende</div>
+            <div id="pb-afaire-liste"></div>
+          </div>
+
+          <!-- LES RENCONTRES — VISIBLES POUR UN DISTRIBUTEUR NOMADE SEUL. Un commerce ne se déplace pas : ce bloc n'existe pas chez lui.
+               Il voit les demandes des clients de marques dans sa commune (il les prend, premier arrivé) et celles qu'il a prises. -->
+          <div class="pec-card pb-rdv" id="pb-rdv" hidden>
+            <div class="pb-rdv-tete">
+              <div class="pb-titre">Rencontres</div>
+              <span id="pb-rdv-zone" class="pb-zone">—</span>
+            </div>
+            <div id="pb-rdv-liste" class="pb-rdv-liste"></div>
+            <div id="pb-rdv-vide" class="pb-note" hidden>—</div>
+          </div>
+
+          <!-- ══ ÊTRE RAPPELÉ PAR PAYENCASH (24/09, soir — fondatrice : « organise ça, la hotline gère ») ══
+               Un bouton, un sujet facultatif, et la demande de rappel part sur le bus (PEC_BUS.demanderAppel, type 'rappel') : la
+               hotline la voit en direct. Le délai annoncé vient du référentiel (ref.hotline.rappelDelaiMin) ; une demande encore à
+               faire pour ce point se relit sur le bus à chaque peinture — rien n'est écrit ici. La même carte vit sur Mon point. -->
+          <div class="pec-card pb-rappel" id="pb-rappel">
+            <div class="pb-titre">Être rappelé par PayEnCash</div>
+            <p class="pb-note">Un doute, un blocage, une question sur ton point : la hotline te rappelle au numéro de ta fiche.</p>
+            <div class="pb-rappel-etat" id="pb-rappel-etat" hidden>—</div>
+            <button type="button" class="pec-btn-secondary tap pb-rappel-btn" id="pb-rappel-ouvrir">Être rappelé par PayEnCash</button>
+            <div class="pb-rappel-form" id="pb-rappel-form" hidden>
+              <label class="pec-input-label" for="pb-rappel-sujet">À quel sujet ? <span class="fac">(facultatif)</span></label>
+              <input class="pec-input" id="pb-rappel-sujet" type="text" autocomplete="off" placeholder="ex. mon mandat SEPA, une pièce refusée">
+              <div class="pb-rappel-err" id="pb-rappel-err" role="alert" hidden>—</div>
+              <button type="button" class="pec-cta pec-cta--tight tap pb-rappel-go" id="pb-rappel-go">Demander un rappel</button>
+            </div>
+          </div>
+
+          <!-- LES DERNIÈRES NOTIFICATIONS — bureau seulement : le même fil que la cloche et que la page 08 (filPro, dérivé) -->
+          <div class="pb-notifs-z" id="pb-notifs-z">
+            <p class="pec-section-label pb-sec">Dernières notifications</p>
+            <div class="pec-card" id="pb-notifs"></div>
+          </div>
+
+        </aside>
+      </div>
+
+    </div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" aria-current="page" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, P = window.PEC_PART; if (!D || !P || !D.techVentes) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function dateFr(ts) { var q = new Date(ts); return q.toLocaleDateString('fr-FR') + ' à ' + q.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    function heure(ts) { return new Date(ts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); }
+    function pct(x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; }
+    function r2(x) { return Math.round(x * 100) / 100; }
+    function somme(l, k) { return r2(l.reduce(function (a, v) { return a + (v[k] || 0); }, 0)); }
+    function pl(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+    var rdvErreur = null;
+
+    // GARDE (socle) : point non actif (contrat à signer, intégration, suspendu, clos, aucun) → bandeau honnête ; les deux boutons de
+    // vente (celui du téléphone, celui de l'en-tête de bureau) se grisent ensemble
+    P.garde({ desactiver: ['cta-vendre', 'pb-tete-vendre'] });
+
+    // la cloche du fil, une fois par hôte — celui du téléphone et celui de l'en-tête de bureau ; l'identité du point vient du socle
+    ['pb-cloche', 'pb-tete-cloche'].forEach(function (id) { var h = $(id); if (h && window.PEC_FIL && PEC_FIL.cloche && !h.children.length) PEC_FIL.cloche(h, 'partenaire', P.pointId(), '08-notifications.html'); });
+
+    // LA RÈGLE, en clair — chiffres vifs (le manager peut les ajuster dans Configuration)
+    function majRegle() {
+      var R = D.techRef(), z = $('pb-regle'); if (!z) return;
+      var parts = D.techModes().map(function (m) { return m.partPointPct; }).sort(function (a, b) { return a - b; }), nomade = P.nomade();
+      /* (24/09) LE RÔLE DIT AVEC LE MOT DU GLOSSAIRE (commerce du réseau / distributeur nomade), et au tutoiement de l'app ;
+         (24/09, soir — relecture juridique) le nomade PAIE D'AVANCE la valeur des bons à revendre : jamais « il avance les fonds » */
+      z.innerHTML = '<b>Ton rôle : ' + esc(D.terme(nomade ? 'nomade' : 'commerce')) + ' — ' + esc(R.nom) + '.</b> Tu vends les bons d’achat des marques du réseau, au montant que ton client demande, et il te règle comme il veut : c’est ta vente. '
+        + (nomade
+          ? 'Tu paies d’avance le prix réseau de chaque bon, imputé sur l’avance que tu as versée ; ta commission est ta part sur chaque bon — de ' + esc(pct(parts[0])) + ' à ' + esc(pct(parts[parts.length - 1])) + ' selon l’offre de la marque.'
+          : 'Tu achètes chaque bon à ' + esc(R.nom) + ' en le vendant — valeur faciale moins ta part, de ' + esc(pct(parts[0])) + ' à ' + esc(pct(parts[parts.length - 1])) + ' selon l’offre de la marque — et tes achats sont arrêtés à ' + esc(R.paiement.arreteHeure) + ' puis prélevés sur ton mandat SEPA.')
+        + ' Ton client utilise son bon chez la marque, depuis l’app Mes bons. Tu n’encaisses jamais pour notre compte.';
+    }
+
+    // LA FICHE : enseigne, ville, statut — du référentiel, écrits dans le bandeau du téléphone ET l'en-tête de bureau ; sans point rattaché, on le dit
+    function majFiche() {
+      var c = P.compteSession(), p = P.point();
+      var bd = $('pb-compte'), bt = $('pb-compte-txt'), bj = $('pb-bonjour');
+      if (!$('hero-enseigne')) return;   /* la page a été remplacée pendant que le bus réveillait ce rendu : rien à peindre */
+      var titre = function (t) { ['hero-enseigne', 'pb-tete-enseigne'].forEach(function (id) { var z = $(id); if (z) z.textContent = t; }); };
+      var sous = function (t) { ['hero-sub', 'pb-tete-sub'].forEach(function (id) { var z = $(id); if (z) z.textContent = t; }); };
+      if (bj) bj.textContent = c ? 'Connecté : ' + c.identifiant : 'Aucune session de point';
+      if (!p) {
+        titre((c && c.profil && c.profil.enseigne) || 'Aucun point rattaché');
+        sous(c
+          ? 'Compte ' + (D.STATUTS_COMPTE ? String(D.STATUTS_COMPTE[c.statut] || c.statut).toLowerCase() : c.statut) + ' — aucun point rattaché à cette session. Contacte PayEnCash.'
+          : 'Aucune session de point — connecte-toi avec l\'identifiant de ton point.');
+        if (bd) bd.style.display = 'none';
+        return;
+      }
+      titre(p.enseigne);
+      sous([D.partenaireModeLbl(p), p.ville || '', D.partenaireStatutLbl(p.statut)].filter(Boolean).join(' · '));
+      if (bd && bt) {
+        if (c && !c.seed && c.valideAt) { bt.innerHTML = '<b>Compte validé le ' + esc(dateFr(c.valideAt)) + '</b> par l’équipe PayEnCash — dossier contrôlé. Identifiant : ' + esc(c.identifiant) + '.'; bd.style.display = ''; }
+        else bd.style.display = 'none';
+      }
+    }
+
+    // LES NOMBRES : ventes vives du point (annulées exclues) — du jour, du mois, depuis l'ouverture ; sa part gardée ; ce qu'il doit ou son solde
+    function majKpi() {
+      var p = P.point(), r = P.revendeur();
+      var kj = $('kp-jour'), kje = $('kp-jour-eur'), km = $('kp-mois'), kme = $('kp-mois-eur'), kn = $('kp-gagne'), kns = $('kp-gagne-sub'), kl = $('kp-gagne-lbl'), kt = $('kp-total'), kte = $('kp-total-eur');
+      if (!p || !r) { kj.textContent = '0'; kje.textContent = '0 €'; km.textContent = '0 bon'; kme.textContent = '0 €'; kn.textContent = '—'; kns.textContent = p ? 'aucune fiche de vente rattachée' : 'aucun point rattaché'; kt.textContent = '0 bon'; kte.textContent = '0 €'; return; }
+      var nomade = D.techPaieParAvance(r), jour0 = new Date(); jour0.setHours(0, 0, 0, 0);
+      var mois = D.techVentes({ revendeurId: r.id, mois: D.techPeriodeCourante() }), vives = mois.filter(function (v) { return v.statut !== 'annulee'; });
+      var duJour = vives.filter(function (v) { return (v.at || 0) >= jour0.getTime(); }), ann = mois.length - vives.length;
+      kj.textContent = String(duJour.length);
+      kje.textContent = D.eur(somme(duJour, 'montant'));
+      km.textContent = pl(vives.length, 'bon') + (ann ? ' · ' + ann + ' annulé' + (ann > 1 ? 's' : '') : '');
+      kme.textContent = D.eur(somme(vives, 'montant'));
+      kl.textContent = nomade ? 'Ta commission ce mois-ci' : 'Ta part gardée ce mois-ci';
+      kn.textContent = D.eur(somme(vives, 'partPoint'));
+      if (nomade) {
+        var av = D.avanceSolde('revendeur', r.id);
+        kns.textContent = 'solde d’avance ' + D.eur(av.solde) + (av.bas ? ' — sous le seuil d’alerte' : '') + (av.garantieVersee ? '' : ' · garantie à verser');
+      } else {
+        var enc = D.techEncours(r.id);
+        kns.textContent = enc.montant > 0 ? D.eur(enc.montant) + ' de bons à prélever (' + enc.ventes + ')' + (enc.impayes ? ' · ' + pl(enc.prelevementsImpayes || 1, 'prélèvement') + ' impayé' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') : '') : (vives.length ? 'tout ce qui est vendu est réglé ou en prélèvement' : 'aucune vente ce mois-ci — rien n\'est dû');
+      }
+      var tous = D.techVentesTotaux({ revendeurId: r.id });
+      kt.textContent = pl(tous.ventes, 'bon');
+      kte.textContent = D.eur(tous.valeur);
+      var bs = $('pb-bons-sub'); if (bs) bs.textContent = tous.ventes ? pl(tous.ventes, 'bon') + ' vendu' + (tous.ventes > 1 ? 's' : '') + ' depuis l\'ouverture · ' + D.eur(tous.valeur) : 'Chaque bon émis ici : état, réimpression, annulation, ce que tu dois';
+      var rs = $('pb-rev-sub'); if (rs) rs.textContent = !vives.length ? 'Ce que tu as vendu, gardé, et ce qui est prélevé ou débité'
+        : D.eur(somme(vives, 'montant')) + ' vendus · ' + D.eur(somme(vives, 'partPoint')) + (nomade ? ' de commission' : ' gardés') + ' · ' + D.eur(somme(vives, 'prixPoint')) + (nomade ? ' débités de ton avance' : ' à ' + D.techRef().nom);
+    }
+
+    /* LES VENTES DU JOUR — la même source que le compteur (techVentes du mois, annulées exclues, à partir de minuit) : l'heure, la
+       marque, le montant, l'état de la vente (techVenteStatutLbl). Une page du référentiel au plus (logiciel.pageBons) ; le reste
+       se lit dans Bons vendus. */
+    function majJour() {
+      var z = $('pb-jour'), r = P.revendeur(), p = P.point(); if (!z) return;
+      if (!p || !r) { z.innerHTML = '<p class="pb-note">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</p>'; return; }
+      var jour0 = new Date(); jour0.setHours(0, 0, 0, 0);
+      var l = D.techVentes({ revendeurId: r.id, mois: D.techPeriodeCourante() }).filter(function (v) { return v.statut !== 'annulee' && (v.at || 0) >= jour0.getTime(); });
+      if (!l.length) { z.innerHTML = '<p class="pb-note">Aucun bon vendu aujourd’hui — la première vente se fait dans <a href="03-vendre.html">Vendre</a>.</p>'; return; }
+      var page = +((D.techRef().logiciel || {}).pageBons) || l.length;
+      z.innerHTML = l.slice(0, page).map(function (v) {
+        return '<div class="pb-vj"><span class="h">' + esc(heure(v.at)) + '</span><span class="m">' + esc(v.marchand) + '<span class="r">' + esc(v.reference) + '</span></span>'
+          + '<span class="pec-pill ' + esc(D.techVenteStatutPill(v.statut)) + '">' + esc(D.techVenteStatutLbl(v.statut)) + '</span><span class="n">' + esc(D.eur(v.montant)) + '</span></div>';
+      }).join('')
+        + '<p class="pb-note pb-tot">' + esc(pl(l.length, 'bon')) + ' · ' + esc(D.eur(somme(l, 'montant'))) + ' vendus · ' + esc(D.eur(somme(l, 'partPoint'))) + (P.nomade() ? ' de commission' : ' gardés')
+        + (l.length > page ? ' · les ' + page + ' dernières ici, tout dans <a href="04-bons.html">Bons vendus</a>' : '') + '.</p>';
+    }
+
+    /* « À faire » du socle — rien d'écrit, tout dérivé (contrat, dossier, activation, mandat SEPA, avance, impayé). */
+    function majAFaire() {
+      var z = $('pb-afaire'), l = $('pb-afaire-liste'), todo = P.aFaire();
+      if (!z || !l) return; z.hidden = !todo.length;
+      l.innerHTML = todo.map(function (t) { return '<a class="tap" href="' + esc(t.href) + '"><span class="pt"></span><span>' + esc(t.txt) + '</span></a>'; }).join('');
+      var sub = $('pb-monpoint-sub'); if (sub) sub.textContent = todo.length ? todo.length + ' chose' + (todo.length > 1 ? 's' : '') + ' à faire — dossier, contrat, mandat SEPA, avance' : 'Fiche, dossier de vérification, contrat, mandat SEPA ou avance';
+    }
+
+    /* ══ LES RENCONTRES D'UN DISTRIBUTEUR NOMADE — celles des clients de marques, dans sa commune (techRencontresRevendeur) :
+       il les PREND (premier arrivé — personne ne les lui assigne), il appelle, et il les sert depuis le comptoir (03-vendre?rdv=). */
+    function majRdv() {
+      var z = $('pb-rdv'), l = $('pb-rdv-liste'), vd = $('pb-rdv-vide'), p = P.point(), r = P.revendeur();
+      if (!z || !l) return;
+      if (!p || !r || !D.techPaieParAvance(r)) { z.hidden = true; return; }
+      z.hidden = false;
+      $('pb-rdv-zone').textContent = D.partenaireZoneLbl(p);
+      var rs = D.techRencontresRevendeur(r.id).filter(function (x) { return x.statut === 'demandee' || x.statut === 'acceptee'; });
+      vd.hidden = !!rs.length; l.innerHTML = '';
+      if (!rs.length) {
+        vd.textContent = (p.zone && (p.zone.villes || []).length)
+          ? 'Aucune demande en ce moment' + (r.ville ? ' à ' + r.ville : '') + '. Elles apparaissent ici dès qu\'un client d\'une marque en fait une.'
+          : 'Définis d\'abord ta zone de déplacement dans Mon point : sans elle, aucune demande ne peut t\'être proposée.';
+        return;
+      }
+      l.innerHTML = rs.map(function (x) {
+        var mien = x.revendeurId === r.id, min = x.expireTs ? Math.max(0, Math.round((x.expireTs - Date.now()) / 60000)) : null;
+        return '<div class="pb-rl">'
+          + '<span class="tx">'
+          + '<b>' + esc(D.eur(x.montant)) + ' · ' + esc(x.marchand) + '</b> · <span class="pec-pill ' + esc(D.rencontreStatutPill(x.statut)) + '">' + esc(D.rencontreStatutLbl(x.statut)) + '</span>'
+          + '<span class="s">' + esc(mien ? x.lieu : [x.adresse.voie, [x.adresse.cp, x.adresse.ville].filter(Boolean).join(' ')].filter(Boolean).join(', ')) + (min != null && !mien ? ' · expire dans ' + min + ' min' : '') + '</span>'
+          + (mien && x.aide ? '<span class="s fort">' + esc(x.aide) + '</span>' : '')
+          + (mien && x.note ? '<span class="s ink">« ' + esc(x.note) + ' »</span>' : '')
+          + (mien && x.tel ? '<a class="tel" href="tel:' + esc(x.tel) + '">Appeler · ' + esc(D.telFrLbl(x.tel)) + '</a>' : '')
+          + '<span class="ref">' + esc(x.ref) + '</span>'
+          + (rdvErreur && rdvErreur.id === x.id ? '<span class="err">' + esc(rdvErreur.txt) + '</span>' : '')
+          + '</span>'
+          + (mien
+              ? '<span class="acts"><a class="pec-btn pec-btn--sm tap" href="03-vendre.html?rdv=' + encodeURIComponent(x.id) + '">Servir</a><button type="button" class="pec-btn-secondary pec-btn--sm tap" data-rdv-annuler="' + esc(x.id) + '">Annuler</button></span>'
+              : '<button type="button" class="pec-btn pec-btn--sm tap" data-rdv-ok="' + esc(x.id) + '" style="flex:none">Accepter</button>')
+          + '</div>';
+      }).join('');
+    }
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest ? e.target.closest('[data-rdv-ok],[data-rdv-annuler]') : null; if (!el) return;
+      var r = P.revendeur(); if (!r) return;
+      if (el.hasAttribute('data-rdv-ok')) { var i1 = el.getAttribute('data-rdv-ok'), x1 = D.techRencontreAccepter(i1, r.id); rdvErreur = x1.ok ? null : { id: i1, txt: x1.motif }; majRdv(); return; }
+      /* le motif est journalisé et lu par la hotline : le mot du glossaire, jamais « mandataire » (24/09, soir) */
+      var i3 = el.getAttribute('data-rdv-annuler'), x3 = D.techRencontreAnnuler(i3, 'le ' + D.terme('nomade') + ' ne peut pas s’y rendre', r.id);
+      rdvErreur = x3.ok ? null : { id: i3, txt: x3.motif }; majRdv();
+    });
+
+    /* ══ ÊTRE RAPPELÉ PAR PAYENCASH (24/09, soir — fondatrice : « organise ça, la hotline gère ») ═══════════════════════════════
+       Le geste crée une demande de rappel sur le bus (type 'rappel', canal 'app', portée par le point) ; la hotline la voit et la
+       traite. Le délai est celui du référentiel (ref.hotline.rappelDelaiMin) ; une demande encore à faire pour ce point se relit
+       sur le bus (PEC_BUS.appels) à chaque peinture — l'écran ne retient rien lui-même. */
+    function rappelEnAttente() {
+      var id = P.pointId(); if (!id || !window.PEC_BUS || !PEC_BUS.appels) return null;
+      return PEC_BUS.appels().filter(function (a) { return a.ref === id && a.type === 'rappel' && a.statut !== 'fait'; })[0] || null;
+    }
+    function majRappel() {
+      var z = $('pb-rappel'), et = $('pb-rappel-etat'), b = $('pb-rappel-ouvrir'), f = $('pb-rappel-form'), p = P.point(); if (!z) return;
+      z.hidden = !p; if (!p) return;
+      var a = rappelEnAttente(), delai = (D.ref && D.ref.hotline) ? D.ref.hotline.rappelDelaiMin : null;
+      et.hidden = !a;
+      if (!a) { if (f.hidden) b.hidden = false; return; }
+      b.hidden = true; f.hidden = true;
+      et.innerHTML = '<b>Demande enregistrée</b> : la hotline te rappelle ' + esc(delai != null ? 'sous ' + delai + ' min' : (a.quand || 'dès que possible')) + (a.tel ? ' au ' + esc(a.tel) : '')
+        + (a.motif ? ' — « ' + esc(a.motif) + ' »' : '') + '.' + (a.at ? '<br>Demandée à ' + esc(heure(a.at)) + '.' : '');
+    }
+    $('pb-rappel-ouvrir').addEventListener('click', function () { $('pb-rappel-form').hidden = false; this.hidden = true; $('pb-rappel-sujet').focus(); });
+    $('pb-rappel-go').addEventListener('click', function () {
+      var p = P.point(), e = $('pb-rappel-err'); e.hidden = true;
+      if (!p) { e.hidden = false; e.textContent = 'Aucun point rattaché : la demande ne peut pas être rattachée à ton commerce.'; return; }
+      if (!window.PEC_BUS || !PEC_BUS.demanderAppel) { e.hidden = false; e.textContent = 'Hotline indisponible sur cet appareil.'; return; }
+      if (!p.tel) { e.hidden = false; e.innerHTML = 'Aucun numéro sur ta fiche : <a href="07-mon-point.html#fiche">renseigne-le dans Mon point</a> pour être rappelé.'; return; }
+      var sujet = String($('pb-rappel-sujet').value || '').trim();
+      var a = PEC_BUS.demanderAppel({ type: 'rappel', canal: 'app', ref: P.pointId(), client: p.enseigne, tel: p.tel, motif: sujet || 'Demande depuis l’app partenaire', par: P.par() });
+      if (!a || !a.id) { e.hidden = false; e.textContent = 'La demande n’a pas été enregistrée — réessaie.'; return; }
+      $('pb-rappel-sujet').value = '';
+      majRappel();
+    });
+
+    /* LES DERNIÈRES NOTIFICATIONS (bureau) — le même fil que la cloche et la page 08 (filPro : dérivé, rien d'écrit) : les non-lues
+       d'abord, puis les plus récentes ; ouvrir une ligne la marque lue, comme sur la page du fil. NOTIFS_VOIR borne le panneau :
+       une hauteur d'écran, pas une donnée. */
+    var NOTIFS_VOIR = 5;
+    function majNotifs() {
+      var z = $('pb-notifs'), id = P.pointId(); if (!z) return;
+      if (!id || !D.filPro) { z.innerHTML = '<p class="pb-note">Aucun point rattaché.</p>'; return; }
+      var l = D.filPro('partenaire', id).slice().sort(function (a, b) { return (a.lu === b.lu ? 0 : (a.lu ? 1 : -1)) || ((b.at || 0) - (a.at || 0)); });
+      var nonLues = l.filter(function (n) { return !n.lu; }).length;
+      z.innerHTML = (l.length ? l.slice(0, NOTIFS_VOIR).map(function (n) {
+        var tag = n.href ? 'a' : 'div';
+        return '<' + tag + ' class="pb-nt' + (n.lu ? ' lu' : '') + (n.urgent ? ' urg' : '') + '"' + (n.href ? ' href="' + esc(n.href) + '"' : '') + ' data-nt="' + esc(n.id) + '">'
+          + '<span class="t">' + esc(n.titre) + '</span><span class="q">' + esc(D.depuis ? D.depuis(n.at) : dateFr(n.at)) + '</span></' + tag + '>';
+      }).join('') : '<p class="pb-note">Rien à signaler.</p>')
+        + '<a class="pb-fil" href="08-notifications.html">' + (nonLues ? nonLues + ' non lue' + (nonLues > 1 ? 's' : '') + ' · ' : '') + 'Tout le fil ›</a>';
+    }
+    document.addEventListener('click', function (e) {
+      var n = e.target.closest ? e.target.closest('#pb-notifs [data-nt]') : null; if (!n || !D.filProLire) return;
+      D.filProLire('partenaire', P.pointId(), [n.getAttribute('data-nt')]);
+      if (n.tagName !== 'A') majNotifs();
+    });
+
+    /* LA CARTE DES MARQUES DIT CE QU'IL Y A DERRIÈRE : combien de marques vendent leurs bons dans le réseau aujourd'hui. */
+    function majMarques() {
+      var z = $('pb-mq-s'); if (!z) return;
+      var n = D.techMarchands({ statut: 'validated' }).filter(function (m) { return D.techMarchandPeutTravailler(m.id).ok; }).length;
+      z.textContent = n ? n + ' marque' + (n > 1 ? 's' : '') + ' vend' + (n > 1 ? 'ent' : '') + ' ' + (n > 1 ? 'leurs' : 'ses') + ' bons dans le réseau · ta part par offre' : 'Aucune marque prête pour l’instant — elles arrivent avec leur dossier vérifié';
+    }
+    function tout() { majRegle(); majFiche(); majKpi(); majJour(); majAFaire(); majRdv(); majRappel(); majNotifs(); majMarques(); }
+    tout();
+    // (écran non sourd) une vente, un mandat signé, un point activé ou suspendu, une demande de rencontre, un rappel passé par la hotline : l'accueil se repeint
+    window.addEventListener('pec-bus', tout);
+    window.addEventListener('storage', tout);
+  })();
+</script>
+</body>
+</html>

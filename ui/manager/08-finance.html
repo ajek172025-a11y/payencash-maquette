@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Suivi financier</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  SUIVI FINANCIER — route `/finance`.
+  (23/09 — pivot grossiste) CE QUE LE GROSSISTE GAGNE, ET CE QU'IL A COÛTÉ. Notre marge est la différence entre
+  ce que le commerce du réseau nous doit pour un bon (valeur faciale moins sa part) et ce que nous devons à la
+  marque (valeur faciale moins la remise de son offre). Elle paie le prélèvement, le virement et le risque d'impayé.
+  À côté : l'abonnement au logiciel d'édition des bons (prestation soumise à TVA à 20 % ; la TVA des bons suit la qualification de chaque marque, art. 256 ter), les pénalités
+  mises à la charge d'un commerce, les frais bancaires. Jour par jour, marque par marque, offre par offre.
+  TOUT EST DÉRIVÉ de PEC_MGR.finance(mois) — une seule dérivation pour les quatre écrans de finance.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `tech_sales`, `tech_dd_files`, `tech_payouts`, `tech_penalties`, `tech_subscriptions`, `tech_invoices` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Suivi financier — <span id="fi-periode">—</span></h1>
+        <p class="sub">Ce que le réseau nous a acheté, ce que nous avons acheté aux marques, et ce qu’il nous reste.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <div class="pec-controlbar"><label>Période <input class="pec-search" style="max-width:140px" type="month" id="fi-mois" aria-label="Période"></label></div>
+      </div>
+    </div>
+
+    <div class="pec-pocket pec-pocket--payable" style="margin-bottom:16px">
+      <div class="step">MARGE DU GROSSISTE — PÉRIODE</div>
+      <h3>Marge sur les bons</h3>
+      <div class="val" id="fi-marge">0,00 €</div>
+      <div class="s" id="fi-marge-s">Revente au réseau − achat aux marques, vente par vente. Hors abonnements, hors frais bancaires.</div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:22px">
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg> Bons achetés par le réseau</div>
+        <div class="val" id="fi-ventes">0<span class="u">,00 €</span></div>
+        <div class="hint" id="fi-ventes-hint">ce que les commerces nous doivent pour la période</div>
+      </div>
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg> Achats aux marques</div>
+        <div class="val" id="fi-achats">0<span class="u">,00 €</span></div>
+        <div class="hint" id="fi-achats-hint">valeur faciale moins la remise de leur offre</div>
+      </div>
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-file"/></svg> Abonnements au logiciel</div>
+        <div class="val" id="fi-abos">0<span class="u">,00 €</span></div>
+        <div class="hint" id="fi-abos-hint">HT — prestation soumise à TVA</div>
+      </div>
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-landmark"/></svg> Frais bancaires</div>
+        <div class="val" id="fi-frais">0<span class="u">,00 €</span></div>
+        <div class="hint" id="fi-frais-hint">remises et virements — portés par la marge</div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Jour par jour</h2><p class="s" id="fi-jours-s">Bons achetés par le réseau, achats aux marques, marge — chaque jour de la période où le réseau a vendu.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Jour</th><th class="num">Bons</th><th class="num">Valeur des bons</th><th class="num">Revente au réseau</th><th class="num">Achat aux marques</th><th class="num">Marge</th></tr></thead>
+          <tbody id="fi-jours" data-fpage="15"><tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-grid pec-grid--2" style="margin-bottom:16px">
+      <div class="pec-panel">
+        <div class="pec-panel-head"><div><h2>Par marque</h2><p class="s">Ce que chaque marque nous a vendu, et ce que nous lui devons encore.</p></div></div>
+        <div class="pec-panel-body">
+          <table data-fsortable class="pec-table">
+            <thead><tr><th>Marque</th><th>Offre</th><th class="num">Bons</th><th class="num">Achat</th><th class="num">Marge</th><th class="num">Encore dû</th></tr></thead>
+            <tbody id="fi-marques" data-fpage="10"><tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="pec-panel">
+        <div class="pec-panel-head"><div><h2>Par commerce</h2><p class="s">Ce que chaque commerce du réseau nous a acheté, et ce qu’il nous doit encore.</p></div></div>
+        <div class="pec-panel-body">
+          <table data-fsortable class="pec-table">
+            <thead><tr><th>Commerce</th><th class="num">Bons</th><th class="num">Acheté</th><th class="num">En attente</th><th class="num">Impayé</th></tr></thead>
+            <tbody id="fi-commerces" data-fpage="10"><tr><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Par offre de paiement</h2><p class="s">Remise de la marque, part du commerce, marge qui nous reste — au taux que chaque vente portait, jamais recalculé.</p></div>
+        <div style="display:flex;gap:10px"><a class="pec-btn pec-btn--ghost pec-btn--sm tap" href="10-configuration.html">Régler les offres</a></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Offre</th><th class="num">Bons</th><th class="num">Valeur</th><th class="num">Remise des marques</th><th class="num">Part des commerces</th><th class="num">Marge</th></tr></thead>
+          <tbody id="fi-offres"><tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>La marge n’est acquise qu’au retour bancaire « payé ».</b> Une vente à prélever est une créance sur le commerce ; un impayé la transforme en perte tant qu’il n’est pas régularisé. Le compte de résultat retient les ventes de la période ; la trésorerie dit ce qui est réellement arrivé.</div>
+    </div>
+  </main>
+
+</div>
+
+<script src="../assets/payencash-bus.js"></script>
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !window.PEC_MGR || !PEC_MGR.finance || !D.periodeCourante) return;
+    var esc = function (v) { return D.esc(v); };
+    function eurU(n) { var s = D.eur(n), i = s.lastIndexOf(','); return esc(s.slice(0, i)) + '<span class="u">' + esc(s.slice(i)) + '</span>'; }
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    var r2 = function (x) { return Math.round((+x || 0) * 100) / 100; };
+    var P = D.periodeCourante();
+    var sel = document.getElementById('fi-mois'); sel.value = P.mois;
+    sel.addEventListener('change', function () { if (/^\d{4}-\d{2}$/.test(this.value)) { P = D.periodeCourante(new Date(+this.value.slice(0, 4), +this.value.slice(5, 7) - 1, 1)); rendre(); } });
+    function rendre() {
+      var F = PEC_MGR.finance(P.mois); if (!F) return;
+      var T = F.totaux;
+      document.getElementById('fi-periode').textContent = P.label;
+      document.getElementById('fi-marge').textContent = D.eur(T.marge);
+      document.getElementById('fi-marge-s').textContent = T.nVentes
+        ? pl(T.nVentes, 'vente') + ' · ' + D.eur(T.valeur) + ' de bons · revente au réseau ' + D.eur(T.ventes) + ' − achat aux marques ' + D.eur(T.achats) + (T.nAnnulees ? ' · ' + PEC_DATA.nb(T.nAnnulees, 'vente annulée', 'ventes annulées') : '') + '. Hors abonnements, hors frais bancaires.'
+        : 'Revente au réseau − achat aux marques, vente par vente. Aucune vente sur la période.';
+      document.getElementById('fi-ventes').innerHTML = eurU(T.ventes);
+      document.getElementById('fi-ventes-hint').textContent = T.nVentes ? pl(T.nVentes, 'bon') + ' — ce que les commerces nous doivent pour la période' : 'ce que les commerces nous doivent pour la période';
+      document.getElementById('fi-achats').innerHTML = eurU(T.achats);
+      document.getElementById('fi-abos').innerHTML = eurU(T.abonnementsHT);
+      document.getElementById('fi-abos-hint').textContent = T.nAbonnements ? pl(T.nAbonnements, 'échéance') + ' · TVA ' + D.eur(T.abonnementsTVA) : 'HT — prestation soumise à TVA ; la TVA des bons suit la qualification de chaque marque';
+      document.getElementById('fi-frais').innerHTML = eurU(T.frais);
+      document.getElementById('fi-frais-hint').textContent = (T.nRemises || T.nReglements) ? pl(T.nRemises, 'remise') + ' · ' + pl(T.nReglements, 'virement') : 'remises et virements — portés par la marge';
+
+      // ── jour par jour, marque par marque, commerce par commerce, offre par offre : sommés des ventes de la période
+      var ventes = D.techVentes({ mois: P.mois }).filter(function (v) { return v.statut !== 'annulee'; });
+      var agg = function (cle) { var o = {}; ventes.forEach(function (v) { var k = cle(v); var a = o[k] || (o[k] = { k: k, v: v, n: 0, montant: 0, prixPoint: 0, prixMarque: 0, marge: 0, remise: 0, part: 0, attente: 0, impaye: 0, du: 0 }); a.n++; a.montant = r2(a.montant + v.montant); a.prixPoint = r2(a.prixPoint + v.prixPoint); a.prixMarque = r2(a.prixMarque + v.prixMarque); a.marge = r2(a.marge + v.marge); a.remise = r2(a.remise + v.remise); a.part = r2(a.part + v.partPoint); if (v.statut === 'a_prelever' || v.statut === 'en_prelevement') a.attente = r2(a.attente + v.prixPoint); if (v.statut === 'impaye') a.impaye = r2(a.impaye + v.prixPoint); if (v.marqueStatut === 'a_payer') a.du = r2(a.du + v.prixMarque); }); return Object.keys(o).map(function (k) { return o[k]; }); };
+      var jours = agg(function (v) { var d = new Date(v.at); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }).sort(function (a, b) { return a.k < b.k ? 1 : -1; });
+      document.getElementById('fi-jours').innerHTML = jours.length ? jours.map(function (j) {
+        return '<tr><td class="meta">' + esc(new Date(j.v.at).toLocaleDateString('fr-FR')) + '</td><td class="num">' + j.n + '</td><td class="num">' + esc(D.eur(j.montant)) + '</td><td class="num">' + esc(D.eur(j.prixPoint)) + '</td><td class="num">' + esc(D.eur(j.prixMarque)) + '</td><td class="num"><b>' + esc(D.eur(j.marge)) + '</b></td></tr>';
+      }).join('') : '<tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr>';
+      document.getElementById('fi-jours-s').textContent = jours.length ? pl(jours.length, 'jour') + ' de vente en ' + P.label.toLowerCase() : 'Bons achetés par le réseau, achats aux marques, marge — chaque jour de la période où le réseau a vendu.';
+      var marques = agg(function (v) { return v.marchandId; }).sort(function (a, b) { return b.prixMarque - a.prixMarque; });
+      document.getElementById('fi-marques').innerHTML = marques.length ? marques.map(function (m) {
+        return '<tr><td class="who">' + esc(m.v.marchand) + '</td><td class="meta">' + esc(m.v.modeLbl || '') + '</td><td class="num">' + m.n + '</td><td class="num">' + esc(D.eur(m.prixMarque)) + '</td><td class="num">' + esc(D.eur(m.marge)) + '</td><td class="num">' + (m.du ? '<b>' + esc(D.eur(m.du)) + '</b>' : '<span class="meta">payée</span>') + '</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr>';
+      var commerces = agg(function (v) { return v.revendeurId; }).sort(function (a, b) { return b.prixPoint - a.prixPoint; });
+      document.getElementById('fi-commerces').innerHTML = commerces.length ? commerces.map(function (c) {
+        return '<tr><td class="who">' + esc(c.v.revendeur) + '</td><td class="num">' + c.n + '</td><td class="num">' + esc(D.eur(c.prixPoint)) + '</td><td class="num">' + (c.attente ? esc(D.eur(c.attente)) : '<span class="meta">—</span>') + '</td><td class="num">' + (c.impaye ? '<b style="color:var(--color-danger)">' + esc(D.eur(c.impaye)) + '</b>' : '<span class="meta">—</span>') + '</td></tr>';
+      }).join('') : '<tr><td colspan="5" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr>';
+      var offres = agg(function (v) { return v.modeId; });
+      document.getElementById('fi-offres').innerHTML = offres.length ? offres.map(function (o) {
+        return '<tr><td>' + esc(o.v.modeLbl || o.k) + '</td><td class="num">' + o.n + '</td><td class="num">' + esc(D.eur(o.montant)) + '</td><td class="num">' + esc(D.eur(o.remise)) + '</td><td class="num">' + esc(D.eur(o.part)) + '</td><td class="num"><b>' + esc(D.eur(o.marge)) + '</b></td></tr>';
+      }).join('') : '<tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucune vente sur la période.</td></tr>';
+    }
+    rendre();
+    window.addEventListener('pec-bus', rendre);
+    window.addEventListener('storage', rendre);
+  })();
+</script>
+
+</body>
+</html>

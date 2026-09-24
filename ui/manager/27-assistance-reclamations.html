@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Assistance &amp; réclamations</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<!--
+  ASSISTANCE & RÉCLAMATIONS — route `/assistance`. L'espace MANAGER du flux support : les conversations des hôtes
+  (SLA hôte) et les demandes ESCALADÉES (SLA manager → réponse motivée → médiateur de la consommation si rien n'est
+  résolu). SOURCE UNIQUE : les demandes du bus (PEC_BUS.demandesSav — les MÊMES ids que l'app de l’utilisateur et la
+  hotline). (23/09 — pivot grossiste) Une réclamation porte sur un bon de marque (bon refusé chez la marque, code
+  perdu, rencontre non honorée…) : le manager RÉPOND et clôt, ou transmet au médiateur ; il ne rembourse rien —
+  nous ne détenons aucun fonds de l’utilisateur, c'est la marque qui tient le bon. Chaque décision est tracée.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `support_conversations`, `support_messages`, `event_log` — miroir server/db/schema.sql (partie 6) -->
+<div class="pec-admin">
+  <aside class="pec-aside" data-pec-nav></aside>
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Assistance &amp; réclamations</h1>
+        <p class="sub">Les conversations des hôtes, les demandes escaladées, et le chemin du médiateur — tout le flux support, tracé.</p>
+      </div>
+      <div class="pec-topbar-actions"><button class="pec-btn pec-btn--sm tap" id="as-export">Exporter le registre (CSV)</button></div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:22px">
+      <div class="pec-kpi"><div class="lbl">Conversations ouvertes</div><div class="val" id="k-conv">—</div><div class="hint" id="as-sla-hote">SLA hôte : —</div></div>
+      <div class="pec-kpi"><div class="lbl">Réclamations chez moi</div><div class="val" id="k-rec">—</div><div class="hint" id="as-sla-mgr">SLA manager : —</div></div>
+      <div class="pec-kpi"><div class="lbl" id="k-res-lbl">Résolues</div><div class="val" id="k-res">0</div><div class="hint" id="k-res-hint">réponses motivées : 0</div></div>
+      <div class="pec-kpi"><div class="lbl">Saisines médiateur</div><div class="val" id="k-med">0</div><div class="hint" id="k-med-hint">objectif : rester à zéro</div></div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Réclamations escaladées — <span class="as-esc-mgr">à traiter</span></h2><p class="s" id="as-esc-txt">Escalade AUTOMATIQUE quand le délai de l'hôte est dépassé. Chaque décision est tracée. <b>La réf du ticket (REC-, CNV-) est la clé commune</b> avec l'app de l’utilisateur et la hotline : une réf donnée au chat retrouve le même dossier ici.</p></div>
+      <input id="ref-q" type="search" data-fsearch="#rec-rows tr, #conv-rows tr" aria-label="Chercher une réclamation ou une conversation" placeholder="Réf de ticket : REC-…, CNV-…" style="border:1.5px solid var(--color-sep);border-radius:10px;background:var(--color-card);padding:9px 12px;font:inherit;font-size:12px;color:var(--color-ink);outline:none;min-width:230px"></div>
+      <div class="pec-panel-body">
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Réf</th><th>Utilisateur · réf citée</th><th>Motif</th><th>Historique</th><th>SLA</th><th>Actions</th></tr></thead>
+          <tbody id="rec-rows" data-fpage="15"></tbody>
+        </table>
+        <div class="meta" data-fvide="#rec-rows tr, #conv-rows tr" data-fvide-txt="Aucune réclamation ni conversation ne correspond à « %q »." style="display:none;padding:8px 0 0"></div>
+        <p class="meta" id="rec-msg" style="margin:8px 0 0"></p>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head"><div><h2>Conversations des hôtes</h2><p class="s">Le fil complet vit dans l'app de l’utilisateur (« Mes conversations », mêmes références) — ici, la supervision : qui traite quoi, dans les temps ou non.</p></div></div>
+      <div class="pec-panel-body">
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Réf</th><th>Réf citée</th><th>Sujet</th><th>Hôte</th><th>Dernier échange</th><th>Statut</th></tr></thead>
+          <tbody id="conv-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel">
+      <div class="pec-panel-head"><div><h2>Journal des événements (event_log)</h2><p class="s">Le protocole de traçabilité : chaque action support est journalisée — acteur, rôle, espace, action, référence.</p></div></div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#log-rows tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#log-rows tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Quand</th><th>Acteur</th><th>Rôle</th><th>Espace</th><th>Action</th><th>Réf</th></tr></thead>
+          <tbody id="log-rows" data-fpage="15"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.statutDemande || !window.PEC_BUS || !PEC_BUS.demandesSav) return;
+    var esc = function (x) { return D.esc(x); };
+    // SLA / escalade = le référentiel de la hotline (ref.hotline.escalade) — les niveaux, leurs délais, et le droit du client
+    var H = (D.ref && D.ref.hotline) || {}, N = H.escalade || [];
+    var niv = function (cle) { return N.filter(function (x) { return x.cle === cle; })[0] || null; };
+    var nHote = niv('supervision'), nMgr = niv('manager'), nMed = niv('mediateur');
+    document.getElementById('as-sla-hote').textContent = 'SLA hôte : ' + (H.slaHoteH ? H.slaHoteH + ' h ouvrées' : '—');
+    document.getElementById('as-sla-mgr').textContent = 'SLA manager : ' + (H.slaManagerH ? H.slaManagerH + ' h' : '—');
+    document.querySelectorAll('.as-esc-mgr').forEach(function (el) { el.textContent = nMgr ? nMgr.libelle : 'à traiter'; });
+    document.getElementById('as-esc-txt').innerHTML = 'Escalade AUTOMATIQUE quand le délai de l\'hôte (' + esc(nHote ? nHote.apres + ' h' : '—') + ') est dépassé, puis au manager (' + esc(nMgr ? nMgr.apres + ' h' : '—') + '). ' + (nMed ? esc(nMed.libelle) + ' après ' + esc(String(Math.round(nMed.apres / 24))) + ' jours sans solution' + (nMed.source ? ' (' + esc(nMed.source) + ')' : '') + '. ' : '') + 'Chaque décision est tracée. <b>La réf du ticket (REC-, CNV-) est la clé commune</b> avec l\'app de l’utilisateur et la hotline.';
+    document.getElementById('k-med-hint').textContent = (nMed ? nMed.qui : 'médiateur') + ' · objectif : rester à zéro';
+    function acteur() { return (window.PEC_MGR && PEC_MGR.acteur) ? PEC_MGR.acteur() : 'manager (démo)'; }
+    function quandFr(t) { var d = new Date(t); return String(d.getDate()).padStart(2, '0') + '/' + String(d.getMonth() + 1).padStart(2, '0') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); }
+    function statutLbl(x) { return D.statutDemande(typeof x === 'string' ? { statut: x } : (x || {})).lbl; }
+    var reclamations = [], conversations = [];
+    /* (24/09, nuit — audit de navigation « recherche inerte ») la recherche par référence passe par le kit partagé (data-fsearch) :
+       il cache ce qui ne correspond pas, dit quand rien ne correspond, ne cache jamais la ligne « aucune… », et se ré-applique
+       après chaque redessin venu du bus. */
+    function rendre() {
+      // ZÉRO seed : les conversations et réclamations VIVENT dans le bus (ouvertes depuis l'app de l’utilisateur)
+      var vives = PEC_BUS.demandesSav();
+      /* (24/09, soir) la fenêtre des indicateurs vient du référentiel (ref.hotline.fenetreIndicateursJours) — la même pour tout le support */
+      var FEN = D.ref.hotline.fenetreIndicateursJours, J30 = Date.now() - FEN * 86400000;
+      var kl = document.getElementById('k-res-lbl'); if (kl) kl.textContent = 'Résolues (' + FEN + ' j)';
+      var resolues = vives.filter(function (d) { return /^(clot_|resolue)/.test(d.statut || '') && (d.cloAt || d.at || 0) > J30; });
+      document.getElementById('k-res').textContent = resolues.length;
+      document.getElementById('k-res-hint').textContent = 'réponses motivées : ' + resolues.filter(function (d) { return d.statut === 'clot_repondu'; }).length;
+      document.getElementById('k-med').textContent = vives.filter(function (d) { return d.statut === 'mediateur'; }).length;
+      conversations = vives.filter(function (d) { return /^CNV-/.test(d.id); })
+        .map(function (d) { return { id: d.id, ref: d.ref || '—', sujet: d.sujet || 'Conversation', hote: d.assigne || '—', quand: quandFr(d.at), dernier: ((d.echanges || []).slice(-1)[0] || {}).texte || '—', statut: /^clot_|^resolue/.test(d.statut || '') ? 'resolue' : 'en_cours' }; });
+      reclamations = vives.filter(function (d) { return /^REC-/.test(d.id); })
+        .map(function (d) { return { id: d.id, ref: d.ref || '—', client: d.client || d.clientId || '—', motif: d.sujet || 'Réclamation', hote: d.assigne || '—', statut: d.statut || 'en_cours', source: d.source || null, enRetard: !!d.enRetard, cloAt: d.cloAt || null, sla: nMgr ? nMgr.apres + ' h' : '—', historique: (d.echanges || []).map(function (e) { return [quandFr(d.at), e.texte, e.qui === 'moi' ? 'client' : 'hote']; }) }; });
+      document.getElementById('k-conv').textContent = conversations.filter(function (c) { return c.statut === 'en_cours'; }).length;
+      document.getElementById('k-rec').textContent = reclamations.filter(function (r) { return r.statut === 'niveau_manager' || r.statut === 'en_cours'; }).length;
+      document.getElementById('rec-rows').innerHTML = reclamations.map(function (r) {
+        var close = /^clot_|^mediateur/.test(r.statut || '');
+        var actions = close
+          ? '<span class="pec-pill pec-pill--done">' + esc(statutLbl(r.statut)) + (r.cloAt ? ' · ' + quandFr(r.cloAt) : '') + '</span>'
+          : '<button class="pec-btn pec-btn--sm tap" data-decision="clot_repondu" data-id="' + esc(r.id) + '">Répondre &amp; clore</button> <button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-decision="mediateur" data-id="' + esc(r.id) + '">Transmettre au médiateur</button>';
+        var pastilles = (r.source === 'satisfaction' ? '<span class="pec-pill" style="background:var(--color-mint);color:var(--color-primary-dark)">ouverte par la note SMS</span> ' : '')
+          + (r.enRetard ? '<span class="pec-pill" style="background:var(--color-danger-well);color:var(--color-danger)">' + esc(statutLbl('en_retard')) + '</span>' : '');
+        return '<tr><td><b>' + esc(r.id) + '</b></td><td>' + esc(r.client) + '<div class="meta">' + esc(r.ref) + '</div></td><td>' + esc(r.motif) + (pastilles ? '<div style="margin-top:4px">' + pastilles + '</div>' : '') + '</td>' +
+          '<td>' + (r.historique || []).map(function (h) { return esc(h[0]) + ' — ' + esc(h[1]); }).join('<br>') + '</td>' +
+          '<td><span class="pec-pill" style="background:var(--color-amber-well);color:var(--color-amber-text)">' + esc(r.sla) + '</span></td>' +
+          '<td>' + actions + '</td></tr>';
+      }).join('') || '<tr data-fvide-row><td colspan="6" class="meta" style="text-align:center;padding:16px">Aucune réclamation — elles arrivent ici quand un utilisateur en dépose une depuis son app (même réf).</td></tr>';
+      document.getElementById('conv-rows').innerHTML = conversations.map(function (c) {
+        var ok = c.statut === 'resolue';
+        return '<tr><td><b>' + esc(c.id) + '</b></td><td>' + esc(c.ref) + '</td><td>' + esc(c.sujet) + '</td><td>' + esc(c.hote) + '</td><td>' + esc(c.quand) + ' · « ' + esc(c.dernier) + ' »</td>' +
+          '<td><span class="pec-pill' + (ok ? ' pec-pill--done' : '') + '">' + (ok ? 'Résolue' : 'En cours') + '</span></td></tr>';
+      }).join('') || '<tr data-fvide-row><td colspan="6" class="meta" style="text-align:center;padding:16px">Aucune conversation ouverte pour l\'instant.</td></tr>';
+      // event_log — reconstruit depuis les demandes + les DÉCISIONS portées par la demande elle-même (sav_<id>.decision)
+      var log = [];
+      reclamations.forEach(function (r) { (r.historique || []).forEach(function (h) { log.push([h[0], h[2] === 'client' ? 'Utilisateur' : (r.hote || '—'), h[2], h[2] === 'client' ? 'app Mes bons' : 'hotline', h[1], r.id]); }); });
+      conversations.forEach(function (c) { log.push([c.quand, c.hote, 'hote', 'app Mes bons · chat', (c.statut === 'resolue' ? 'Conversation résolue' : 'Réponse en cours'), c.id]); });
+      vives.filter(function (d) { return d.decision && d.decision.par; }).forEach(function (d) { var j = d.decision; log.push([quandFr(j.at), j.par || '—', 'manager', 'espace manager', statutLbl(j.statut), d.id]); });
+      document.getElementById('log-rows').innerHTML = log.map(function (l) {
+        return '<tr><td>' + esc(l[0]) + '</td><td>' + esc(l[1]) + '</td><td>' + esc(l[2]) + '</td><td>' + esc(l[3]) + '</td><td>' + esc(l[4]) + '</td><td>' + esc(l[5]) + '</td></tr>';
+      }).join('') || '<tr><td colspan="6" class="meta" style="text-align:center;padding:16px">Aucun événement support pour l\'instant.</td></tr>';
+    }
+    document.getElementById('rec-rows').addEventListener('click', function (e) {
+      var b = e.target.closest('[data-decision]'); if (!b) return;
+      var id = b.getAttribute('data-id'), dec = b.getAttribute('data-decision'), par = acteur();
+      var lbl = dec === 'mediateur'
+        ? 'Transmettre ' + id + ' au médiateur (' + (nMed ? nMed.qui : 'médiateur de la consommation') + ') ? La demande reste tracée ; l’utilisateur reçoit les coordonnées du médiateur une fois l’adhésion faite (en attendant, la clause des CGU reste entre crochets).'
+        : 'Répondre et clore ' + id + ' (réponse motivée écrite — elle vaut réclamation préalable, art. L612-2 du code de la consommation) ? Rien n’est remboursé ici : c’est la marque qui tient le bon.';
+      if (!window.confirm(lbl)) return;
+      PEC_BUS.cloreDemande(id, dec, { par: par });
+      PEC_BUS.noter('reclamation_decision', id, { par: par, decision: dec });
+      document.getElementById('rec-msg').textContent = 'Décision « ' + statutLbl(dec) + ' » sur ' + id + ' par ' + par + ' — journalisée, l’utilisateur la lit dans son assistance.';
+      rendre();
+    });
+    document.getElementById('as-export').addEventListener('click', function () {
+      if (!window.PEC_MGR || !PEC_MGR.csv) return;
+      PEC_MGR.csv('registre-reclamations', ['id', 'porteur', 'ref', 'motif', 'statut', 'hote', 'sla', 'echanges'], reclamations.map(function (r) { return [r.id, r.client, r.ref, r.motif, statutLbl(r.statut), r.hote, r.sla, (r.historique || []).map(function (h) { return h[1]; }).join(' | ')]; }));
+    });
+    rendre();
+    window.addEventListener('pec-bus', rendre);
+    window.addEventListener('storage', rendre);
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Communications</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-filters.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  COMMUNICATIONS — route `/communications`.
+  Deux registres distincts, volontairement séparés : le SORTANT (ce qu'on expédie : SMS · e-mail · push — un e-mail
+  vit dans une boîte mail) et les AUDIENCES (à qui l'on parle : marques, commerces du réseau, utilisateurs Mes bons).
+  (23/09 — pivot grossiste) Le catalogue des messages et le journal des envois viennent du data-layer
+  (D.MESSAGES_CATALOGUE, D.envoisJournal) ; l'expédition n'est pas branchée, et l'écran le dit. Les audiences se
+  DÉRIVENT des tables (techMarchands, techRevendeurs, comptes Mes bons) — aucun compteur posé.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Communications</h1>
+        <p class="sub">Ce qu’on envoie, et à qui l’on parle.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <!-- (24/09, fondatrice : « relance à J+1 et J+7 ») les relances d'inscription se déclenchent ici — en production, par la tâche du matin -->
+        <button type="button" class="pec-btn pec-btn--sm tap" id="cm-relancer">Envoyer les relances d’inscription dues</button>
+        <div class="pec-controlbar">
+          <label>
+            Jour
+            <input class="pec-search" style="max-width:150px" type="date" id="cm-jour" aria-label="Jour des envois">
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-notice pec-notice--info" id="cm-relancer-msg" hidden style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div id="cm-relancer-txt"></div>
+    </div>
+
+    <div class="pec-grid pec-grid--4" style="margin-bottom:22px">
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-mail"/></svg> E-mails à envoyer</div>
+        <div class="val" id="cm-k-email">0</div>
+        <div class="hint" id="cm-k-email-hint">Aujourd’hui — déclencheurs journalisés (expéditeur non branché).</div>
+      </div>
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-smartphone"/></svg> SMS à envoyer</div>
+        <div class="val" id="cm-k-sms">0</div>
+        <div class="hint" id="cm-k-sms-hint">Codes de vérification (inscription, connexion) — à envoyer.</div>
+      </div>
+      <div class="pec-kpi">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-bell"/></svg> Push à envoyer</div>
+        <div class="val" id="cm-k-push">0</div>
+        <div class="hint" id="cm-k-push-hint">Éphémère — doublé par une notification dans l’app.</div>
+      </div>
+      <div class="pec-kpi pec-kpi--alert">
+        <div class="lbl"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg> Échecs d’envoi</div>
+        <div class="val" id="cm-k-echec">0</div>
+        <div class="hint" id="cm-k-echec-hint">Aucun retour d’échec journalisé.</div>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Les audiences</h2><p class="s">À qui l’on parle — dérivé des tables, jamais une liste posée. Aucun envoi groupé n’existe dans la maquette : chaque message part d’un événement du flux.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Audience</th><th>Qui</th><th class="num">Comptes</th><th class="num">Avec e-mail</th><th class="num">Avec téléphone</th><th>Où ils lisent</th></tr></thead>
+          <tbody id="cm-audiences"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Catalogue des messages transactionnels</h2><p class="s" id="cm-cat-s">Les modèles déclenchés par le flux (D.MESSAGES_CATALOGUE). Aucun n’est envoyé à la main.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#cm-catalogue tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#cm-catalogue tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Modèle</th><th>Déclencheur</th><th>Canal</th><th>Objet</th><th>Destinataire</th><th class="num" id="cm-cat-fen">Déclencheurs journalisés</th></tr></thead>
+          <tbody id="cm-catalogue" data-fpage="15">
+            <tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Catalogue indisponible — D.MESSAGES_CATALOGUE non chargé.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Journal des envois</h2><p class="s" id="cm-journal-s">Ce que le flux DEVRAIT envoyer, message par message (D.envoisJournal). Sert au support autant qu’à l’idempotence — l’expédition, elle, n’est pas branchée.</p></div>
+      </div>
+      <div class="pec-toolbar" data-fscope="[data-journal]" data-finit>
+        <button class="pec-filter tap" aria-pressed="true" data-fval="tous">Tous</button>
+        <button class="pec-filter tap" aria-pressed="false" data-fval="email">E-mail</button>
+        <button class="pec-filter tap" aria-pressed="false" data-fval="sms">SMS</button>
+        <button class="pec-filter tap" aria-pressed="false" data-fval="push">Push</button>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#cm-journal tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#cm-journal tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Horodatage</th><th>Canal</th><th>Modèle</th><th>Objet</th><th>Destinataire</th><th>Réf</th><th>État</th></tr></thead>
+          <tbody id="cm-journal" data-fpage="15"><tr><td colspan="7" class="meta" style="text-align:center;padding:18px">Aucun message à envoyer — le journal se remplit avec les événements réels (compte créé, vente, paiement d’une marque…).</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:16px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>Un destinataire à la fois.</b> Un message qui porterait à la fois une marque et un commerce serait lu par les deux — donc une fuite de données entre audiences. La seule exception est la diffusion d’équipe côté manager : un arrêté dû ne s’adresse à personne en particulier.</div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-info"/></svg>
+      <div><b>Push et notification dans l’app se doublent, ils ne se remplacent pas.</b> Le push attire l’attention et disparaît ; le fil de l’app reste consultable. Un commerce qui a refusé les permissions de notification ne doit jamais perdre l’information pour autant.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  // COMMUNICATIONS DÉRIVÉES : chaque compteur = nombre de messages du journal des envois (D.envoisJournal) qui
+  // portent ce modèle, sur la fenêtre des indicateurs (ref.hotline.fenetreIndicateursJours) ; les audiences se comptent sur les tables. Rien n'est expédié, et l'écran le dit.
+  (function () {
+    var D = window.PEC_DATA;
+    var jourSel = document.getElementById('cm-jour');
+    if (D && D.periodeCourante) { jourSel.value = D.periodeCourante().dateISO; jourSel.max = D.periodeCourante().dateISO; }
+    if (!D || !D.envoisJournal || !window.PEC_BUS || !PEC_BUS.journal) return;
+    var esc = function (v) { return D.esc(v); };
+    function isoDe(t) { return D.periodeCourante(new Date(t)).dateISO; }
+    var CANAL = { email: 'E-MAIL', sms: 'SMS', push: 'PUSH' };
+    var LIB_EVT = (D.ref && D.ref.auditLibelles) || {};
+
+    function rendreAudiences() {
+      var z = document.getElementById('cm-audiences'); if (!z) return;
+      var mqs = D.techMarchands ? D.techMarchands({}) : [], revs = D.techRevendeurs ? D.techRevendeurs({}) : [];
+      var porteurs = (D.comptesTous ? D.comptesTous('client') : []).filter(function (c) { return c.statut !== 'supprime'; });
+      var E = (D.ESPACES_COMPTE || {}).client || {};
+      var l = [
+        { a: 'Marques', qui: 'PayEnCash Solution — ' + PEC_DATA.nb(mqs.filter(function (m) { return m.statut === 'validated'; }).length, 'validée'), n: mqs.length, mail: mqs.filter(function (m) { return !!m.email; }).length, tel: mqs.filter(function (m) { return !!m.tel; }).length, ou: 'leur espace Solution (fil des demandes, compte)' },
+        { a: 'Commerces du réseau', qui: PEC_DATA.nb(revs.filter(function (r) { return !D.partenaireEstMobile(r); }).length, 'sédentaire') + ' · ' + PEC_DATA.nb(revs.filter(function (r) { return D.partenaireEstMobile(r); }).length, 'nomade'), n: revs.length, mail: revs.filter(function (r) { return !!r.email; }).length, tel: revs.filter(function (r) { return !!r.tel; }).length, ou: 'l’app partenaire (fil de notifications)' },
+        { a: E.label || 'Utilisateurs Mes bons', qui: PEC_DATA.nb(porteurs.filter(function (c) { return c.statut === 'actif'; }).length, 'actif'), n: porteurs.length, mail: porteurs.filter(function (c) { return !!(c.profil && c.profil.email); }).length, tel: porteurs.filter(function (c) { return !!c.identifiant; }).length, ou: 'l’app Mes bons' }
+      ];
+      z.innerHTML = l.map(function (x) { return '<tr><td class="who">' + esc(x.a) + '</td><td class="meta">' + esc(x.qui) + '</td><td class="num">' + x.n + '</td><td class="num">' + x.mail + '</td><td class="num">' + x.tel + '</td><td class="meta">' + esc(x.ou) + '</td></tr>'; }).join('');
+    }
+
+    function rendreCatalogue() {
+      var C = D.MESSAGES_CATALOGUE || [];
+      document.getElementById('cm-catalogue').innerHTML = C.length ? C.map(function (m) {
+        return '<tr><td class="ref">' + esc(m.modele) + '</td><td>' + esc(LIB_EVT[m.evt] || m.evt) + '</td><td>' + esc(CANAL[m.canal] || m.canal) +
+          '</td><td>' + esc(m.objet) + '</td><td>' + esc(m.cible) + '</td><td class="num cm-cnt" data-evt="' + esc(m.evt) + '">—</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="meta" style="text-align:center;padding:18px">Catalogue indisponible — D.MESSAGES_CATALOGUE non chargé.</td></tr>';
+      document.getElementById('cm-cat-s').textContent = C.length + ' modèle' + (C.length > 1 ? 's' : '') + ' au catalogue (D.MESSAGES_CATALOGUE), déclenchés par le flux. Aucun n’est envoyé à la main — et aucun ne part : l’expéditeur n’est pas branché.';
+    }
+
+    function rendre() {
+      var now = Date.now();
+      rendreCatalogue();
+      var sel = jourSel.value || isoDe(now);
+      var envois = D.envoisJournal();
+      /* (24/09, soir) la fenêtre vient du référentiel (ref.hotline.fenetreIndicateursJours) — plus de « 30 » écrit ici */
+      var FEN = D.ref.hotline.fenetreIndicateursJours, thF = document.getElementById('cm-cat-fen'); if (thF) thF.textContent = 'Déclencheurs journalisés (' + FEN + ' j)';
+      var env30 = envois.filter(function (e) { return now - (e.at || 0) < FEN * 86400000; });
+      document.querySelectorAll('.cm-cnt[data-evt]').forEach(function (td) {
+        var evt = td.getAttribute('data-evt');
+        td.textContent = String(env30.filter(function (e) { return e.evt === evt; }).length);
+      });
+      var duJour = envois.filter(function (e) { return isoDe(e.at || 0) === sel; });
+      var parCanal = { email: 0, sms: 0, push: 0 };
+      duJour.forEach(function (e) { parCanal[e.canal] = (parCanal[e.canal] || 0) + 1; });
+      var totaux = D.envoisParCanal();
+      var quand = (sel === isoDe(now) ? 'Aujourd’hui' : 'Le ' + sel);
+      document.getElementById('cm-k-email').textContent = parCanal.email;
+      document.getElementById('cm-k-sms').textContent = parCanal.sms;
+      document.getElementById('cm-k-push').textContent = parCanal.push;
+      document.getElementById('cm-k-echec').textContent = 0;
+      document.getElementById('cm-k-email-hint').textContent = quand + ' — ' + totaux.email + ' au total dans le journal · à envoyer, expéditeur non branché.';
+      document.getElementById('cm-k-sms-hint').textContent = quand + ' — ' + totaux.sms + ' au total · codes de vérification (inscription, connexion), à envoyer.';
+      document.getElementById('cm-k-push-hint').textContent = quand + ' — ' + totaux.push + ' au total · doublé par une notification dans l’app.';
+      document.getElementById('cm-k-echec-hint').textContent = 'Aucun retour d’échec n’est journalisé : sans expéditeur branché, il n’y a ni succès ni échec à compter.';
+      var lignes = envois.slice(0, 50);
+      document.getElementById('cm-journal').innerHTML = lignes.map(function (e) {
+        return '<tr data-journal data-ftag="tous ' + esc(e.canal) + '"><td class="meta">' + esc(new Date(e.at).toLocaleString('fr-FR')) + '</td><td>' + esc(CANAL[e.canal] || e.canal) +
+          '</td><td class="ref">' + esc(e.modele) + '</td><td>' + esc(e.objet) + '</td><td>' + esc(e.destinataire) + ' <span class="meta">(' + esc(e.cible) + ')</span></td><td class="ref">' + esc(e.ref || '—') +
+          '</td><td><span class="pec-pill pec-pill--wait">' + esc(e.statut) + ' — ' + esc(e.motifStatut) + '</span></td></tr>';
+      }).join('') || '<tr><td colspan="7" class="meta" style="text-align:center;padding:18px">Aucun message à envoyer — le journal se remplit avec les événements réels (compte créé, vente, paiement d’une marque…).</td></tr>';
+      document.getElementById('cm-journal-s').textContent = envois.length
+        ? envois.length + ' message' + (envois.length > 1 ? 's' : '') + ' à envoyer (' + totaux.email + ' e-mail · ' + totaux.sms + ' SMS · ' + totaux.push + ' push)' + (envois.length > 50 ? ' — les 50 plus récents sont listés' : '') + '. Aucun n’est parti : l’expéditeur n’est pas branché.'
+        : 'Ce que le flux DEVRAIT envoyer, message par message (D.envoisJournal). L’expédition, elle, n’est pas branchée.';
+      rendreAudiences();
+    }
+    jourSel.addEventListener('change', rendre);
+    window.addEventListener('pec-bus', rendre); window.addEventListener('storage', rendre); rendre();
+    /* (24/09) LES RELANCES : un compte marque en brouillon ou une candidature de commerce sans geste depuis J+1 puis J+7
+       reçoit l'e-mail du catalogue (inscription_relance_j1/j7) — une fois par palier, tracé sur le compte. */
+    var rb = document.getElementById('cm-relancer');
+    if (rb && D.inscriptionsRelancer) rb.addEventListener('click', function () {
+      var r = D.inscriptionsRelancer({}), z = document.getElementById('cm-relancer-msg'), tx = document.getElementById('cm-relancer-txt');
+      z.hidden = false;
+      tx.innerHTML = r.envois.length
+        ? '<b>' + PEC_DATA.nb(r.envois.length, 'relance planifiée', 'relances planifiées') + '</b> : ' + r.envois.map(function (e) { return esc(e.compte) + ' (' + esc(e.espace) + ', ' + esc(e.palier.toUpperCase()) + ' — étape « ' + esc(e.etape) + ' »)'; }).join(' · ')
+        : '<b>Aucune relance due.</b> Une inscription se relance à J+1 puis J+7 sans geste de son titulaire, une fois par palier — il n’y en a pas aujourd’hui.';
+      rendre();
+    });
+  })();
+</script>
+</body>
+</html>

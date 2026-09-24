@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PayEnCash Manager — Comptabilité &amp; TVA</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-p-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-p-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-manager.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- (07/09) recherche · tri · pagination par convention -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-manager-nav.js"></script>
+<!--
+  COMPTABILITÉ & TVA — route `/comptabilite`.
+  (23/09 — pivot grossiste) LE JOURNAL DU GROSSISTE, DÉRIVÉ : achats de bons aux marques, reventes aux commerces
+  du réseau, frais bancaires, pénalités, abonnements au logiciel. La TVA n'est due ici que sur l'ABONNEMENT AU
+  LOGICIEL (une prestation de services, art. 256 CGI, au taux tech.tvaPct). Le régime de TVA des bons de marque
+  eux-mêmes — bon à usage unique ou à usages multiples (art. 256 ter CGI), et ce qu'il impose à un grossiste qui
+  achète et revend le titre — n'est PAS tranché : il relève de l'expert-comptable, et l'écran le dit au lieu de
+  poser un taux. Une seule source : PEC_MGR.finance(mois). Aucune saisie manuelle, aucun chiffre posé.
+-->
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur un téléphone, la navigation devient un tiroir -->
+</head>
+<body>
+<!-- tables du schéma reflétées par cet écran : `tech_sales`, `tech_dd_files`, `tech_payouts`, `tech_penalties`, `tech_subscriptions`, `tech_invoices`, `audit_log` — miroir server/db/schema.sql (partie 6) -->
+
+<div class="pec-admin">
+
+  <aside class="pec-aside" data-pec-nav></aside>
+
+  <main class="pec-main">
+    <div class="pec-topbar">
+      <div>
+        <h1>Comptabilité &amp; TVA</h1>
+        <p class="sub">Le journal dérivé de l’activité, et ce qu’on doit pouvoir prouver.</p>
+      </div>
+      <div class="pec-topbar-actions">
+        <div class="pec-controlbar">
+          <label>Période <input class="pec-search" style="max-width:140px" type="month" id="ca-periode" aria-label="Période comptable"></label>
+        </div>
+        <button class="pec-btn tap" data-export="journal"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter la période</button>
+      </div>
+    </div>
+
+    <div class="pec-grid pec-grid--3" style="margin-bottom:16px">
+      <div class="pec-pocket">
+        <div class="step">DETTE · ABONNEMENTS AU LOGICIEL</div>
+        <h3>TVA collectée</h3>
+        <div class="val" id="ca-tva-collectee">0,00 €</div>
+        <p class="s" id="ca-tva-collectee-s">Sur les abonnements au logiciel d’édition des bons. La TVA des bons (marge en usages multiples, ventes en usage unique) s’y ajoutera une fois la remise fixée HT ou TTC. Ni revenu, ni trésorerie disponible.</p>
+      </div>
+      <div class="pec-pocket">
+        <div class="step">CRÉANCE · ACHATS &amp; CHARGES</div>
+        <h3>TVA déductible</h3>
+        <div class="val" id="ca-tva-deductible">0,00 €</div>
+        <p class="s" id="ca-tva-deductible-s">Aucune facture de charge ne porte sa TVA dans la donnée — rien à déduire n’est affiché (source absente, pas un zéro).</p>
+      </div>
+      <div class="pec-pocket pec-pocket--payable">
+        <div class="step">SEUL MONTANT RÉELLEMENT DÛ</div>
+        <h3>TVA nette à reverser</h3>
+        <div class="val" id="ca-tva-nette">0,00 €</div>
+        <p class="s">Collectée − déductible. La déductible n’étant pas portée par la donnée, ce net vaut la seule TVA collectée.</p>
+      </div>
+    </div>
+
+    <!-- (24/09) LE RÉGIME DE TVA SE QUALIFIE MARQUE PAR MARQUE (art. 256 ter CGI, lu sur Légifrance le 24/09) : chaque marque dit à
+         l'inscription si ses produits sont à un seul taux et vendus en France seule (D.techMarchandTva). Le texte de la règle et le
+         compte par régime se lisent du référentiel et des marques — rien n'est écrit ici. -->
+    <div class="pec-notice" style="margin-bottom:16px" id="ca-tva-regime">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div id="ca-tva-regime-txt">—</div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Décomposition de la période (<span class="ca-mois">—</span>)</h2><p class="s">Ce qui rentre, ce qui sort, et à qui ça appartient.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Composante</th><th>Nature</th><th class="num">Montant</th></tr></thead>
+          <tbody>
+            <tr><td>Bons revendus aux commerces du réseau</td><td class="meta" id="ca-ventes-hint">Produit — ce que les commerces nous doivent (valeur faciale moins leur part)</td><td class="num" id="ca-ventes">0,00 €</td></tr>
+            <tr><td>Bons achetés aux marques</td><td class="meta" id="ca-achats-hint">Charge — valeur faciale moins la remise de l’offre de chaque marque</td><td class="num" id="ca-achats">0,00 €</td></tr>
+            <tr><td><b>Marge sur les bons</b></td><td class="meta" id="ca-marge-hint">Revente − achat, vente par vente</td><td class="num" id="ca-marge">0,00 €</td></tr>
+            <tr><td>Pénalités mises à la charge des commerces</td><td class="meta" id="ca-pen-hint">Produit — impayés et représentations, au montant du contrat</td><td class="num" id="ca-penalites">0,00 €</td></tr>
+            <tr><td>Abonnements au logiciel (HT)</td><td class="meta" id="ca-abos-hint">Produit — prestation de services soumise à TVA</td><td class="num" id="ca-abos">0,00 €</td></tr>
+            <tr><td>Frais bancaires</td><td class="meta" id="ca-frais-hint">Charge — remises de prélèvements et virements instantanés</td><td class="num" id="ca-frais">0,00 €</td></tr>
+            <tr><td><b>TVA collectée</b></td><td class="meta" id="ca-tva-ligne-hint"><b>Dette fiscale — à reverser à l’État</b></td><td class="num" id="ca-tva-ligne">0,00 €</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Journal comptable (<span class="ca-mois">—</span>)</h2><p class="s" id="ca-journal-s">Écritures DÉRIVÉES de ce qui existe vraiment : ventes, remises, virements, pénalités, abonnements. Aucune saisie manuelle.</p></div>
+        <div style="display:flex;gap:10px"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-export="journal"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter le journal</button></div>
+      </div>
+      <div class="pec-panel-body">
+        <input class="pec-search" type="search" data-fsearch="#ca-ecritures tr" placeholder="Rechercher dans cette liste…" aria-label="Rechercher dans cette liste" style="margin:0 0 10px;max-width:420px">
+        <div class="meta" data-fvide="#ca-ecritures tr" data-fvide-txt="Rien ne correspond à « %q »." style="display:none;padding:0 0 8px"></div>
+        <table data-fsortable class="pec-table">
+          <thead><tr><th>Horodatage</th><th>Journal</th><th>Libellé</th><th>Pièce</th><th class="num">Débit</th><th class="num">Crédit</th><th class="num">dont TVA</th></tr></thead>
+          <tbody id="ca-ecritures" data-fpage="15"><tr><td colspan="7" class="meta" style="text-align:center;padding:18px">Aucune écriture sur la période</td></tr></tbody>
+          <tfoot id="ca-ecritures-total"></tfoot>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>TVA par période</h2><p class="s">Collectée sur les abonnements, déductible, et le net réellement dû — la TVA des bons n’y figure pas encore (décision HT/TTC en attente).</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <table class="pec-table">
+          <thead><tr><th>Période</th><th class="num">Base HT (abonnements)</th><th class="num">Taux</th><th class="num">Collectée</th><th class="num">Déductible</th><th class="num">Net à reverser</th><th>Déclaration</th></tr></thead>
+          <tbody id="ca-tva-rows"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="pec-notice" style="margin-bottom:22px">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-alert"/></svg>
+      <div><b>La périodicité affichée est une hypothèse, pas une règle.</b> Le rythme déclaratif (mensuel, trimestriel), la qualification de chaque marque et le paramétrage relèvent de l’<b>expert-comptable</b> — la règle, elle, est connue (art. 256 ter ; bon non utilisé : aucune TVA en usages multiples, TVA non restituée en usage unique). L’écran est construit pour changer de période sans changer de structure — mais tant que le régime n’est pas fixé, aucun de ces montants ne vaut déclaration.</div>
+    </div>
+
+    <div class="pec-panel" style="margin-bottom:16px">
+      <div class="pec-panel-head">
+        <div><h2>Exports comptables</h2><p class="s">Format CSV, sur la période sélectionnée. Chaque export est journalisé.</p></div>
+      </div>
+      <div class="pec-panel-body">
+        <div class="pec-setting">
+          <div><div class="t">Journal comptable</div><div class="s">Toutes les écritures dérivées de la période : achats, ventes, banque, pénalités, abonnements.</div></div>
+          <div class="pec-setting-control"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-export="journal"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter</button></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Journal des ventes</div><div class="s">Une ligne par bon acheté au comptoir : marque, commerce, valeur, prix d’achat, prix de revente, marge, offre, états.</div></div>
+          <div class="pec-setting-control"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-export="ventes"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter</button></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Journal de TVA</div><div class="s">Agrégat de la période : base HT des abonnements, TVA collectée, déductible et <b>net à reverser</b> — la pièce à remettre au comptable.</div></div>
+          <div class="pec-setting-control"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-export="tva"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter</button></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Journal de trésorerie</div><div class="s">Remises de prélèvements déposées, retours bancaires, virements aux marques, mouvements d’avance des commissionnaires.</div></div>
+          <div class="pec-setting-control"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-export="tresorerie"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter</button></div>
+        </div>
+        <div class="pec-setting">
+          <div><div class="t">Journal d’audit</div><div class="s">Toutes les actions sensibles de la période, avec leur auteur — la contrepartie du droit de changer un tarif en ligne.</div></div>
+          <div class="pec-setting-control"><button class="pec-btn pec-btn--ghost pec-btn--sm tap" data-export="audit"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-download"/></svg> Exporter</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pec-notice pec-notice--info">
+      <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-landmark"/></svg>
+      <div>La marge sur les bons n’est acquise qu’au <b>retour bancaire « payé »</b> du prélèvement : tant que la banque n’a pas rendu son retour, une vente est une créance sur le commerce, et un impayé la remet en cause. L’écran Trésorerie dit ce qui est réellement arrivé.</div>
+    </div>
+  </main>
+
+</div>
+
+<script>
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.periodeCourante || !window.PEC_MGR || !PEC_MGR.finance) return;
+    var esc = function (v) { return D.esc(v); };
+    var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+    var P = D.periodeCourante();
+    document.getElementById('ca-periode').value = P.mois;
+    document.getElementById('ca-periode').addEventListener('change', function () {
+      var v = this.value; if (!/^\d{4}-\d{2}$/.test(v)) return;
+      P = D.periodeCourante(new Date(parseInt(v.slice(0, 4), 10), parseInt(v.slice(5, 7), 10) - 1, 1));
+      rendre();
+    });
+    var set = function (id, v) { var e = document.getElementById(id); if (e) e.textContent = v; };
+    function rendre() {
+      document.querySelectorAll('.ca-mois').forEach(function (el) { el.textContent = P.mois; });
+      var F = PEC_MGR.finance(P.mois); if (!F) return;
+      var T = F.totaux, L = F.lignes, tvaPct = D.techRef ? +D.techRef().tvaPct : 0;
+      set('ca-tva-collectee', D.eur(T.tva));
+      set('ca-tva-collectee-s', T.nAbonnements ? pl(T.nAbonnements, 'échéance') + ' d’abonnement en ' + P.label.toLowerCase() + ' · ' + D.eur(T.abonnementsHT) + ' HT au taux de ' + String(tvaPct).replace('.', ',') + ' %.' : 'Sur les abonnements au logiciel d’édition des bons — la seule prestation facturée. Aucune échéance sur la période.');
+      set('ca-tva-deductible', D.eur(0));
+      set('ca-tva-nette', D.eur(T.tva));
+      set('ca-ventes', D.eur(T.ventes)); set('ca-ventes-hint', T.nVentes ? pl(T.nVentes, 'bon') + ' revendu' + (T.nVentes > 1 ? 's' : '') + ' au réseau en ' + P.label.toLowerCase() : 'Produit — ce que les commerces nous doivent (valeur faciale moins leur part) ; aucune vente sur la période');
+      set('ca-achats', D.eur(T.achats));
+      set('ca-marge', D.eur(T.marge));
+      set('ca-penalites', D.eur(T.penalites)); set('ca-pen-hint', T.nPenalites ? pl(T.nPenalites, 'pénalité') + ' — impayés et représentations, au montant du contrat' : 'Produit — impayés et représentations, au montant du contrat ; aucune sur la période');
+      set('ca-abos', D.eur(T.abonnementsHT));
+      set('ca-frais', D.eur(T.frais)); set('ca-frais-hint', (T.nRemises || T.nReglements) ? pl(T.nRemises, 'remise') + ' déposée' + (T.nRemises > 1 ? 's' : '') + ' · ' + pl(T.nReglements, 'virement') + ' émis' : 'Charge — remises de prélèvements et virements instantanés ; aucun sur la période');
+      set('ca-tva-ligne', D.eur(T.tva));
+      // ── journal comptable
+      var corps = document.getElementById('ca-ecritures'), pied = document.getElementById('ca-ecritures-total');
+      if (!L.length) { corps.innerHTML = '<tr><td colspan="7" class="meta" style="text-align:center;padding:18px">Aucune écriture sur la période</td></tr>'; pied.innerHTML = ''; }
+      else {
+        corps.innerHTML = L.map(function (e) {
+          return '<tr data-s-at="' + (e.at || 0) + '"><td class="meta">' + esc(new Date(e.at).toLocaleString('fr-FR')) + '</td><td>' + esc(e.journal) + '</td><td>' + esc(e.libelle) + '</td><td class="ref">' + esc(e.piece || '—') + '</td><td class="num">' + (e.debit ? esc(D.eur(e.debit)) : '—') + '</td><td class="num">' + (e.credit ? esc(D.eur(e.credit)) : '—') + '</td><td class="num">' + (e.tva ? esc(D.eur(e.tva)) : '—') + '</td></tr>';
+        }).join('');
+        var td = L.reduce(function (s, e) { return s + (e.debit || 0); }, 0), tc = L.reduce(function (s, e) { return s + (e.credit || 0); }, 0);
+        pied.innerHTML = '<tr><td colspan="4"><b>' + pl(L.length, 'écriture') + ' · ' + esc(Object.keys(F.parJournal).join(' · ')) + '</b></td><td class="num"><b>' + esc(D.eur(td)) + '</b></td><td class="num"><b>' + esc(D.eur(tc)) + '</b></td><td class="num"><b>' + esc(D.eur(T.tva)) + '</b></td></tr>';
+      }
+      set('ca-journal-s', L.length ? pl(L.length, 'écriture') + ' en ' + P.label.toLowerCase() + ' — produits ' + D.eur(T.produits) + ' · charges ' + D.eur(T.charges) + ' · résultat ' + D.eur(T.resultat) + '. Écritures dérivées — aucune saisie manuelle.' : 'Écritures DÉRIVÉES de ce qui existe vraiment : ventes, remises, virements, pénalités, abonnements. Aucune saisie manuelle.');
+      // ── TVA par période
+      document.getElementById('ca-tva-rows').innerHTML = '<tr><td class="meta">' + esc(P.mois) + '</td><td class="num">' + esc(D.eur(T.abonnementsHT)) + '</td><td class="num">' + esc(String(tvaPct).replace('.', ',')) + ' %</td><td class="num">' + esc(D.eur(T.tva)) + '</td><td class="num">—</td><td class="num">' + esc(D.eur(T.tva)) + '</td><td>' + (L.length ? '<span class="pec-pill pec-pill--off">En cours</span><div class="meta" style="margin-top:4px">périodicité déclarative à caler avec l’expert-comptable</div>' : '<span class="pec-pill pec-pill--off">Rien à déclarer</span><div class="meta" style="margin-top:4px">avant l’activité</div>') + '</td></tr>';   // (24/09, nuit) une pastille courte ; l'explication dessous, qui se replie
+    }
+    rendre();
+    window.addEventListener('pec-bus', rendre); window.addEventListener('storage', rendre);
+    // EXPORTS RÉELS : CSV dérivé des sources qui existent, journalisé (PEC_MGR.csv → bus `export`)
+    var EXPORTS = {
+      journal: function () { var F = PEC_MGR.finance(P.mois); return ['journal-comptable-' + P.mois, ['horodatage', 'journal', 'libelle', 'piece', 'debit_eur', 'credit_eur', 'tva_eur', 'source'], F.lignes.map(function (e) { return [new Date(e.at).toISOString(), e.journal, e.libelle, e.piece || '', e.debit || 0, e.credit || 0, e.tva || 0, e.source || '']; })]; },
+      ventes: function () { return ['journal-ventes-' + P.mois, ['reference', 'date', 'marque', 'commerce', 'valeur_bon', 'prix_marque', 'prix_commerce', 'marge', 'offre', 'paiement', 'statut_prelevement', 'statut_marque'], D.techVentes({ mois: P.mois }).map(function (v) { return [v.reference, new Date(v.at).toISOString(), v.marchand, v.revendeur, v.montant, v.prixMarque, v.prixPoint, v.marge, v.modeLbl || v.modeId, v.paiement, v.statut, v.marqueStatut]; })]; },
+      tva: function () {
+        var F = PEC_MGR.finance(P.mois), T = F.totaux, tvaPct = D.techRef ? +D.techRef().tvaPct : 0, l = [];
+        l.push(['Abonnements au logiciel — TVA ' + tvaPct + ' %', T.nAbonnements, T.abonnementsHT, T.abonnementsTVA, 'prestation de services (art. 256 CGI)']);
+        l.push(['Bons de marque — marge du grossiste', T.nVentes, T.marge, '', 'TVA selon la qualification de chaque marque (art. 256 ter) — calcul après la décision HT/TTC de la remise']);
+        l.push(['TVA collectée (total période)', '', '', T.tva, 'somme des écritures Abonnements']);
+        l.push(['TVA déductible', '', '', '', 'non portée par la donnée — aucune facture de charge ne porte sa TVA']);
+        l.push(['Net à reverser', '', '', T.tva, 'collectée − déductible (déductible absente : net = collectée)']);
+        return ['journal-tva-' + P.mois, ['poste', 'nombre', 'base_eur', 'tva_eur', 'mention'], l];
+      },
+      tresorerie: function () {
+        var b = PEC_MGR.bornesMois(P.mois), dans = function (ts) { return !b || (ts >= b[0] && ts < b[1]); }, l = [];
+        D.techRemises({ deposees: true }).forEach(function (r) { if (dans(r.deposeLe)) l.push(['remise', r.reference, new Date(r.deposeLe).toISOString(), r.total, r.modeLbl, r.statut + (r.echeance ? ' · échéance ' + new Date(r.echeance).toISOString().slice(0, 10) : '')]); });
+        D.techReglements({}).forEach(function (v) { if (dans(v.at)) l.push(['virement_marque', v.reference, new Date(v.at).toISOString(), v.montant, v.marchand, (v.couvert ? 'prélèvement encaissé' : 'émis avant encaissement') + ' · ' + v.iban]); });
+        (D.avanceMouvementsGet ? D.avanceMouvementsGet() : []).forEach(function (m) { if (dans(m.at)) l.push(['avance_' + m.type, m.reference, new Date(m.at).toISOString(), m.montant, m.acteur || m.acteurId, m.motif || '']); });
+        return ['journal-tresorerie-' + P.mois, ['nature', 'ref', 'horodatage', 'montant_eur', 'tiers', 'detail'], l];
+      },
+      audit: function () { return ['journal-audit', ['horodatage', 'evenement', 'ref', 'acteur', 'details'], ((window.PEC_BUS && PEC_BUS.journal) ? PEC_BUS.journal() : []).map(function (e) { var d = {}; Object.keys(e).forEach(function (k) { if (['evt', 'ref', 'at', 'par'].indexOf(k) === -1) d[k] = e[k]; }); return [new Date(e.at).toISOString(), (D.ref.auditLibelles || {})[e.evt] || e.evt, e.ref || '', e.par || 'système', JSON.stringify(d)]; })]; }
+    };
+    document.querySelectorAll('[data-export]').forEach(function (b) {
+      b.addEventListener('click', function () { if (!window.PEC_MGR || !PEC_MGR.csv) return; var x = EXPORTS[b.getAttribute('data-export')](); PEC_MGR.csv(x[0], x[1], x[2]); });
+    });
+  })();
+</script>
+<script>
+  /* (24/09) LA TVA DES BONS, MARQUE PAR MARQUE — dérivée de ce que chaque marque a déclaré (techMarchandTva), jamais tranchée ici */
+  (function () {
+    var D = window.PEC_DATA; if (!D || !D.techMarchandTva || !D.techMarchandsGet) return;
+    var esc = function (v) { return D.esc(v); };
+    function peindreTva() {
+      var z = document.getElementById('ca-tva-regime-txt'), h = document.getElementById('ca-marge-hint'); if (!z) return;
+      var mqs = D.techMarchandsGet().filter(function (m) { return m.statut === 'validated' || m.statut === 'suspended'; });
+      var n = { buu: 0, bum: 0, inconnu: 0 }, ex = {};
+      mqs.forEach(function (m) { var q = D.techMarchandTva(m); n[q.code] = (n[q.code] || 0) + 1; ex[q.code] = q; });
+      var regle = (((D.ref || {}).juridique || {}).tva || {}).regle || (((D.ref || {}).tech || {}).fondement || {}).tva || '';
+      z.innerHTML = '<b>Le régime de TVA des bons se qualifie marque par marque.</b> '
+        + (mqs.length ? PEC_DATA.nb(mqs.length, 'marque') + ' : <b>' + n.buu + '</b> à usage unique (BUU), <b>' + n.bum + '</b> à usages multiples (BUM)' + (n.inconnu ? ', <b style="color:var(--color-amber-text)">' + n.inconnu + ' à qualifier</b>' : '') + '. ' : 'Aucune marque validée pour l’instant. ')
+        + (regle ? '<span class="meta">' + esc(regle) + '</span>' : '');
+      if (h) h.textContent = 'Revente − achat, vente par vente' + (n.bum ? ' · BUM : ' + (ex.bum.explication || '') : '') + (n.buu ? ' · BUU : ' + (ex.buu.explication || '') : '');
+    }
+    peindreTva();
+    window.addEventListener('pec-bus', peindreTva);
+    window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindreTva(); });
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Paiement</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css"><!-- (23/09) le look de l’espace des marques : héros léger, trois pas repliés, briques de liste -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : la signature du contrat-cadre lit la pièce d’identité du dirigeant (KYC) -->
+<script src="../assets/payencash-tech.js"></script><!-- (23/09, audit) LE SOCLE : session, menu, entête, héros. Sans lui, `var T = window.PEC_TECH` est undefined et le script SORT en silence — l'écran reste aux tirets. -->
+<!-- PAYENCASH SOLUTION — PAIEMENT DE LA MARQUE (22/09, fondatrice : « dans l'espace PayEnCash Solution, menu
+     Bon d'achat, Paiement, Outils, Compte » ; 23/09 : « Solution s'adresse aux marques »).
+     L'ARGENT QUI BOUGE, ET LUI SEUL : ce que nous devons à la marque et à quelle date, ce que nous lui avons
+     déjà viré, l'offre de paiement qui court et le RIB qui reçoit, l'abonnement au logiciel. Les gestes qui
+     ENCADRENT cet argent (choisir l'offre, déposer le RIB, changer de forfait) vivent dans Compte : ici, chaque
+     ligne qui demande un geste est un lien vers la carte exacte où le faire.
+     (23/09, fondatrice) LE LIEN DE VENTE À PARTAGER ET L'HISTORIQUE DES BONS VENDUS sont ici à sa demande —
+     l'historique se lit ici par le prix d'achat et l'état de notre paiement, vente par vente ; sur Bon d'achat,
+     par l'état du bon (vendu, dépensé, annulé). Deux angles, pas deux copies.
+     CET ÉCRAN NE PARLE QU'À LA MARQUE : le mandat, l'encours et l'avance d'un point de vente se lisent dans SON app
+     (ui/partenaire), qui a sa propre connexion.
+     TOUT EST DÉRIVÉ du data-layer : aucun taux, aucun délai, aucune date, aucun article de loi n'est écrit ici.
+     VOCABULAIRE (règle ACPR) : ce que nous devons est le PRIX D'ACHAT des bons — une créance commerciale. Nous ne
+     détenons aucun fonds pour le compte de la marque : « nous te payons », « viré », « couvert » — jamais un
+     « solde », jamais « à régler ». -->
+<style>
+  /* (24/09, soir) sur bureau, chaque colonne commence à hauteur du titre de l'autre */
+  @media (min-width:1024px){ .pec-cols > .pec-colonne > .tk-sec:first-child{margin-top:0} }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+
+    <div class="pec-info-body">
+      <div class="pec-card" id="tp-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace demande une session</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)">Connecte-toi avec l’identifiant de ton compte.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px">Aller à la connexion</a>
+      </div>
+
+      <div id="tp-corps" hidden></div>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  /* LE HAUT DE PAGE EST POSÉ AVANT LA GARDE : sans session, la page garde son titre et sa promesse — pas un tiret.
+     Les trois pas lisent l'heure de l'arrêté dans le référentiel : rien d'écrit. */
+  var R0 = (D && D.techRef) ? D.techRef() : null;
+  if (T) { T.entete('tk-entete'); T.menu('tk-menu', '08-paiement.html'); T.hero('tk-hero', { teinte: 'paiement', titre: 'Comment tu es payée', idTitre: 'tp-titre', idSub: 'tp-sub',
+    promesse: 'Ce que nous te devons, et ce que nous t’avons viré.',
+    etapes: R0 ? ['Le réseau achète tes bons : nous te les payons, remise déduite', 'À l’arrêté de ' + R0.paiement.arreteHeure + ', le compte est fait', 'Virement à l’échéance de ton offre, sur ton RIB'] : [] }); }
+  if (!D || !D.techRef || !T) return;
+  var esc = function (v) { return D.esc(v); };
+  var pc = function (x) { return String(x).replace('.', ',') + ' %'; };
+  var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+  /* LA RÉFÉRENCE D'UN ARTICLE DE LOI — sortie de la phrase de fondement du référentiel, le texte entier en infobulle. */
+  function art(src) {
+    if (!src) return '';
+    var court = String(D.refArticle ? D.refArticle(src) : src).split(' (')[0].trim();
+    return '<b title="' + esc(src) + '" style="color:var(--color-ink)">' + esc(court) + '</b>';
+  }
+
+  var s = T.session('marchand');
+  if (!s || !D.techMarchand(s.id)) { $('tp-garde').hidden = false; return; }
+  $('tp-corps').hidden = false;
+
+  function carte(titre, corps, id) {
+    return '<p class="pec-section-label tk-sec">' + titre + '</p>'
+      + '<div class="pec-card"' + (id ? ' id="' + id + '"' : '') + '>' + corps + '</div>';
+  }
+  function vide(html) { return '<div class="tk-vide"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg><div>' + html + '</div></div>'; }
+  function porte(href, lbl) { return '<a class="pec-pill tap" href="' + esc(href) + '" style="flex:none;font-weight:800;text-decoration:none">' + esc(lbl) + '</a>'; }
+
+  /* OÙ EN EST NOTRE PAIEMENT D'UNE VENTE — DÉRIVÉ des champs de la vente (marqueStatut, echeanceMarque,
+     reglementRef), pas d'un libellé : ce que la marque veut lire, c'est une date ou une référence de virement. */
+  function etatPaiement(v, R) {
+    if (!v) return '';
+    if (v.statut === 'annulee' || v.marqueStatut === 'annule') return 'achat annulé';
+    if (v.marqueStatut === 'paye') return 'payé' + (v.reglementRef ? ' — virement ' + v.reglementRef : '');
+    return v.echeanceMarque ? 'nous te le payons le ' + D.dateHeure(v.echeanceMarque) : 'nous te le payons après l’arrêté de ' + R.paiement.arreteHeure;
+  }
+
+  /* ══ LA MARQUE ══════════════════════════════════════════════════════════════════════════════════════════ */
+  function peindreMarque() {
+    var m = D.techMarchand(s.id), R = D.techRef(), S = R.seuils || {};
+    var mode = D.techMarchandMode(m);
+    var dus = D.techReglementsDus({ marchandId: m.id });     // ce qui est dû, groupé par le data-layer, la plus proche échéance d'abord
+    var totalDu = dus.reduce(function (a, x) { return a + x.montant; }, 0);
+    var virs = D.techReglements({ marchandId: m.id });
+    var totalVire = virs.reduce(function (a, v) { return a + v.montant; }, 0);
+    var rib = D.techMarchandRib(m);
+    var fo = D.techMarchandFormule(m);
+    var fac = D.techFactures({ marchandId: m.id });
+    var tot = D.techVentesTotaux({ marchandId: m.id });
+
+    var h = '', hd = '';   /* (24/09, soir) h : l'argent, à gauche ; hd : les réglages, dans le panneau de droite */
+
+    /* ══ CE QUE NOUS TE DEVONS (23/09, fondatrice : « le récapitulatif des règlements en cours ») ══════════
+       Le grand nombre est TOUT ce que nous devons (techVentesTotaux.duMarque : chaque vente pas encore payée, qu'elle
+       soit arrêtée ou non — c'est ce que Bon d'achat annonce aussi). Dessous : ce qui a une échéance, tel que le
+       data-layer le rend (techReglementsDus : combien de bons, quelle offre, si les ventes du réseau qui le couvrent
+       sont encaissées), puis ce qui attend encore l'arrêté du soir. Dire « tout t'a été viré » quand une vente attend
+       l'arrêté serait faux : on ne le dit que si rien n'est dû. */
+    var attArrete = D.techVentes({ marchandId: m.id, marqueStatut: 'a_payer' }).filter(function (v) { return v.statut !== 'annulee' && v.echeanceMarque == null; });
+    var duArrete = attArrete.reduce(function (a, v) { return a + (v.prixMarque || 0); }, 0);
+    h += carte('Ce que nous te devons',
+      '<div class="tk-somme"><div class="v">' + esc(D.eur(tot.duMarque)) + '</div><div class="s">'
+        + (dus.length ? (dus[0].echu ? 'échu le ' : 'échéance le ') + esc(D.dateHeure(dus[0].echeance)) + ' · ce que nous te devons pour les bons achetés par le réseau'
+          : (attArrete.length ? 'en attente de l’arrêté de ' + esc(R.paiement.arreteHeure) + ' — l’échéance se pose à ce moment-là'
+            : (tot.ventes ? 'rien en attente : tout t’a été viré' : 'rien pour l’instant'))) + '</div></div>'
+      + dus.map(function (x) {
+          return '<div class="tk-row"><div class="tx"><div class="nm"> ' + esc(pl(x.ventes.length, 'bon')) + ' · offre « ' + esc(x.mode.libelle) + ' »</div>'
+            + '<span class="sb">' + (x.couvert ? 'Couvert : les achats du réseau sont encaissés, le virement part à l’échéance.'
+                : 'Pas encore couvert : ' + pl(x.attente, 'achat') + ' du réseau en cours de prélèvement' + (x.impayes ? ', ' + pl(x.impayes, 'impayé') : '') + '.') + '</span>'
+            + (!x.rib ? '<span class="sb">Sans RIB, rien ne part — <a class="tk-go" href="10-compte.html?s=paiement#rib">déposer mon RIB ›</a></span>' : '')
+            + '</div><div class="mt">' + esc(D.eur(x.montant)) + '</div></div>';
+        }).join('')
+      + (attArrete.length
+        ? '<div class="tk-row"><div class="tx"><div class="nm">' + esc(pl(attArrete.length, 'bon')) + ' acheté' + (attArrete.length > 1 ? 's' : '') + ' par le réseau depuis le dernier arrêté</div>'
+          + '<span class="sb">À ' + esc(R.paiement.arreteHeure) + ', le compte est fait et l’échéance de ton offre se pose.</span></div><div class="mt">' + esc(D.eur(duArrete)) + '</div></div>'
+        : '')
+      + (!dus.length && !attArrete.length
+        ? '<p class="tk-note" style="margin-top:6px">' + (tot.ventes
+            ? 'Chaque achat du réseau à venir sera ici, de l’arrêté de ' + esc(R.paiement.arreteHeure) + ' à son virement.'
+            /* (23/09, soir — fondatrice : « ça ne respecte pas l'ACPR : on lui achète, NOUS ») le sujet de la phrase est nous, l'acheteur */
+            : 'Dès qu’un commerce du réseau achète un de tes bons, le prix auquel nous te l’achetons et la date à laquelle nous te le payons apparaissent ici.') + '</p>'
+        : ''));
+
+    /* ══ MES VIREMENTS REÇUS — la référence, la date, ce qu'ils couvrent, la banque et l'IBAN masqué. ══ */
+    h += carte('Mes virements reçus',
+      '<div class="tk-somme"><div class="v">' + esc(D.eur(totalVire)) + '</div><div class="s">' + (virs.length ? pl(virs.length, 'virement') + ' reçu' + (virs.length > 1 ? 's' : '') : 'aucun virement pour l’instant') + '</div></div>'
+      + (virs.length
+        ? virs.slice(0, 10).map(function (v) {
+            return '<div class="tk-row"><div class="tx"><div class="nm">' + esc(v.reference) + '</div>'
+              + '<span class="sb">' + esc(D.dateHeure(v.at)) + ' · ' + esc(pl(v.ventes.length, 'bon')) + ' · virement' + (v.instantane ? ' instantané' : '') + (v.banque ? ' ' + esc(v.banque) : '') + '</span>'
+              + '<span class="sb tk-mono">' + esc(v.iban) + '</span></div><div class="mt">' + esc(D.eur(v.montant)) + '</div></div>';
+          }).join('') + (virs.length > 10 ? '<p class="tk-note">Les 10 derniers.</p>' : '')
+        : '<p class="tk-note" style="margin-top:6px">Le premier partira à l’échéance de ton offre, sur ton RIB.</p>'));
+
+    /* ══ MON OFFRE DE PAIEMENT ET MON RIB (23/09, fondatrice : « dans Compte on choisit les modalités de paiement
+       liées à la facturation des bons ») — le choix a quitté cet écran : ce n'est pas un mouvement d'argent, c'est
+       une condition du contrat. Ici on DIT celle qui court, et où elle se change ; de même pour le RIB qui reçoit. */
+    hd += carte('Mon offre de paiement',
+      '<div class="tk-row"><div class="tx"><div class="nm">' + esc(mode.libelle) + '</div>'
+        + '<span class="sb">Remise ' + esc(pc(mode.remisePct)) + ' sur la valeur faciale — pour 100 € de bons achetés par le réseau, nous te payons ' + esc(D.eur(100 - mode.remisePct)) + '.</span>'
+        + '<span class="sb">' + esc(mode.detail) + '</span></div>'
+        + porte('10-compte.html?s=paiement#modalites', 'Changer') + '</div>'
+      + '<div class="tk-row"><div class="tx"><div class="nm">' + (rib ? 'Virements sur ' + esc(rib.ibanMasque || D.ibanMasque(rib.iban)) : 'Aucun RIB déposé') + '</div>'
+        + '<span class="sb">' + (rib ? esc(rib.titulaire || '') + (rib.bic ? ' · ' + esc(rib.bic) : '') : 'Aucun virement ne part sans lui.') + '</span></div>'
+        + porte('10-compte.html?s=paiement#rib', rib ? 'Modifier' : 'Déposer') + '</div>');
+
+    /* ══ L'ABONNEMENT AU LOGICIEL — facturé à part, prélevé à part : c'est de l'argent qui bouge, dans l'autre
+       sens. Le forfait, ses factures, et la porte vers Compte › Abonnement. ══ */
+    /* (24/09) L'ABONNEMENT SE RÈGLE PAR CARTE : la carte enregistrée (ou son absence, qui bloque le débit), puis les factures et
+       ce qu'il en est advenu — payée par carte, ou débit refusé avec son motif. */
+    var carte0 = D.techMarchandCarte(m);
+    hd += carte('Mon abonnement',
+      '<div class="tk-row"><div class="tx"><div class="nm">' + esc(fo.nom) + (fo.prix > 0 ? ' · ' + esc(D.eur(fo.prix)) + ' /mois HT' : ' — sans abonnement') + '</div>'
+        + '<span class="sb">' + esc(fo.detail || '') + '</span>'
+        + (fo.prix > 0 ? '<span class="sb">' + (carte0 ? 'Carte ' + esc(carte0.reseau) + ' •••• ' + esc(carte0.fin4) + ' · débitée le 1er de chaque mois' : '<b style="color:var(--color-amber-text)">Aucune carte enregistrée</b> — la facture du mois ne pourra pas être débitée') + '</span>' : '')
+        + '</div>' + porte('10-compte.html?s=abonnement#abonnement', 'Gérer') + '</div>'
+      + (fac.length ? fac.slice(0, 6).map(function (f) {
+          return '<div class="tk-row"><div class="tx"><div class="nm">' + esc(f.id) + ' · ' + esc(D.eur(f.montantTTC)) + ' TTC</div>'
+            + '<span class="sb">' + esc(D.dateHeure(f.emiseLe)) + ' · ' + (f.statut === 'payee' ? 'payée par carte' + (f.carte ? ' ' + esc(f.carte.reseau) + ' •••• ' + esc(f.carte.fin4) : '') + (f.payeeLe ? ' le ' + esc(D.dateHeure(f.payeeLe)) : '') : (f.echec ? '<b style="color:var(--color-amber-text)">débit refusé</b> — ' + esc(f.echec.motif) : 'émise, débit à venir')) + '</span></div></div>';
+        }).join('') : ''));
+
+    /* ══ LE LIEN À PARTAGER (23/09, fondatrice : « générer un lien à partager par Snap, WhatsApp, TikTok… pour
+       vendre un bon d'achat / carte cadeau — démarche commerciale ») ═══════════════════════════════
+       Un seul lien par marque, permanent, SANS montant : celui qui l'ouvre choisit sa somme. Les compteurs
+       sont DÉRIVÉS (ouvertures du lien, bons vendus par lui) — aucun chiffre n'est stocké à part. Les boutons
+       de partage n'envoient rien depuis ici : ils ouvrent l'application choisie avec le lien déjà écrit, et
+       c'est la marque qui poste ; Instagram n'a pas d'adresse de partage, on le dit. */
+    var st = D.techVenteLienStats(m.id);
+    var url = st.lien ? D.techVenteLienUrl(st.lien.slug) : null;
+    var txt = st.lien ? ('Offre un bon d’achat ' + m.raisonSociale + ' — utilisable sur ' + (m.siteUrl || 'notre site') + ' : ' + url) : '';
+    hd += carte('Mon lien de vente à partager', st.lien
+      ? '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Celui qui l’ouvre choisit le montant de son bon d’achat et l’achète dans un commerce du réseau. Le lien ne périme pas.</p>'
+        + '<div class="tk-snip" id="tp-url">' + esc(url) + '</div>'
+        + '<div class="tk-part part">'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://wa.me/?text=' + encodeURIComponent(txt) + '">WhatsApp</a>'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://snapchat.com/scan?attachmentUrl=' + encodeURIComponent(url) + '">Snapchat</a>'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://www.tiktok.com/upload?url=' + encodeURIComponent(url) + '">TikTok</a>'
+        + '<a class="pp tap" target="_blank" rel="noopener" href="https://www.instagram.com/" title="Instagram n’a pas d’adresse de partage : colle le lien copié">Instagram</a>'
+        + '<button type="button" class="pp tap" id="tp-copier">Copier le lien</button>'
+        + '</div>'
+        + '<p class="tk-note"><b>' + st.ouvertures + '</b> ouverture' + (st.ouvertures > 1 ? 's' : '') + ' · <b>' + st.bons + '</b> bon' + (st.bons > 1 ? 's' : '') + ' vendu' + (st.bons > 1 ? 's' : '') + ' par ce lien'
+        + (st.bons ? ' (' + esc(D.eur(st.valeur)) + ' de valeur faciale)' : '') + '.</p>'
+        + '<p class="tk-note" style="font-size:10.5px">Un bon d’achat valable uniquement chez toi — réseau limité' + (S.reseauLimiteSource ? ' (' + art(S.reseauLimiteSource) + ')' : '') + ' : ni remboursable en espèces, ni échangé contre de la monnaie.</p>'
+      : '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Un lien permanent, à poster sur tes réseaux : celui qui l’ouvre choisit le montant de son bon d’achat et l’achète dans un commerce du réseau.</p>'
+        + '<p class="tk-err" id="tp-lien-err" hidden></p>'
+        + '<button type="button" class="pec-cta tap" id="tp-lien-go" style="display:block;width:100%;text-align:center;margin-top:11px">Générer mon lien de vente</button>', 'tp-lien');
+
+    /* ══ L'HISTORIQUE — TOUS LES BONS QUE LE RÉSEAU A VENDUS POUR ELLE (23/09, fondatrice), PAR L'ARGENT ═══════
+       DÉRIVÉ de techBons + techVente : le code, la somme, la date, le commerce qui l'a vendu, ce que nous l'avons
+       acheté, et où en est NOTRE paiement (une date d'échéance ou une référence de virement). L'état du bon
+       lui-même (dépensé, annulé) se lit sur Bon d'achat — pas deux fois. */
+    var tousBons = D.techBons({ marchandId: m.id });
+    h += carte('Les bons achetés par le réseau', tousBons.length
+      ? '<p class="tk-note" style="margin:0 0 4px">' + esc(pl(tousBons.length, 'bon')) + ' · ' + esc(D.eur(tousBons.reduce(function (a, b) { return a + (b.montant || 0); }, 0))) + ' de valeur faciale · '
+        + esc(D.eur(tot.prixMarque)) + ' que nous t’achetons</p>'
+        + tousBons.slice(0, 30).map(function (b) {
+          var v = b.venteRef ? D.techVente(b.venteRef) : null;
+          var rv = v && v.revendeurId ? D.techRevendeur(v.revendeurId) : null;
+          return '<div class="tk-row"><div class="tx"><div class="nm">' + esc(b.code) + ' · ' + esc(D.eur(b.montant)) + '</div>'
+            + '<span class="sb">' + (b.venduLe ? 'Acheté le ' + esc(D.dateHeure(b.venduLe)) : (b.emisLe ? 'Édité le ' + esc(D.dateHeure(b.emisLe)) : ''))
+            + (rv ? ' par ' + esc(rv.raisonSociale) + (rv.ville ? ' · ' + esc(rv.ville) : '') : (v && v.revendeur ? ' par ' + esc(v.revendeur) : '')) + '</span>'
+            + (v ? '<span class="sb">Prix d’achat <b style="color:var(--color-ink)">' + esc(D.eur(v.prixMarque)) + '</b> (remise ' + esc(pc(v.remisePct)) + ') · ' + esc(etatPaiement(v, R)) + '</span>' : '')
+            + '</div></div>';
+        }).join('')
+        + (tousBons.length > 30 ? '<p class="tk-note">Les 30 derniers — ' + (tousBons.length - 30) + ' plus anciens sur <a class="tk-go" href="02-espace.html">Bon d’achat ›</a></p>' : '')
+      : vide('<b>Aucun bon acheté pour l’instant.</b> Le premier apparaîtra ici dès qu’un commerce du réseau en achètera un.'));
+
+    $('tp-corps').innerHTML = '<div class="pec-cols pec-cols--principal"><div class="pec-colonne">' + h + '</div><aside class="pec-colonne">' + hd + '</aside></div>';
+  }
+
+  function peindre() { peindreMarque(); }
+
+  /* ══ LES GESTES — délégués, parce que le corps est repeint à chaque changement. Deux seulement : faire naître
+     le lien de vente, et le copier. Tout ce qui touche à l'offre, au RIB ou au mandat se fait dans Compte. ══ */
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('#tp-lien-go,#tp-copier') : null;
+    if (!el) return;
+    if (el.id === 'tp-lien-go') {
+      /* UN REFUS QUI PORTE OÙ AGIR devient un lien (23/09, soir) : le texte du data-layer, puis « régler › » vers
+         la carte exacte du compte. */
+      var rl = D.techVenteLienCreer(s.id, s.id), x = $('tp-lien-err');
+      if (!rl.ok) { if (x) { x.hidden = false; x.innerHTML = esc(rl.motif) + (rl.href ? ' <a class="tk-go" href="' + esc(rl.href) + '">régler ›</a>' : ''); } return; }
+      peindre(); return;
+    }
+    if (el.id === 'tp-copier') {
+      var z = $('tp-url'); if (!z) return;
+      var t0 = z.textContent, b0 = el;
+      /* COPIER SANS PRESSE-PAPIERS DISPONIBLE : on sélectionne le texte, et l'écran le DIT — on ne prétend
+         jamais avoir copié ce qu'on n'a pas copié. */
+      var fini = function (ok) { b0.textContent = ok ? 'Lien copié' : 'Sélectionne et copie'; setTimeout(function () { b0.textContent = 'Copier le lien'; }, 2200); };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(t0).then(function () { fini(true); }, function () { fini(false); });
+      } else {
+        try { var r0 = document.createRange(); r0.selectNodeContents(z); var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r0); fini(false); } catch (e2) { fini(false); }
+      }
+    }
+  });
+
+  peindre();
+  /* UNE ADRESSE QUI VISE UNE CARTE (« 08-paiement.html#tp-lien », depuis Bon d'achat ou Outils) : le corps est
+     peint par le script, le navigateur n'a donc rien trouvé à l'ouverture — on y défile nous-mêmes, et la carte
+     se signale, comme sur Compte. */
+  (function () {
+    var ancre = (location.hash || '').replace('#', ''); if (!ancre) return;
+    var z = $(ancre); if (!z) return;
+    setTimeout(function () { try { z.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} z.classList.add('tc-cible'); }, 60);
+  })();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

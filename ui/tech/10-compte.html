@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Compte</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css"><!-- (23/09) le look de l’espace des marques : héros, trois pas, grands nombres -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : dossier de vérification (KYB), pièces, contrat généré et signé -->
+<script src="../assets/payencash-tech.js"></script><!-- (23/09, audit) LE SOCLE : session, menu, entête. Sans lui, `var T = window.PEC_TECH` est undefined et le script SORT en silence — l'écran reste aux tirets. -->
+<!-- PAYENCASH SOLUTION — COMPTE (23/09, fondatrice : « page du compte avec les CGU, CGV etc., gros cadre
+     juridique, KYB etc. » ; le soir : « créer un menu avec des pages pour chaque section », « où je déclare le
+     dirigeant ? », « restructure tout, hiérarchise bien »).
+     C'EST LA PAGE QUI ENGAGE. Un HUB (l'identité en tête, ce qui bloque, sept lignes de menu au résumé DÉRIVÉ), puis
+     une page par section (?s=…), dans cet ordre :
+       ① IDENTITÉ — l'identité légale déclarée et ce que le contrôle a relevé ; le DIRIGEANT (prénom, nom, qualité :
+         c'est lui qui signe) ; le DOSSIER DE VÉRIFICATION (KYB) pièce par pièce, déposé ici — tant qu'il n'est pas
+         contrôlé, le compte est INACTIF ;
+       ② DOCUMENTS — chaque document lu (dans le lecteur intégré, jusqu'au bout) puis accepté dans sa VERSION ; le
+         CONTRAT-CADRE, généré du modèle du coffre, lu et signé par le dirigeant une fois sa pièce d'identité
+         contrôlée (KYC), contresigné par nous ; la DÉCLARATION « réseau limité », déposée, statuée, corrigeable ;
+       ③ PAIEMENT — l'offre (à quel prix nous achetons ses bons, sous quel délai nous la payons) et le RIB, proposé
+         depuis le dossier contrôlé ; ④ ABONNEMENT — le logiciel d'édition, le quota du mois, le site web ;
+       ⑤ INTÉGRATION — les clés d'API, le bouton du site, les réseaux sociaux ; ⑥ RÈGLES — seuil ACPR, plafonds,
+         LCB-FT, chaque texte à sa source ; ⑦ MENTIONS — ce que nous sommes pour elle, l'éditeur, le cadre.
+     TOUT MESSAGE QUI DEMANDE UN GESTE EST UN LIEN VERS L'ENDROIT EXACT (?s=section#ancre : la carte visée se signale).
+     LA CLÉ SECRÈTE est tirée du générateur sûr du navigateur, montrée UNE FOIS, et seule son empreinte SHA-256 est
+     conservée : perdue, elle ne se retrouve pas — elle se révoque et se refait. L'écran le dit.
+     TOUT EST DÉRIVÉ : le dossier vient du coffre (PEC_DOCS), les acceptations de `documentsEtat`, les textes et les
+     nombres du référentiel. L'écran n'écrit rien qu'il n'ait lu — et ce qui manque, il le dit, avec son adresse. -->
+<style>
+  .rowl{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;padding:9px 0;border-bottom:1px solid var(--color-sep)}
+  .rowl:last-child{border-bottom:none}
+  .rowl .nm{font-size:12.5px;font-weight:800;color:var(--color-ink)}
+  .rowl .sb{display:block;font-size:11px;line-height:1.45;color:var(--color-muted);margin-top:1px}
+  .vide{padding:10px 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  .err{margin:9px 0 0;font-size:11.5px;font-weight:700;line-height:1.45;color:#8E2A1E}
+  .cle{border-radius:14px;background:var(--color-ink);color:#fff;padding:13px 14px;margin-top:2px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  .cle .k{font-size:9.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:var(--color-bright);font-family:inherit}
+  .cle .v{font-size:13px;font-weight:700;word-break:break-all;margin-top:3px}
+  .cle .v.mut{color:#B9CCC4}
+  .secret{border-radius:14px;border:1.5px solid var(--color-amber-text);background:var(--color-amber-well);padding:12px 14px;margin-top:10px}
+  .secret .v{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:13px;font-weight:700;word-break:break-all;color:var(--color-amber-text);margin-top:5px}
+  .snip{border-radius:12px;background:var(--color-bg);border:1px solid var(--color-sep);padding:10px 11px;margin-top:8px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;line-height:1.6;color:var(--color-ink);white-space:pre-wrap;word-break:break-all}
+  .lien{display:flex;align-items:center;gap:10px;padding:11px 0;border-top:1px solid var(--color-sep);text-decoration:none;margin-top:10px}
+  [data-s].lien{margin-top:0;border-top:none;border-bottom:1px solid var(--color-sep)}
+  [data-s].lien:last-child{border-bottom:none}
+  .lien .nm{font-size:12.5px;font-weight:800;color:var(--color-ink)}
+  .lien .sb{display:block;font-size:11px;line-height:1.45;color:var(--color-muted);margin-top:1px}
+  .offre{border-radius:14px;border:1.5px solid var(--color-sep);background:var(--color-card);padding:12px 13px;margin-top:8px;cursor:pointer;display:block;width:100%;text-align:left}
+  .offre[aria-pressed="true"]{border-color:var(--color-ink);box-shadow:var(--shadow-card)}
+  .offre .t{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+  .offre .n{font-size:13.5px;font-weight:800;color:var(--color-ink)}
+  .offre .p{font-size:15px;font-weight:800;color:var(--color-ink);white-space:nowrap}
+  .offre .d{font-size:11.5px;line-height:1.55;color:var(--color-muted);margin-top:4px}
+  .offre .r{font-size:11px;line-height:1.5;color:var(--color-muted);margin-top:6px;border-top:1px solid var(--color-sep);padding-top:6px}
+  .jauge{height:7px;border-radius:99px;background:var(--color-bg);overflow:hidden;margin-top:7px}
+  .jauge i{display:block;height:100%;background:var(--color-ink)}
+  .rowl .mt{font-size:13px;font-weight:800;color:var(--color-ink);white-space:nowrap}
+  /* (23/09, soir — fondatrice : « beaucoup de déchets visuels », « si je lis, je ferme le doc, je dois revenir à la page
+     précédente, pas à l'accueil du site ; beaucoup de pages ne sont pas au bon format ») LES DOCUMENTS SE LISENT ICI,
+     dans un lecteur qui couvre l'écran et se referme sur la page d'où l'on vient — jamais dans un onglet qui mène à
+     un document de bureau. Une ligne par document : titre, état, deux gestes. */
+  .doc{padding:11px 0;border-bottom:1px solid var(--color-sep)}
+  .doc:last-child{border-bottom:none}
+  .doc .t{font-size:13px;font-weight:800;line-height:1.3;color:var(--color-ink)}
+  .doc .m{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:5px;font-size:10.5px;line-height:1.45;color:var(--color-muted)}
+  .doc .a{display:flex;gap:7px;margin-top:9px}
+  .doc .a .pec-pill,.doc .a .pec-cta{flex:1;text-align:center;font-weight:800}
+  .doc .a .pec-cta{padding:8px 10px;font-size:12px}
+  .doc .a .pec-cta[disabled]{opacity:.45;cursor:not-allowed}
+  .lect{position:absolute;inset:0;z-index:40;display:flex;flex-direction:column;background:var(--color-bg)}
+  .lect .h{flex:none;display:flex;align-items:center;gap:6px;padding:10px 12px 8px;background:var(--color-card);box-shadow:var(--shadow-card)}
+  .lect .h .retour{display:inline-flex;align-items:center;gap:2px;border:none;background:none;padding:6px 8px 6px 2px;font:inherit;font-size:12.5px;font-weight:800;color:var(--color-primary-dark);cursor:pointer}
+  .lect .h .retour svg{width:18px;height:18px}
+  .lect .h .titre{min-width:0;flex:1;font-size:13px;font-weight:800;line-height:1.25;color:var(--color-ink)}
+  .lect .h .v{font-size:10px;font-weight:700;color:var(--color-muted);white-space:nowrap}
+  .lect .c{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding:14px 16px 24px;font-size:13px;line-height:1.6;color:var(--color-ink)}
+  .lect .c h1{font-size:18px;line-height:1.25;margin:0 0 6px}
+  .lect .c h2{font-size:14px;margin:18px 0 6px;color:var(--color-primary-dark)}
+  .lect .c h3{font-size:13px;margin:14px 0 5px}
+  .lect .c p,.lect .c li{margin:6px 0}
+  .lect .c ul,.lect .c ol{padding-left:18px}
+  .lect .c table{display:block;overflow-x:auto;width:100%;border-collapse:collapse;font-size:11.5px}
+  .lect .c th,.lect .c td{border:1px solid var(--color-sep);padding:5px 7px;text-align:left;vertical-align:top}
+  .lect .c .note,.lect .c .warn{border-radius:10px;background:var(--color-mint);padding:9px 11px;font-size:12px;margin:8px 0}
+  .lect .c .warn{background:var(--color-amber-well);color:var(--color-amber-text)}
+  .lect .c .toc,.lect .c .toolbar,.lect .c .brand,.lect .c header{display:none}
+  .lect .c a{color:var(--color-primary-dark);font-weight:700}
+  .lect .c code{font-size:11.5px}
+  .lect .c img{max-width:100%;height:auto}
+  .lect .f{flex:none;padding:10px 14px 12px;background:var(--color-card);box-shadow:0 -6px 18px rgba(0,0,0,.05)}
+  .lect .f .pec-cta{display:block;width:100%;text-align:center}
+  .lect .f .pec-cta[disabled]{opacity:.45;cursor:not-allowed}
+  .lect .f .s{margin:6px 0 0;font-size:10.5px;line-height:1.45;color:var(--color-muted);text-align:center}
+  .lect iframe{flex:1;width:100%;border:0;background:#fff}
+  /* (23/09, soir — audit) LE DÉTAIL D'UNE OFFRE ET SA LIGNE DE CALCUL SE SUIVAIENT SANS RETOUR : deux spans en ligne, la
+     phrase d'explication collée au « Pour 100 € … ». Chacun sur sa ligne. */
+  .offre .d,.offre .r{display:block}
+  /* la source d'une règle (le texte de loi, tel que lu) se replie derrière un mot : la règle se lit, la preuve s'ouvre */
+  .src{margin-top:4px}
+  .src summary{list-style:none;cursor:pointer;display:inline-block;font-size:10.5px;font-weight:800;color:var(--color-primary-dark)}
+  .src summary::-webkit-details-marker{display:none}
+  .src[open] summary{margin-bottom:3px}
+  /* le premier libellé de section colle au haut de page : l'espace du corps suffit */
+  #tc-corps > .pec-section-label:first-child{margin-top:4px}
+  .tc-note{margin:9px 0 0;font-size:10.5px;line-height:1.55;color:var(--color-muted)}
+  .tc-texte{margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)}
+  .tc-deux{display:flex;gap:7px;margin-top:9px} .tc-deux > span{flex:1;min-width:0}
+  /* (24/09, soir) LE RAIL DES SECTIONS : sur téléphone, c'est le hub (la carte aux sept lignes) et il s'efface dans une section ;
+     sur bureau, il reste à gauche, collant, la section courante marquée, et les onglets du haut de page n'ont plus lieu d'être. */
+  .tc-rail{background:var(--color-card);border-radius:16px;box-shadow:var(--shadow-card);padding:4px 15px 8px;margin-top:6px}
+  .tc-rail .lien[aria-current="page"] .nm{color:var(--color-primary-dark)}
+  .tc-hub-titre{margin:18px 0 6px}
+  .tc-contenu > .pec-section-label:first-child{margin-top:4px}
+  @media (max-width:1023.98px){
+    .tc-mise:not(.tc-hub) .tc-rail-z{display:none}
+    .tc-hub .tc-defaut{display:none}
+  }
+  @media (min-width:1024px){
+    .tc-rail{position:sticky;top:24px;margin-top:0;padding:6px 8px 8px}
+    .tc-rail .lien{padding:12px 10px;border-radius:12px;border:0 !important;margin:0}
+    .tc-rail .lien[aria-current="page"]{background:var(--color-mint)}
+    .tc-rail .lien .nm{font-size:14px} .tc-rail .lien .sb{font-size:12px}
+    .tc-hub-titre{margin:0 0 8px}
+    .tc-rail-z .tk-vide{margin-bottom:14px}
+    .tk-onglets{display:none}
+    .tc-sortie{display:none}
+    .rowl .nm{font-size:15px} .rowl .sb{font-size:13px} .rowl .mt{font-size:15px}
+    .vide,.err,.tc-texte{font-size:13.5px} .tc-note{font-size:12.5px}
+    .offre .n{font-size:15px} .offre .p{font-size:17px} .offre .d{font-size:13px} .offre .r{font-size:12.5px}
+    .doc .t{font-size:15px} .doc .m{font-size:12px} .doc .a .pec-cta{font-size:13px}
+    .cle .v{font-size:14px} .snip{font-size:12.5px} .secret .v{font-size:14px}
+    .lect{position:fixed;left:var(--pec-nav-l,236px)}
+    .lect .c{padding:28px 40px 40px;font-size:15px} .lect .c > *{max-width:820px;margin-left:auto;margin-right:auto}
+    .lect .f{display:flex;flex-direction:column;align-items:center} .lect .f > *{width:100%;max-width:560px}
+    .tc-contenu .pec-cta,.tc-contenu .pec-btn-secondary{width:fit-content;min-width:240px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device" style="position:relative">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+
+    <div class="pec-info-body">
+      <div class="pec-card" id="tc-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace demande une session</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)">Connecte-toi avec l’identifiant de ton compte.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px">Aller à la connexion</a>
+      </div>
+
+      <div id="tc-corps" hidden></div>
+      <p class="tc-sortie" style="margin:14px 0 0;font-size:12px;text-align:center"><a href="#" id="tc-out" class="pec-tap-confort" style="font-weight:700;color:var(--color-muted)">Se déconnecter</a></p>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+
+  <!-- LE LECTEUR : un document, ou le contrat, lu SANS quitter la page — il se referme sur elle. -->
+  <div class="lect" id="tc-lecteur" hidden role="dialog" aria-modal="true" aria-labelledby="tc-lect-titre">
+    <div class="h">
+      <button type="button" class="retour tap" id="tc-lect-fermer"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg>Retour</button>
+      <div class="titre" id="tc-lect-titre">—</div>
+      <span class="v" id="tc-lect-version"></span>
+    </div>
+    <div class="c" id="tc-lect-corps"></div>
+    <div class="f" id="tc-lect-pied" hidden></div>
+  </div>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  if (window.PEC_TECH) { PEC_TECH.entete('tk-entete'); PEC_TECH.menu('tk-menu', '10-compte.html'); }
+  if (!D || !D.techRef || !T) return;
+  var esc = function (v) { return D.esc(v); };
+
+  var s = T.session('marchand');
+  if (!s || !D.techMarchand(s.id)) { $('tc-garde').hidden = false; return; }
+  $('tc-corps').hidden = false;
+
+  /* ══ (23/09, fondatrice : « dans Compte, créer un menu avec des pages pour chaque section, sinon c'est trop lourd ;
+     respecter la hiérarchie de l'information, regrouper par logique ») UN MENU, SEPT PAGES, UNE SEULE SOURCE ═══════
+     Treize cartes empilées sur un écran de téléphone, c'était un mur. Chaque carte se range dans une section ; sans
+     `?s=`, l'écran est le HUB (l'identité en tête, sept lignes de menu avec un résumé DÉRIVÉ) ; avec `?s=`, il ne peint
+     que cette section. Les cartes ne sont pas recopiées dans sept fichiers : `carte()` les range, `peindre()` choisit.
+     C'est la même peinture, donc les mêmes ids, donc le même banc. Les descriptions sont courtes : la sous-navigation
+     les écrit sur une ligne. */
+  var SECTIONS = [
+    ['identite',    'Mon identité et mon dossier',   'identité légale, dirigeant, dossier de vérification (KYB)',   'Identité'],
+    ['documents',   'Mes documents et mon contrat',  'documents lus et acceptés, contrat-cadre, déclaration',       'Documents'],
+    ['paiement',    'Paiement',                      'modalités de paiement de tes bons, RIB',                       'Paiement'],
+    ['abonnement',  'Abonnement',                    'logiciel d’édition, quota du mois, factures, site web',        'Abonnement'],
+    ['integration', 'Intégration et réseaux',        'clés d’API, bouton de ton site, réseaux sociaux',              'Intégration'],
+    ['regles',      'Seuils et règles',              'seuil ACPR, plafonds au comptoir, prévention de la fraude',    'Règles'],
+    ['juridique',   'Mentions légales',              'ce que nous sommes pour toi, l’éditeur, les textes',           'Mentions']
+  ];
+  var parts = {}, secCourante = null;
+  var sectionDemandee = (function () { try { return new URLSearchParams(location.search).get('s') || ''; } catch (e) { return ''; } })();
+  var secDemandee = SECTIONS.filter(function (x) { return x[0] === sectionDemandee; })[0] || null;
+  /* (23/09, soir — fondatrice : « revérifie la navigation de Compte page par page, le retour arrière, où sont les
+     onglets » ; « si je lis, je ferme le doc, je dois revenir à la page précédente, pas à l'accueil ») LE HAUT DE PAGE DIT
+     OÙ L'ON EST : sur le hub, l'en-tête léger ; dans une section, le rond de retour, le titre et les onglets de toutes les
+     sections — on passe de l'une à l'autre sans repasser par le hub. LE ROND RAMÈNE D'OÙ L'ON VIENT : arrivé par un
+     « régler › » de Bon d'achat, de Paiement ou d'Outils, il y ramène et le nomme ; arrivé du hub, d'une autre section ou
+     de nulle part, il ramène au hub. Le référent est lu par le navigateur, jamais écrit dans l'adresse. */
+  function retourDe() {
+    var hub = { href: '10-compte.html', lbl: 'Compte' };
+    try {
+      var ref = document.referrer ? new URL(document.referrer) : null;
+      if (!ref || ref.origin !== location.origin) return hub;
+      var f = ref.pathname.split('/').pop();
+      var e = (T.ESPACES.marchand || []).filter(function (x) { return x.href === f && f !== '10-compte.html'; })[0];
+      return e ? { href: f, lbl: e.lbl } : hub;
+    } catch (e0) { return hub; }
+  }
+  if (secDemandee) {
+    T.sousNav('tk-hero', { teinte: 'compte', retour: retourDe(), titre: secDemandee[1], sous: secDemandee[2], ongletsLbl: 'Sections du compte',
+      onglets: SECTIONS.map(function (x) { return { href: '10-compte.html?s=' + x[0], lbl: x[3], cle: x[0], actif: x[0] === secDemandee[0] }; }) });
+  } else {
+    T.hero('tk-hero', { teinte: 'compte', ico: 'i-user', eyebrow: 'Compte', idTitre: 'tc-titre', idSub: 'tc-sub', promesse: 'Ton dossier, tes documents, ton contrat — tout ce qui te lie à nous.', etapes: ['Ton dossier de vérification, contrôlé une fois : le compte s’active', 'Chaque document lu et accepté, le contrat-cadre signé par ton dirigeant', 'Tu édites tes bons, le réseau les achète ; nous te payons à l’échéance de ton offre'] });
+  }
+  /* L'ANCRE D'UNE CARTE — celle que visent les liens « régler › » (`?s=…#ancre`) : donnée par l'appel, sinon déduite du titre.
+     Une carte sans ancre serait une carte qu'aucun raccourci ne peut cibler. */
+  function ancreDe(titre) {
+    var t = String(titre || '').toLowerCase();
+    var T = [[/contrat/, 'contrat'], [/déclaration/, 'declaration'], [/documents/, 'documents'], [/dirigeant/, 'dirigeant'], [/dossier/, 'dossier'], [/identité/, 'identite'],
+      [/rib/, 'rib'], [/modalités/, 'modalites'], [/abonnement/, 'abonnement'], [/site web/, 'site'], [/^api/, 'api'], [/réseaux/, 'reseaux'], [/seuils/, 'regles'], [/mentions/, 'mentions'], [/cadre juridique/, 'cadre']];
+    for (var i = 0; i < T.length; i++) if (T[i][0].test(t)) return T[i][1];
+    return null;
+  }
+  function carte(titre, corps, ancre) {
+    if (!ancre) ancre = ancreDe(titre.replace(/<[^>]+>/g, ''));
+    var html = '<p class="pec-section-label" style="margin:18px 0 6px"' + (ancre ? ' id="tc-carte-' + ancre + '"' : '') + '>' + titre + '</p>'
+      + '<div class="pec-card"' + (ancre ? ' data-carte="' + ancre + '"' : '') + '>' + corps + '</div>';
+    if (secCourante) { parts[secCourante] = (parts[secCourante] || '') + html; return ''; }
+    return html;
+  }
+  function pill(t, cls) { return '<span class="pec-pill ' + cls + '" style="flex:none;font-size:9.5px;padding:3px 8px">' + esc(t) + '</span>'; }
+  var pc = function (x) { return String(x).replace('.', ',') + ' %'; };
+  /* LE SECRET NE VIT QUE DANS CETTE VARIABLE, le temps de l'écran : ni stockage, ni rechargement. */
+  var secretVu = null;
+
+  function peindre() {
+    var a = D.techMarchand(s.id);
+    if (!a) { location.href = '01-connexion.html'; return; }
+    /* (23/09, soir — audit) LES CARTES SE RANGENT À NEUF À CHAQUE PEINTURE : `parts` s'accumulait d'un repeint à l'autre (le bus
+       repeint à chaque geste), et une section montrait ses cartes en double — l'ancienne au-dessus de la nouvelle. */
+    parts = {}; secCourante = null;
+    var R = D.techRef(), J = (D.ref && D.ref.juridique) || {}, F = R.fondement || {};
+    /* SUR LE HUB SEULEMENT : le nom de la marque et son état — pas son identifiant technique, qui n'apprend rien ici. */
+    if ($('tc-titre')) $('tc-titre').textContent = a.raisonSociale;
+    if ($('tc-sub')) $('tc-sub').textContent = 'Marque · ' + D.techStatutLbl(a.statut).toLowerCase();
+
+    var h = '';
+    /* CE QUE LE CONTRÔLE A RELEVÉ SUR LES PIÈCES (Kbis, RIB) — lu une fois, servi à l'identité, au dirigeant et au RIB. */
+    var men = (window.PEC_DOCS && PEC_DOCS.mentions) ? (PEC_DOCS.mentions('marchand', a.id) || {}) : {};
+    /* un pluriel s'écrit, il ne se met pas entre parenthèses : « 5 documents », pas « 5 document(s) » */
+    var pl = function (n, mot, s) { return n + ' ' + mot + (n > 1 ? (s || 's') : ''); };
+    var cap = function (q) { q = String(q || ''); return q.charAt(0).toUpperCase() + q.slice(1); };
+
+    /* ══ API — LES CLÉS SONT DES IDENTIFIANTS, PAS DES OUTILS (23/09, fondatrice) ═════════════════════
+       La clé publique vit dans la page de commande du site de la marque ; la SECRÈTE n'est stockée nulle part —
+       montrée une fois, on n'en garde que l'empreinte SHA-256. Le bout de code porte SA clé, jamais un
+       exemple figé : collé tel quel, il marche. */
+    var cle = D.techCleActive(s.id), toutes = D.techCles(s.id);
+    var pk = cle ? cle.clePublique : 'pk_ta_cle_publique';
+    var snip = '<' + 'script src="' + T.origine() + '/ui/tech/payencash-tech-widget.js"></' + 'script>\n'
+      + '<div data-payencash="' + pk + '" data-montant="49.90" data-commande="CMD-2026-001"></div>';
+    secCourante = 'integration'; h += carte('API', (cle
+        ? '<div class="cle"><div class="k">Clé publique</div><div class="v">' + esc(cle.clePublique) + '</div>'
+          + '<div class="k" style="margin-top:9px">Clé secrète — aperçu</div><div class="v mut">' + esc(cle.apercu)
+          + ' <span style="font-weight:600;text-transform:none;letter-spacing:0">(les extrémités seulement : de quoi reconnaître la tienne, pas de quoi s\'en servir)</span></div>'
+          + '<div class="k" style="margin-top:9px">Empreinte SHA-256</div><div class="v mut" style="font-size:10.5px">' + esc(cle.empreinte) + '</div></div>'
+          + '<p style="margin:7px 0 0;font-size:10.5px;color:var(--color-muted)">Créée le ' + esc(new Date(cle.creeLe).toLocaleDateString('fr-FR'))
+          + (cle.dernierAppelLe ? ' · dernier appel le ' + esc(new Date(cle.dernierAppelLe).toLocaleDateString('fr-FR')) : ' · jamais utilisée')
+          + (toutes.length > 1 ? ' · ' + PEC_DATA.nb(toutes.length - 1, 'clé révoquée', 'clés révoquées') : '') + '</p>'
+        : '<p class="vide">Aucune clé pour l’instant — sans elle, le bouton « bon d’achat » ne peut pas s’afficher sur ton site.</p>')
+      + (secretVu ? '<div class="secret"><div style="font-weight:800;font-size:12px;color:var(--color-amber-text)">Ta clé secrète — montrée une seule fois</div>'
+          + '<div class="v">' + esc(secretVu) + '</div>'
+          + '<p style="margin:7px 0 0;font-size:11px;line-height:1.5;color:var(--color-amber-text)">Copie-la maintenant : nous n’en gardons que l’empreinte, et personne ne pourra te la redonner.</p></div>' : '')
+      + '<p class="err" id="tc-cle-err" hidden></p>'
+      + '<button type="button" class="pec-cta tap" id="tc-cle-go" style="display:block;width:100%;text-align:center;margin-top:11px">' + (cle ? 'Régénérer ma clé' : 'Générer ma clé d’API') + '</button>'
+      + '<div style="margin-top:14px;padding-top:11px;border-top:1px solid var(--color-sep)">'
+      + '<div style="font-size:12.5px;font-weight:800;color:var(--color-ink)">Mon bouton « bon d’achat »</div>'
+      + '<p style="margin:5px 0 0;font-size:12px;line-height:1.6;color:var(--color-muted)">Colle ces deux lignes dans la page de commande de ton site. Le bouton <b style="color:var(--color-ink)">Bon d’achat '
+      + esc(a.raisonSociale) + '</b> apparaît à côté de tes moyens de paiement ; au clic, il propose ton bon du montant de la commande : <b style="color:var(--color-ink)">où l’acheter</b>, et l’app Mes bons pour l’utiliser chez toi.</p>'
+      + '<div class="snip">' + esc(snip) + '</div></div>'
+      + '<a class="lien tap" href="04-boutique-demo.html?pk=' + encodeURIComponent(pk) + '"><svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-primary-dark)"><use href="#i-smartphone"/></svg>'
+      + '<span style="min-width:0;flex:1"><span class="nm">Mon bouton, en situation</span><span class="sb">Ce que voit ton client quand il choisit ton bon d’achat sur ton site.</span></span>'
+      + '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-muted)"><use href="#i-chevron-right"/></svg></a>'
+      + '<a class="lien tap" href="03-documentation.html"><svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-primary-dark)"><use href="#i-file"/></svg>'
+      + '<span style="min-width:0;flex:1"><span class="nm">La documentation de l’API</span><span class="sb">Les appels, les champs, les erreurs — de quoi brancher ton site.</span></span>'
+      + '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-muted)"><use href="#i-chevron-right"/></svg></a>', 'api');
+
+    /* ══ LES COMPTES DE RÉSEAUX SOCIAUX (23/09, fondatrice : « liés au compte réseau depuis config ») ═══════════════
+       C'est ici qu'elle relie Instagram, TikTok, Snapchat… ; l'éditeur de visuels (Outils) les lit pour signer la
+       légende et ouvrir le bon réseau. La liste des réseaux et le format des pseudos viennent du référentiel
+       (RESEAUX_BOUTIQUE) — un pseudo hors format est refusé avec son motif, jamais accepté « pour voir ». */
+    secCourante = 'integration';
+    var rsx = D.techMarchandReseauxGet(a.id), RB = D.RESEAUX_BOUTIQUE || [];
+    h += carte('Mes réseaux sociaux',
+      '<div data-reseau>' + (rsx.length ? rsx.map(function (r) {
+          return '<div class="rowl"><div><div class="nm">' + esc(r.lbl) + '</div><span class="sb"><a href="' + esc(r.url) + '" target="_blank" rel="noopener" style="color:var(--color-primary-dark);font-weight:700">' + (r.arobase ? '@' : '') + esc(r.pseudo) + '</a></span></div>'
+            + '<button type="button" class="pec-pill tap" data-reseau-retirer="' + esc(r.k) + '" style="flex:none">Retirer</button></div>';
+        }).join('') : '<p class="vide">Aucun compte relié. Relie tes réseaux : tes visuels seront signés et partagés au bon endroit.</p>') + '</div>'
+      + '<div style="display:flex;gap:7px;align-items:flex-end;margin-top:10px">'
+      + '<span style="flex:0 0 132px"><label class="pec-input-label" for="tc-reseau-k">Réseau</label><select class="pec-input" id="tc-reseau-k">' + RB.map(function (r) { return '<option value="' + esc(r.k) + '">' + esc(r.lbl) + '</option>'; }).join('') + '</select></span>'
+      + '<span style="flex:1;min-width:0"><label class="pec-input-label" for="tc-reseau-v">Pseudo ou adresse</label><input class="pec-input" id="tc-reseau-v" type="text" placeholder="' + esc((RB[0] || {}).exemple || '') + '"></span></div>'
+      + '<p class="err" id="tc-reseau-err" hidden></p>'
+      + '<button type="button" class="pec-btn-secondary tap" id="tc-reseau-go" style="display:block;width:100%;margin-top:9px;font-weight:800">Relier ce compte</button>', 'reseaux');
+
+    /* ══ LES MODALITÉS DE PAIEMENT — CE QUI FACTURE SES BONS (23/09, fondatrice : « dans Compte on choisit
+       les modalités de paiement liées à la facturation des bons ») ════════════════════════════════
+       Le choix vivait dans « Paiement », à côté des virements reçus. Or ce n'est pas un mouvement d'argent :
+       c'est une CONDITION du contrat — à quel prix nous achetons ses bons, et sous quel délai nous la
+       payons. Sa place est avec ses contrats. Le changement vaut pour les ventes À VENIR : ce qui est déjà
+       vendu garde le taux qu'il portait, et l'écran le DIT au lieu de le laisser croire. */
+    var modes = D.techModes(), mode = D.techMarchandMode(a);
+    secCourante = 'paiement'; h += carte('Mes modalités de paiement', modes.map(function (x) {
+        var ici = x.id === mode.id;
+        return '<button type="button" class="offre tap" data-mode="' + esc(x.id) + '" aria-pressed="' + (ici ? 'true' : 'false') + '">'
+          + '<span class="t"><span class="n">' + esc(x.libelle) + '</span><span class="p">' + esc(pc(x.remisePct)) + '</span></span>'
+          + '<span class="d">' + esc(x.detail) + '</span>'
+          + '<span class="r">Pour 100 € de bons achetés par le réseau : tu touches <b>' + esc(D.eur(100 - x.remisePct)) + '</b> · le commerce garde '
+          + esc(D.eur(x.partPointPct)) + ' · ' + esc(R.nom) + ' ' + esc(D.eur(x.margePct)) + '</span></button>';
+      }).join('')
+      + '<p style="margin:9px 0 0;font-size:10.5px;line-height:1.55;color:var(--color-muted)">C’est la remise consentie sur le prix d’achat de tes bons, et le délai sous lequel nous te virons. '
+      + 'Changer vaut pour les achats à venir : les bons déjà achetés gardent le taux qu’ils portaient. '
+      + '<a href="08-paiement.html" class="tk-go">Voir mes virements ›</a></p>'
+      + '<p class="err" id="tc-mode-err" hidden></p>', 'modalites');
+
+    /* ══ L'ABONNEMENT — LE LOGICIEL D'ÉDITION DES BONS (23/09, fondatrice : « gestion abonnement : édition de bons
+       gratuite pour 10 bons ; dépassé 10 bons, abonnement pour la gestion et l'émission des bons — service
+       technologique, attention ACPR ; 50 bons 5,90 € ; illimité* maximum 1 million d'euros, procédure ACPR
+       dépassé, PayEnCash Solution vous aide dans vos démarches ») ═════════════════════════════════════
+       CE QU'IL PAIE, ET LUI SEUL : l'édition des codes. Il ne change ni le prix auquel nous achetons ses bons,
+       ni le délai où nous la payons, ni la valeur des bons — c'est un logiciel, facturé comme tel, prélevé
+       à part sur son mandat. Le quota du mois est DÉRIVÉ (techQuota) : ce que la formule permet, ce qui est
+       édité, ce qui reste — jamais un compteur écrit à côté. */
+    var fo = D.techMarchandFormule(a), formules = D.techFormules(), q = D.techQuota(a.id) || {};
+    var carteA = D.techMarchandCarte(a), P0 = R.paiement || {};
+    var fac = D.techFactures({ marchandId: a.id });
+    secCourante = 'abonnement'; h += carte('Mon abonnement — le logiciel d’édition des bons',
+      '<div class="rowl"><div><div class="nm">Ce mois-ci : ' + (q.emisMois || 0) + ' bon' + ((q.emisMois || 0) > 1 ? 's' : '') + ' édité' + ((q.emisMois || 0) > 1 ? 's' : '')
+      + (q.max != null ? ' sur ' + q.max + ' ' : '') + '</div>'
+      + '<span class="sb">' + (q.max == null ? 'Aucune limite de nombre — seul le seuil légal ci-dessous s’applique.'
+          : (q.reste > 0 ? 'Il t’en reste ' + q.reste + ' avant de changer de forfait.' : 'Quota du mois atteint : l’édition reprend avec un forfait supérieur.')) + '</span></div>'
+      + pill(fo.nom, q.reste === 0 && q.max != null ? 'pec-pill--wait' : 'pec-pill--done') + '</div>'
+      + formules.map(function (f) {
+          var ici = f.id === fo.id;
+          return '<button type="button" class="offre tap" data-formule="' + esc(f.id) + '" aria-pressed="' + (ici ? 'true' : 'false') + '">'
+            + '<span class="t"><span class="n">' + esc(f.nom) + '</span><span class="p">' + (f.prix > 0 ? esc(D.eur(f.prix)) + '<span style="font-size:11px;font-weight:700"> /mois HT</span>' : '<span style="font-size:11px;font-weight:700">sans abonnement</span>') + '</span></span>'
+            + '<span class="d">' + esc(f.detail) + '</span>'
+            + '<span class="r">' + (f.inclus || []).map(esc).join(' · ') + '</span></button>';
+        }).join('')
+      + '<p class="tc-note">L’abonnement paie le logiciel, et lui seul : il ne change ni le prix auquel nous achètons tes bons, ni le délai où nous te payons. '
+      + 'Il est facturé avec TVA le ' + esc(String(P0.abonnementJour || 1) + (+(P0.abonnementJour || 1) === 1 ? 'er' : '')) + ' de chaque mois et débité sur ta carte bancaire ; la facture t’arrive par e-mail.</p>'
+      /* (24/09, fondatrice : « carte pour l'abonnement marque ») LA CARTE DE L'ABONNEMENT — enregistrée une fois (en production, Stripe
+         la prend dans ton navigateur : nous ne voyons jamais le numéro), débitée à chaque échéance. Sans carte, la facture reste due. */
+      + (fo.prix > 0
+        ? (carteA
+            ? '<div class="rowl" style="margin-top:8px"><div><div class="nm">Carte ' + esc(carteA.reseau) + ' •••• ' + esc(carteA.fin4) + '</div><span class="sb">' + esc(carteA.titulaire) + ' · expire ' + esc(String(carteA.expMois).padStart(2, '0') + '/' + carteA.expAnnee) + ' · débitée le ' + esc(String(P0.abonnementJour || 1) + (+(P0.abonnementJour || 1) === 1 ? 'er' : '')) + ' de chaque mois</span></div>' + pill('Active', 'pec-pill--done') + '</div>'
+              + '<button type="button" class="pec-btn-secondary tap" id="tc-carte-chg" style="margin-top:9px">Changer de carte</button>'
+            : '<p class="tc-texte" style="margin-top:8px"><b style="color:var(--color-amber-text)">Aucune carte enregistrée</b> — la facture du mois ne pourra pas être débitée tant qu’il n’y en a pas.</p>'
+              + '<button type="button" class="pec-cta tap" id="tc-carte-chg" style="margin-top:10px">Enregistrer ma carte bancaire</button>')
+          + '<div id="tc-carte-form" hidden style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-sep)">'
+          + '<label class="pec-input-label" for="tc-carte-num">Numéro de la carte</label><input class="pec-input" id="tc-carte-num" type="text" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242">'
+          + '<div class="tc-deux"><span><label class="pec-input-label" for="tc-carte-exp">Expiration (MM/AA)</label><input class="pec-input" id="tc-carte-exp" type="text" inputmode="numeric" autocomplete="cc-exp" placeholder="12/28"></span>'
+          + '<span><label class="pec-input-label" for="tc-carte-tit">Titulaire</label><input class="pec-input" id="tc-carte-tit" type="text" autocomplete="cc-name" placeholder="' + esc(a.raisonSociale) + '"></span></div>'
+          + '<p class="tc-note">Le numéro ne nous est jamais transmis : il est pris en charge par notre prestataire de paiement, nous ne gardons que le réseau et les quatre derniers chiffres.</p>'
+          + '<p class="err" id="tc-carte-err" hidden></p>'
+          + '<button type="button" class="pec-cta tap" id="tc-carte-go" style="margin-top:11px">Enregistrer cette carte</button></div>'
+        : '')
+      + (fac.length ? '<div style="margin-top:8px;border-top:1px solid var(--color-sep);padding-top:4px">' + fac.slice(0, 6).map(function (f) {
+          return '<div class="rowl"><div><div class="nm">' + esc(f.id) + '</div><span class="sb">' + esc(D.dateHeure(f.emiseLe)) + ' · ' + esc(D.eur(f.montantHT)) + ' HT · TVA ' + esc(pc(f.tvaPct))
+            + ' · ' + (f.statut === 'payee' ? 'payée par carte' + (f.carte ? ' •••• ' + esc(f.carte.fin4) : '') : (f.echec ? '<b style="color:var(--color-amber-text)">débit refusé — ' + esc(f.echec.motif) + '</b>' : 'émise, débit à venir')) + '</span></div>'
+            + '<div class="mt" style="font-size:13px;font-weight:800;white-space:nowrap">' + esc(D.eur(f.montantTTC)) + '</div></div>';
+        }).join('') + '</div>' : ''), 'abonnement');
+
+    /* ══ MON SITE WEB (23/09, fondatrice : « abonnement à 19,00 €, INCLUS la création d'un site web depuis leur nom de
+       domaine, tourné vers leur marque, ultra facile d'usage ») — trois réglages, tout le reste est dérivé. */
+    var site = D.techMarchandSite(a);
+    secCourante = 'abonnement'; h += carte('Mon site web',
+      site.inclus
+        ? '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Compris dans ta formule « ' + esc(site.formule) + ' » : une page tournée vers ta marque — tes articles, ton bon d’achat avec son flashcode, le réseau qui l’achète, tes mentions — sur ton nom de domaine. Tu règles trois choses, nous faisons le reste.</p>'
+          + '<label class="pec-input-label" for="tc-site-dom" style="margin-top:10px">Ton nom de domaine</label><input class="pec-input" id="tc-site-dom" type="text" placeholder="ma-marque.fr" value="' + esc(site.domaine || '') + '">'
+          + '<label class="pec-input-label" for="tc-site-acc" style="margin-top:9px">Ton accroche</label><input class="pec-input" id="tc-site-acc" type="text" maxlength="140" placeholder="Coupé et cousu à Marseille, en séries courtes." value="' + esc(site.accroche || '') + '">'
+          + '<label class="pec-input-label" for="tc-site-col" style="margin-top:9px">Ta couleur (hexadécimal)</label><input class="pec-input" id="tc-site-col" type="text" placeholder="#0F2A24" value="' + esc(site.couleur || '') + '">'
+          + '<p class="err" id="tc-site-err" hidden></p>'
+          + '<div style="display:flex;gap:7px;margin-top:11px"><button type="button" class="pec-cta tap" id="tc-site-go" style="flex:1;padding:10px 12px;font-size:12.5px">Enregistrer</button>'
+          + '<a class="pec-pill tap" href="' + esc(site.url) + '" target="_blank" rel="noopener" style="flex:1;text-align:center;font-weight:800;text-decoration:none;align-self:center">Voir mon site</a></div>'
+          + '<p style="margin:9px 0 0;font-size:10.5px;line-height:1.55;color:var(--color-muted)">Ton domaine se relie par un enregistrement DNS que nous te communiquons à l’activation ; en attendant, ton site répond à l’adresse ci-dessus. La page n’encaisse rien : elle mène à ton bon d’achat, qui s’achète au comptoir du réseau.</p>'
+        : '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Un site web sur ton nom de domaine, tourné vers ta marque — tes articles, ton bon d’achat, le réseau qui l’achète — sans rien coder. Il est compris dans la formule ' + esc((formules.filter(function (f) { return f.siteWeb; })[0] || {}).nom || '') + ' : choisis-la ci-dessus.</p>', 'site');
+
+    /* ══ LE RIB — OÙ NOUS LUI PAYONS SES BONS (23/09, fondatrice : « le RIB de paiement pour qu'on lui achète ses
+       bons ») : sans lui, aucun virement ne part. C'est une condition, pas une formalité.
+       (23/09, soir — audit) LE COFFRE SEUL FAIT FOI : le dossier de vérification porte déjà un RIB, contrôlé, dont l'IBAN a
+       été relevé par le contrôleur — et l'écran demandait de le retaper : deux RIB pour une marque, et « aucun RIB » affiché
+       à côté d'un dossier validé. Le RIB contrôlé est proposé tel quel (un geste) ; un RIB tapé qui en diffère est signalé. */
+    var rib = D.techMarchandRib(a);
+    var ribCoffre = (men.iban && men.bic) ? { iban: men.iban, bic: men.bic, titulaire: men.titulaire || a.raisonSociale } : null;
+    var ribDiffere = !!(rib && ribCoffre && String(rib.iban || '').replace(/\s/g, '') !== String(ribCoffre.iban).replace(/\s/g, ''));
+    secCourante = 'paiement'; h += carte('Mon RIB — où nous te payons tes bons', (rib
+      ? '<div class="rowl"><div><div class="nm">' + esc(rib.titulaire) + '</div><span class="sb mono">' + esc(rib.ibanMasque || D.ibanMasque(rib.iban)) + ' · ' + esc(rib.bic) + '</span>'
+        + '<span class="sb">Virement instantané depuis ' + esc(P0.banque || 'notre banque') + ' à l’échéance de ton offre.</span>'
+        + (ribDiffere ? '<span class="sb" style="color:var(--color-amber-text);font-weight:700">Différent du RIB contrôlé de ton dossier (' + esc(D.ibanMasque(ribCoffre.iban)) + ') : mets-les d’accord — c’est le dossier qui fait foi.</span>' : '') + '</div>'
+        + pill('Enregistré', 'pec-pill--done') + '</div>'
+        + '<button type="button" class="pec-btn-secondary tap" id="tc-rib-chg" style="display:block;width:100%;margin-top:9px">Changer mon RIB</button>'
+      : (ribCoffre
+        ? '<div class="rowl"><div><div class="nm">' + esc(ribCoffre.titulaire) + '</div><span class="sb mono">' + esc(D.ibanMasque(ribCoffre.iban)) + ' · ' + esc(ribCoffre.bic) + '</span>'
+          + '<span class="sb">C’est le RIB contrôlé de ton dossier de vérification : un geste, et nos virements partent dessus.</span></div>' + pill('Contrôlé', 'pec-pill--done') + '</div>'
+          + '<p class="err" id="tc-rib-err0" hidden></p>'
+          + '<button type="button" class="pec-cta tap" id="tc-rib-coffre" style="display:block;width:100%;text-align:center;margin-top:10px">Utiliser ce RIB pour mes virements</button>'
+          + '<button type="button" class="pec-btn-secondary tap" id="tc-rib-chg" style="display:block;width:100%;margin-top:8px">Un autre RIB</button>'
+        : '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">Aucun RIB déposé — <b style="color:var(--color-ink)">aucun virement ne peut partir</b> tant que nous ne savons pas où virer. Le RIB de ton <a href="10-compte.html?s=identite#dossier" class="tk-go">dossier de vérification ›</a>, une fois contrôlé, sera proposé ici.</p>'
+          + '<button type="button" class="pec-cta tap" id="tc-rib-chg" style="display:block;width:100%;text-align:center;margin-top:10px">Déposer mon RIB</button>'))
+      + '<div id="tc-rib-form" hidden style="margin-top:10px;padding-top:10px;border-top:1px solid var(--color-sep)">'
+      + '<label class="pec-input-label" for="tc-rib-tit">Titulaire du compte</label><input class="pec-input" id="tc-rib-tit" type="text" placeholder="' + esc(a.raisonSociale) + '">'
+      + '<label class="pec-input-label" for="tc-rib-iban" style="margin-top:9px">IBAN</label><input class="pec-input" id="tc-rib-iban" type="text" placeholder="FR76 ····">'
+      + '<label class="pec-input-label" for="tc-rib-bic" style="margin-top:9px">BIC</label><input class="pec-input" id="tc-rib-bic" type="text" placeholder="CMCIFR2A">'
+      + '<p class="err" id="tc-rib-err" hidden></p>'
+      + '<button type="button" class="pec-cta tap" id="tc-rib-go" style="display:block;width:100%;text-align:center;margin-top:11px">Enregistrer mon RIB</button></div>', 'rib');
+
+    /* ① L'IDENTITÉ LÉGALE — déclarée à l'inscription, complétée par ce que les pièces ont fait relever.
+       (23/09, soir — audit) LE MOTIF DE SUSPENSION NE S'AFFICHAIT JAMAIS : l'écran lisait `suspenduMotif`, le data-layer
+       écrit `motifSuspension` (techMarchandSuspendre). Une marque suspendue lisait « Suspendu » sans un mot de plus. */
+    secCourante = 'identite'; h += carte('Mon identité légale',
+      '<div class="rowl"><div><div class="nm">' + esc(men.raisonSociale || a.raisonSociale) + '</div>'
+      + '<span class="sb">SIRET ' + esc(men.siret || a.siret) + (a.siteUrl ? ' · ' + esc(String(a.siteUrl).replace(/^https?:\/\//, '')) : '') + '</span>'
+      + (men.adresse ? '<span class="sb">' + esc(men.adresse) + '</span>' : '')
+      + '<span class="sb">' + esc(a.email) + (a.tel ? ' · ' + esc(a.tel) : '') + '</span>'
+      + '<span class="sb">Inscrit le ' + esc(new Date(a.creeLe).toLocaleDateString('fr-FR')) + '</span></div>'
+      + pill(D.techStatutLbl(a.statut), D.techStatutPill(a.statut)) + '</div>'
+      + (a.statut === 'suspended' && a.motifSuspension ? '<p class="err">Compte suspendu — ' + esc(a.motifSuspension) + '</p>' : '')
+      /* (24/09, lu sur Légifrance : art. 256 ter CGI) LE RÉGIME DE TVA DES BONS se dérive de deux faits que la marque déclare (techMarchandTva) :
+         il se lit ici, et se corrige ici — les factures et le manager lisent la même réponse. */
+      + (function () { var tv = D.techMarchandTva ? D.techMarchandTva(a) : null; if (!tv) return '';
+          return '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--color-sep)">'
+            + '<div class="sb" style="display:block"><b style="color:var(--color-ink)">TVA des bons : </b>' + (tv.regime ? esc(tv.libelle) + ' (' + esc(tv.regime) + ')' : '<b style="color:var(--color-amber-text)">' + esc(tv.libelle) + '</b>') + '</div>'
+            + '<p class="tc-note" style="margin-top:4px">' + esc(tv.explication) + '</p>'
+            + '<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--color-ink);margin-top:8px"><input type="checkbox" id="tc-tva-unique" style="margin-top:2px;flex:none"' + (a.tva && a.tva.tauxUnique ? ' checked' : '') + '><span>Tous les produits que mes bons peuvent payer sont au même taux de TVA.</span></label>'
+            + '<label style="display:flex;gap:8px;align-items:flex-start;font-size:12px;line-height:1.5;color:var(--color-ink);margin-top:6px"><input type="checkbox" id="tc-tva-france" style="margin-top:2px;flex:none"' + (a.tva && a.tva.franceSeule ? ' checked' : '') + '><span>Mes bons ne s’utilisent qu’en France (pas de vente à l’étranger).</span></label>'
+            + '<p class="err" id="tc-tva-err" hidden></p>'
+            + '<button type="button" class="pec-btn pec-btn--sm tap" id="tc-tva-go" style="margin-top:9px">Enregistrer mes réponses</button></div>'; })()
+      + '<p class="tc-note">Tout changement affectant ton identité légale, ton représentant, tes bénéficiaires effectifs ou ton compte bancaire doit nous être signalé sous quinze jours (CGU art. 4.5).</p>', 'identite');
+
+    /* ═ LE DIRIGEANT (23/09, fondatrice : « ajoute le nom et le prénom du dirigeant ; KYC pour la signature du contrat-cadre
+       par le dirigeant, KYB pour la société » ; le soir : « où je déclare le dirigeant ? » ; 24/09 : « le genre du dirigeant »)
+       — déclaré (civilité, prénom, nom, nom de naissance, date de naissance, qualité) à l'inscription, ou ICI ; sa pièce d'identité se dépose dans le dossier juste dessous et se contrôle au coffre : c'est LUI
+       qui signe le contrat-cadre, et l'écran Documents le lit tel quel. Le Kbis validé, s'il nomme quelqu'un d'autre, le dit
+       ici : deux vérités, ça se règle avant de signer. Ce qui manque porte son adresse. */
+    var dirg = D.techMarchandDirigeant(a), kyc = D.techKycDirigeant(a.id);
+    var cniDeposee = !!(window.PEC_DOCS && PEC_DOCS.get && PEC_DOCS.get('marchand', a.id, 'cni'));
+    var qualites = D.techQualitesDirigeant(), KYC = D.ref.kyc || {};
+    /* LA DATE DE NAISSANCE la plus récente admise : l'âge minimum d'un représentant légal, lu au référentiel */
+    var naissMax = new Date(); naissMax.setFullYear(naissMax.getFullYear() - (+KYC.ageMin));
+    var formDir = function () {
+      return '<div id="tc-dir-form"' + (dirg ? ' hidden' : '') + ' style="margin-top:10px' + (dirg ? ';padding-top:10px;border-top:1px solid var(--color-sep)' : '') + '">'
+        + '<span class="pec-input-label" id="tc-dir-civ-lbl">Civilité</span><div id="tc-dir-civilite" role="radiogroup" aria-labelledby="tc-dir-civ-lbl" style="display:flex;gap:7px">'
+        + (KYC.civilites || []).map(function (c) { var on = !!(dirg && dirg.civilite === c); return '<button type="button" class="pec-pill tap" role="radio" aria-checked="' + on + '" data-civ="' + esc(c) + '" style="flex:1;justify-content:center;font-weight:800' + (on ? ';background:var(--color-primary);color:#fff' : '') + '">' + esc(c) + '</button>'; }).join('') + '</div>'
+        + '<div style="display:flex;gap:7px;margin-top:9px"><span style="flex:1;min-width:0"><label class="pec-input-label" for="tc-dir-prenom">Prénom</label><input class="pec-input" id="tc-dir-prenom" type="text" autocomplete="given-name" value="' + esc(dirg ? dirg.prenom : '') + '"></span>'
+        + '<span style="flex:1;min-width:0"><label class="pec-input-label" for="tc-dir-nom">Nom d’usage</label><input class="pec-input" id="tc-dir-nom" type="text" autocomplete="family-name" value="' + esc(dirg ? dirg.nom : '') + '"></span></div>'
+        + '<div style="display:flex;gap:7px;margin-top:9px"><span style="flex:1;min-width:0"><label class="pec-input-label" for="tc-dir-nom-naissance">Nom de naissance <span style="font-weight:600;color:var(--color-muted-2)">(s’il diffère)</span></label><input class="pec-input" id="tc-dir-nom-naissance" type="text" value="' + esc(dirg && dirg.nomNaissance ? dirg.nomNaissance : '') + '"></span>'
+        + '<span style="flex:1;min-width:0"><label class="pec-input-label" for="tc-dir-naissance">Date de naissance</label><input class="pec-input" id="tc-dir-naissance" type="date" autocomplete="bday" max="' + naissMax.toISOString().slice(0, 10) + '" value="' + esc(dirg && dirg.dateNaissance ? dirg.dateNaissance : '') + '"></span></div>'
+        + '<label class="pec-input-label" for="tc-dir-lieu" style="margin-top:9px">Lieu de naissance</label><p class="tc-note" style="margin:0 0 5px">' + esc(KYC.lieuNaissanceMotif || '') + '</p><input class="pec-input" id="tc-dir-lieu" type="text" placeholder="Ville (pays)" value="' + esc(dirg && dirg.lieuNaissance ? dirg.lieuNaissance : '') + '">'
+        + '<label class="pec-input-label" for="tc-dir-qualite" style="margin-top:9px">Qualité (telle qu’au Kbis)</label><select class="pec-input" id="tc-dir-qualite"><option value="">— choisir —</option>'
+        + qualites.map(function (q) { return '<option value="' + esc(q) + '"' + (dirg && dirg.qualite === q ? ' selected' : '') + '>' + esc(cap(q)) + '</option>'; }).join('') + '</select>'
+        + '<p class="err" id="tc-dir-err" hidden></p>'
+        + '<button type="button" class="pec-cta tap" id="tc-dir-go" style="display:block;width:100%;text-align:center;margin-top:11px">' + (dirg ? 'Enregistrer' : 'Déclarer le dirigeant') + '</button></div>';
+    };
+    h += carte('Le dirigeant — celui qui signe', (dirg
+      ? '<div class="rowl"><div><div class="nm">' + esc((dirg.civilite ? dirg.civilite + ' ' : '') + dirg.nomComplet) + '</div><span class="sb">' + esc(cap(dirg.qualite)) + ' · signataire du contrat-cadre</span>'
+        /* NÉ·E LE — l'accord suit la civilité déclarée ; le nom de naissance ne s'affiche que s'il diffère */
+        + (dirg.dateNaissance && dirg.lieuNaissance && dirg.civilite ? '<span class="sb">' + (dirg.civilite === 'Madame' ? 'Née' : 'Né') + (dirg.nomNaissance ? ' ' + esc(dirg.nomNaissance) : '') + ' le ' + esc(new Date(dirg.dateNaissance + 'T00:00:00').toLocaleDateString('fr-FR')) + ' à ' + esc(dirg.lieuNaissance) + '</span>'
+            : '<span class="sb" style="color:var(--color-amber-text);font-weight:700">Civilité, date et lieu de naissance à compléter : ils se contrôlent sur la pièce d’identité. <a href="#" class="tk-go" data-dir-completer="1">compléter ›</a></span>')
+        + '<span class="sb">' + (kyc.ok
+            ? 'Pièce d’identité contrôlée' + (kyc.verifieeLe ? ' le ' + esc(new Date(kyc.verifieeLe).toLocaleDateString('fr-FR')) : '') + ' (KYC).'
+            : esc(kyc.motif) + (cniDeposee ? '' : ' <a href="10-compte.html?s=identite#dossier" class="tk-go">déposer ›</a>')) + '</span>'
+        + (men.dirigeant && men.dirigeant.toLowerCase().indexOf(dirg.nom.toLowerCase()) === -1 ? '<span class="sb" style="color:var(--color-amber-text);font-weight:700">Le Kbis contrôlé nomme « ' + esc(men.dirigeant) + ' » : mets la déclaration et la pièce d’accord avant de signer.</span>' : '') + '</div>'
+        + pill(kyc.ok ? 'Identité vérifiée' : (cniDeposee ? 'Pièce à contrôler' : 'Pièce à déposer'), kyc.ok ? 'pec-pill--done' : 'pec-pill--wait') + '</div>'
+        + '<button type="button" class="pec-btn-secondary tap" id="tc-dir-chg" style="display:block;width:100%;margin-top:9px">Modifier</button>'
+      : '<p style="margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)">L’identité du représentant légal, telle qu’elle figure sur sa pièce d’identité et au Kbis : <b style="color:var(--color-ink)">c’est lui qui signe le contrat-cadre</b>, une fois sa pièce contrôlée avec le dossier de la société.</p>')
+      + formDir(), 'dirigeant');
+
+    /* ② LE DOSSIER DE VÉRIFICATION — pièce par pièce, avec son ÉTAT RÉEL, et DÉPOSÉ ICI (PEC_DOCS.rendreDossier : dépôt,
+       états, remplacement) ; « Envoyer mon dossier » (soumettre) part dans la file de Vérifications du manager, avec
+       l'échéance du référentiel. Le rendu du coffre porte déjà son propre en-tête (« 4 / 4 pièces validées ») : la carte ne
+       le répète pas, elle dit ce que le dossier ouvre — le compte, la vente, la signature du dirigeant. */
+    if (window.PEC_DOCS && PEC_DOCS.dossier) {
+      var portee = 'marchand';
+      var eD = PEC_DOCS.etat ? PEC_DOCS.etat(portee, a.id) : null;
+      var soumis = null; try { soumis = JSON.parse(localStorage.getItem('pec-kyb-soumis:' + portee + ':' + a.id) || 'null'); } catch (eS) {}
+      var dossierOk = !!(eD && eD.etat === 'valide');
+      secCourante = 'identite'; h += carte('Mon dossier de vérification (KYB)',
+        '<div class="rowl"><div><span class="sb" style="margin-top:0">' + (dossierOk
+            ? 'Ton dossier est contrôlé. Les pièces à durée de vie limitée te seront redemandées à leur péremption.'
+            : 'Tant qu’il manque une pièce obligatoire, ton compte reste inactif et le réseau ne peut pas acheter tes bons : c’est ce qui nous permet de savoir qui nous payons. La pièce d’identité du dirigeant, contrôlée, est aussi ce qui lui permet de signer le contrat-cadre.') + '</span>'
+        + (soumis && !dossierOk ? '<span class="sb">Envoyé le ' + esc(D.dateHeure(soumis.at)) + (soumis.assigne ? ' · pris en charge par ' + esc(soumis.assigne) : ' · en attente d’un contrôleur') + '</span>' : '') + '</div>'
+        + pill(eD ? (dossierOk ? 'Contrôlé' : eD.etat === 'en_verification' ? 'En vérification' : 'À compléter') : 'Coffre indisponible', dossierOk ? 'pec-pill--done' : 'pec-pill--wait') + '</div>'
+        + '<div id="tc-dossier" style="margin-top:8px"></div>'
+        + (eD && (eD.etat === 'a_soumettre' || eD.etat === 'a_corriger')
+            ? '<p class="err" id="tc-dossier-err" hidden></p><button type="button" class="pec-cta tap" id="tc-dossier-go" style="display:block;width:100%;text-align:center;margin-top:10px">Envoyer mon dossier à la vérification</button>'
+            : ''), 'dossier');
+    }
+
+    /* ══ MES DOCUMENTS ET MON CONTRAT (23/09, fondatrice : « pour chaque document, ils doivent être consultés, et
+       reconnaissance "lu et accepté", sinon pas de possibilité de travailler avec nous » ; le soir : « beaucoup de
+       déchets visuels », « si je lis, je ferme le doc, je dois revenir à la page précédente ») ═════════════════════
+       Une ligne par document : le titre, son état en une pastille, deux gestes — « Lire » ouvre le LECTEUR (le texte
+       du document, remis au format de l'app, sans quitter la page ; la consultation est notée avec la version) et
+       « J'ai lu et j'accepte » n'est actif qu'après. Tout vient de `documentsEtat` ; le verrou
+       (`techMarchandPeutTravailler`) est le même que celui de la vente, de la clé d'API et du lien de vente. */
+    var etatDocs = D.documentsEtat('marchand', a.id), trav = D.techMarchandPeutTravailler(a.id);
+    var nOk = etatDocs.filter(function (d) { return d.aJour; }).length;
+    var docContrat = (window.PEC_DOCS && PEC_DOCS.get) ? PEC_DOCS.get('marchand', a.id, 'contrat') : null;
+    var cDecl = D.techConformiteMarchand(a.id);
+    secCourante = 'documents';
+    /* ① L'ÉTAT D'ENSEMBLE, en une carte : en règle, ou ce qui manque — chaque manque menant à sa carte. */
+    parts.documents = (parts.documents || '')
+      + '<div class="tk-vide" style="margin-top:12px' + (trav.ok ? '' : ';background:var(--color-amber-well);color:var(--color-amber-text)') + '">'
+      + '<svg class="pec-ico" viewBox="0 0 24 24"' + (trav.ok ? '' : ' style="color:var(--color-amber-text)"') + '><use href="#' + (trav.ok ? 'i-check' : 'i-shield') + '"/></svg>'
+      + '<div>' + (trav.ok
+          ? '<b>Tout est en règle</b> — ' + pl(nOk, 'document') + ' lu' + (nOk > 1 ? 's' : '') + ' et reconnu' + (nOk > 1 ? 's' : '') + ', contrat-cadre signé. Tu peux éditer tes bons : le réseau les achète.'
+          : '<b>Il manque ' + pl(trav.manque.length, 'chose') + '</b> avant de pouvoir travailler avec nous : '
+            + trav.manque.map(function (x) { return '<a href="' + esc(x.href || '10-compte.html?s=documents') + '" style="color:inherit;font-weight:700;text-decoration:underline">' + esc(x.libelle) + '</a>'; }).join(' · ') + '. Sans cela, aucun bon ne s’édite, aucune clé d’API, aucun lien de vente.')
+      + '</div></div>';
+    h += carte('Les documents' + (nOk < etatDocs.length ? ' — ' + nOk + ' sur ' + etatDocs.length + ' reconnu' + (nOk > 1 ? 's' : '') : ''),
+      etatDocs.map(function (d) {
+          /* (24/09, nuit) une politique de confidentialité se lit, elle ne s'accepte pas : les mots viennent de documentMots */
+          var etat = d.aJour ? (d.information ? 'Lu' : 'Lu et accepté') : d.aRelire ? 'Nouvelle version' : d.consulteLe ? (d.information ? 'Lu — à confirmer' : 'Lu — à accepter') : 'À lire';
+          var cls = d.aJour ? 'pec-pill--done' : d.aRelire ? 'pec-pill--off' : 'pec-pill--wait';
+          return '<div class="doc" data-doc="' + esc(d.cle) + '"><div class="t">' + esc(d.titre) + '</div>'
+            + '<div class="m">' + pill(etat, cls) + '<span>version ' + esc(d.version) + '</span>'
+            + (d.accepteLe ? '<span>· ' + (d.information ? 'lu' : 'accepté') + ' le ' + esc(new Date(d.accepteLe).toLocaleDateString('fr-FR')) + '</span>'
+                : d.consulteLe ? '<span>· lu le ' + esc(new Date(d.consulteLe).toLocaleDateString('fr-FR')) + '</span>' : '') + '</div>'
+            + (d.aRelire ? '<div class="m" style="color:var(--color-amber-text);font-weight:700">' + (d.information ? 'Le texte a changé depuis ta lecture : relis-le.' : 'Le texte a changé depuis ton acceptation : relis-le, puis accepte à nouveau.') + '</div>' : '')
+            + '<div class="a"><button type="button" class="pec-pill tap" data-doc-voir="' + esc(d.cle) + '">' + (d.consulteLe ? 'Relire' : (d.aJour || d.information ? 'Lire' : 'Lire et accepter')) + '</button>'
+            + (d.aJour ? '' : '<button type="button" class="pec-cta tap" data-doc-ok="' + esc(d.cle) + '"' + (d.peutAccepter ? '' : ' disabled title="Lis d’abord le document jusqu’au bout"') + '>' + d.bouton + '</button>')
+            + '</div></div>';
+        }).join('')
+      + '<p style="margin:10px 0 2px;font-size:10.5px;line-height:1.5;color:var(--color-muted)">Chaque acceptation garde le document, sa version, la date et qui l’a donnée. Un texte qui change redemande ton accord ; les bons déjà achetés restent régis par la version acceptée à leur achat.</p>', 'documents');
+
+    /* ② LE CONTRAT-CADRE — lu dans le lecteur, signé ici PAR LE DIRIGEANT (KYC), contresigné par nous. Le tampon vit sur la
+       marque ; le PDF signé, au coffre.
+       LE LECTEUR OUVRE LE CONTRAT DE LA MARQUE : le modèle contrat_marchand du coffre (celui que la signature dépose), avec
+       les conditions de CETTE marque — jamais le contrat de distribution que signent les partenaires du réseau. Signé, c'est
+       le PDF du coffre qui se relit. Le titre est celui de la pièce du référentiel, jamais retapé. */
+    var dirSig = D.techMarchandDirigeant(a), kycSig = D.techKycDirigeant(a.id);
+    h += carte('Le contrat-cadre d’achat et de distribution', (a.contratSigneLe
+      ? '<div class="doc"><div class="t">Signé le ' + esc(new Date(a.contratSigneLe).toLocaleDateString('fr-FR')) + ' par ' + esc(a.contratSignataire || '—') + '</div>'
+        + '<div class="m">' + pill('Signé', 'pec-pill--done') + '<span>' + (docContrat && docContrat.contresigne ? 'contresigné par ' + esc(R.nom) + ' le ' + esc(new Date(docContrat.contresigne.at).toLocaleDateString('fr-FR')) : 'en attente de notre contresignature') + '</span></div>'
+        + '<div class="m">Nous t’achetons tes bons à mesure que notre réseau les achète pour les remettre à tes clients ; le prix et le délai sont ceux de ton <a href="10-compte.html?s=paiement#modalites" class="tk-go">offre de paiement ›</a>.</div>'
+        + '<div class="a"><button type="button" class="pec-pill tap" id="tc-contrat-lire" data-lire-contrat="1">Relire le contrat</button></div></div>'
+      : '<div class="doc"><div class="t">À lire jusqu’au bout, puis à signer par le dirigeant</div>'
+        + '<div class="m">' + pill('À signer', 'pec-pill--wait') + '<span>nous t’achetons tes bons avec une remise, notre réseau les achète et les remet à tes clients, nous te payons à l’échéance de ton offre ; tu restes responsable de tes produits et de ta communication.</span></div>'
+        /* LE SIGNATAIRE EST LU, PAS TAPÉ : le dirigeant déclaré, et l'état de sa pièce d'identité (KYC) — avec l'adresse du manque. */
+        + '<div class="m" id="tc-contrat-sig" style="color:var(--color-ink);font-weight:700">' + (dirSig
+            ? 'Signataire : ' + esc(dirSig.nomComplet) + ', ' + esc(dirSig.qualite) + (kycSig.ok ? ' — identité vérifiée' : ' — <a href="10-compte.html?s=identite#dossier" style="color:var(--color-amber-text)">' + esc(kycSig.motif) + (cniDeposee ? '' : ' déposer ›') + '</a>')
+            : '<a href="10-compte.html?s=identite#dirigeant" style="color:var(--color-amber-text)">Aucun dirigeant déclaré : déclare-le dans « Identité » — c’est lui qui signe. régler ›</a>') + '</div>'
+        + '<p class="err" id="tc-contrat-err" hidden></p>'
+        /* (23/09, soir — fondatrice : « le même procès que l'app utilisateur : il défile et signe le document ») LA SIGNATURE
+           EST AU BOUT DU TEXTE : le bouton ouvre le lecteur, le contrat défile, et la case + « Signer » ne s'activent
+           qu'une fois la fin atteinte. */
+        + '<div class="a"><button type="button" class="pec-cta tap" id="tc-contrat-lire" data-lire-contrat="1">Lire et signer le contrat-cadre</button></div></div>'), 'contrat');
+
+    /* ③ LA DÉCLARATION « RÉSEAU LIMITÉ » — la pièce qui tient l'exemption. Déposée à l'inscription, statuée par nous ; refusée
+       avec un motif, elle se CORRIGE ici (techConformiteDeposer : une correction n'efface pas la précédente, elle s'ajoute).
+       Une déclaration pas encore lue n'est pas « à corriger » : elle attend. */
+    var declEnAttente = !!(cDecl && cDecl.statut !== 'validated' && !cDecl.statueeLe);
+    h += carte('La déclaration « réseau limité »', (cDecl
+      ? '<div class="doc"><div class="t">Déposée le ' + esc(new Date(cDecl.deposeeLe).toLocaleDateString('fr-FR')) + (cDecl.statueeLe ? ' · statuée le ' + esc(new Date(cDecl.statueeLe).toLocaleDateString('fr-FR')) : ' · en attente de notre lecture') + '</div>'
+        + '<div class="m">' + pill(cDecl.statut === 'validated' ? 'Validée' : (declEnAttente ? 'En attente' : 'À corriger'), cDecl.statut === 'validated' ? 'pec-pill--done' : 'pec-pill--wait') + '<span style="font-style:italic">« ' + esc(cDecl.usageDeclare) + ' »</span></div>'
+        + (cDecl.motif ? '<div class="m" style="color:var(--color-amber-text);font-weight:700">Notre lecture : ' + esc(cDecl.motif) + '</div>' : '') + '</div>'
+      : '<p class="vide">Aucune déclaration déposée.</p>')
+      + (!cDecl || cDecl.statut !== 'validated'
+          ? '<div style="margin-top:9px"><label class="pec-input-label" for="tc-decl-txt">' + (cDecl ? 'Déposer une déclaration corrigée' : 'Déclarer l’usage exclusif de tes bons') + '</label>'
+            + '<textarea class="pec-input" id="tc-decl-txt" rows="3" style="width:100%;resize:vertical;padding:9px 12px" placeholder="Nos bons d’achat seront utilisables uniquement sur ' + esc(String(a.siteUrl || '').replace(/^https?:\/\//, '')) + ', à l’exclusion de tout autre site ou enseigne."></textarea>'
+            + '<p class="err" id="tc-decl-err" hidden></p>'
+            + '<button type="button" class="pec-cta tap" id="tc-decl-go" style="display:block;width:100%;text-align:center;margin-top:9px">Déposer ma déclaration</button></div>'
+          : '')
+      + '<p style="margin:8px 0 2px;font-size:10.5px;line-height:1.5;color:var(--color-muted)">C’est elle qui fonde l’exclusion « réseau limité » (' + esc(D.refArticle ? D.refArticle((R.seuils || {}).reseauLimiteSource || '') : '') + '). Toute modification du périmètre d’acceptation de tes bons se déclare <b>avant</b> d’être mise en œuvre.</p>', 'declaration');
+
+    /* ══ LES SEUILS ET LES RÈGLES (23/09, fondatrice : « rappel des règles, seuils, réseau limité ; lutte contre le
+       blanchiment et la fraude, rappel de nos règles — règles en vigueur, revérifie ; notre réseau accepte la CB, les
+       espèces, les pièces, la devise euro, règles de consommation européennes ») ═════════════════════════════════
+       TOUT VIENT DE `techRef().seuils`, `techRef().encaissement` et `bonsRef()` : les textes ont été lus à la source
+       le 23/09/2026 et chaque phrase porte sa version. Ce qui n'a pas été lu n'est pas écrit. Les chiffres de NOTRE
+       politique (par bon, par client) sont dits comme tels — plus stricts que la loi, et ce sont les nôtres.
+       (23/09, soir — audit : « pas de bloc lourd ») LA RÈGLE SE LIT EN UNE LIGNE, SA SOURCE SE DÉPLIE : le texte de loi tel
+       que lu reste là, derrière « Le texte » — la preuve n'a pas à couvrir l'écran. */
+    var S = R.seuils || {}, E = R.encaissement || {}, B = D.bonsRef(), qs = D.techQuota(a.id) || {};
+    var pctS = Math.min(100, Math.round((qs.seuilPct || 0)));
+    var srcHTML = function (txt) { return txt ? '<details class="src"><summary>Le texte</summary><span class="sb">' + esc(txt) + '</span></details>' : ''; };
+    var dateFr = function (iso) { try { return new Date(iso).toLocaleDateString('fr-FR'); } catch (e) { return String(iso || ''); } };
+    secCourante = 'regles'; h += carte('Seuils et règles — ce qui s’impose à nous deux',
+      /* le réseau limité */
+      '<div class="rowl" style="display:block"><div class="nm">Tes bons ne valent que chez toi</div>'
+      + '<span class="sb">C’est l’exclusion « réseau limité » (' + esc(D.refArticle ? D.refArticle(S.reseauLimiteSource || '') : '') + ') : ni utilisables sur un autre site, ni échangeables, ni remboursables en espèces — et jamais mélangés avec les bons d’une autre marque.</span>'
+      + srcHTML(S.reseauLimiteSource) + '</div>'
+      /* le seuil ACPR, avec sa valeur à elle */
+      + '<div class="rowl" style="display:block"><div class="nm">Le seuil de déclaration à l’ACPR : ' + esc(D.eur(qs.seuilAcpr || S.acprMontant12Mois || 0)) + ' sur douze mois</div>'
+      + '<span class="sb">Tes bons achetés par le réseau sur les douze derniers mois : <b style="color:var(--color-ink)">' + esc(D.eur(qs.valeur12Mois || 0)) + '</b> (' + esc(String(qs.seuilPct || 0).replace('.', ',')) + ' % du seuil).</span>'
+      + '<div class="jauge"><i style="width:' + pctS + '%' + (qs.seuilProche ? ';background:var(--color-amber-text)' : '') + '"></i></div>'
+      + (qs.seuilAtteint ? '<span class="sb" style="color:var(--color-amber-text);font-weight:700">Seuil atteint : l’édition et l’achat par le réseau sont suspendus jusqu’à la déclaration. ' + esc(R.nom) + ' te guide dans la démarche.</span>'
+          : qs.seuilProche ? '<span class="sb" style="color:var(--color-amber-text);font-weight:700">Tu approches du seuil : préparons la déclaration ensemble avant de l’atteindre.</span>' : '')
+      + '<span class="sb"><b style="color:var(--color-ink)">' + esc(R.nom) + ' t’accompagne</b> dans cette déclaration et dans son actualisation annuelle : nous préparons le dossier avec toi, tu le signes.</span>'
+      + srcHTML(S.acprSource) + '</div>'
+      /* nos plafonds — au comptoir du commerce qui vend le bon */
+      + '<div class="rowl" style="display:block"><div class="nm">Nos plafonds au comptoir (notre politique de prévention de la fraude)</div>'
+      + '<span class="sb">· Par bon : de ' + esc(D.eur(B.minimum)) + ' à ' + esc(D.eur(B.plafondBon)) + ' — au-delà, l’achat se découpe en plusieurs bons.</span>'
+      + '<span class="sb">· Par client : ' + esc(D.eur(B.plafondClientJour)) + ' par jour et ' + esc(D.eur(B.plafondClientMois)) + ' sur ' + esc(String(B.fenetrePlafondJours)) + ' jours glissants, quel que soit le moyen de règlement au comptoir.</span>'
+      + '<span class="sb">· Le bon se rattache au compte vérifié du client dès sa première utilisation, dans l’app Mes bons : il n’est jamais anonyme à l’usage.</span></div>'
+      /* la loi sur les espèces — celle du commerce, pas la nôtre */
+      + '<div class="rowl" style="display:block"><div class="nm">La loi sur les espèces</div>'
+      + '<span class="sb">' + (S.especesResidentEur ? esc(D.eur(S.especesResidentEur)) + ' au plus en espèces pour un résident : ' : '') + 'ce plafond s’impose au commerce qui remet le bon au client — nous ne recevons aucun billet, et nos montants restent très en dessous.</span>'
+      + srcHTML(S.especesSource) + '</div>'
+      /* la vigilance */
+      + '<div class="rowl" style="display:block"><div class="nm">Ce qui s’impose au commerce, pas à nous</div>'
+      + '<span class="sb">Un commerce qui reçoit plus de ' + esc(D.eur(S.lcbftIdentificationEur || 0)) + ' en espèces pour une opération identifie son client : nos plafonds en sont loin, et le bon est rattaché à un compte vérifié dès son usage.</span>'
+      + srcHTML(S.lcbftSource) + '</div>'
+      /* ce qui arrive */
+      + '<div class="rowl" style="display:block"><div class="nm">Ce qui arrive : le plafond européen</div>'
+      + '<span class="sb">' + esc(D.eur(S.europeEspecesEur || 0)) + ' au plus en espèces pour une opération professionnelle dans toute l’Union, à partir du ' + esc(dateFr(S.europeDepuis)) + ' — la France reste à ' + esc(D.eur(S.especesResidentEur || 0)) + '.</span>'
+      + srcHTML(S.europeSource) + '</div>'
+      /* ce que le réseau accepte */
+      + '<div class="rowl" style="display:block"><div class="nm">Ce que notre réseau accepte au comptoir</div>'
+      + '<span class="sb">En ' + esc(E.devise === 'EUR' ? 'euros' : (E.devise || 'euros')) + (E.moyens && E.moyens.length ? ' — ' + E.moyens.map(function (mo) { return mo.lbl; }).join(', ').toLowerCase() : '') + '.</span>'
+      + srcHTML([E.deviseSource].concat((E.moyens || []).map(function (mo) { return mo.lbl + ' : ' + mo.source; })).filter(Boolean).join(' · '))
+      + '<span class="sb" style="margin-top:6px">· <b style="color:var(--color-ink)">Droit de la consommation</b> — le prix, la validité et les conditions du bon sont dits avant l’achat.</span>'
+      + srcHTML(E.consommation) + '</div>', 'regles');
+
+    /* (23/09) LE MANDAT DE REPRÉSENTATION ET LES CONTRATS MARQUE↔POINT NE SONT PLUS PEINTS ICI : c'était le modèle
+       de l'intermédiaire qui met en relation. Nous sommes grossiste — la marque a UN contrat, avec nous. */
+
+    /* ══ MENTIONS LÉGALES (23/09, fondatrice : « tous les CGV, mentions légales etc., tout doit être parfait ; les CGU/CGV
+       doivent refléter nos pratiques : nous sommes grossiste, nous achetons leurs bons et nous les vendons à travers notre
+       réseau ») ══════════════════════════════════════════════════════════════════════════════════════════════════
+       L'éditeur vient du référentiel société (DOCS.societe) — jamais recopié. Le modèle est dit en une phrase, avec les mots
+       du grossiste et aucun autre. (23/09, soir — audit) LA LISTE DES DOCUMENTS N'EST PLUS RÉPÉTÉE ICI — elle vit dans
+       « Mes documents », où ils se lisent et s'acceptent ; et il n'y a plus de « contrat de mandat » à trouver dans le dossier :
+       le mandat est parti avec le modèle d'intermédiaire, et le contrat-cadre se signe dans « Mes documents ». */
+    var soc = (window.PEC_DOCS && PEC_DOCS.societe) ? PEC_DOCS.societe() : null;
+    secCourante = 'juridique'; h += carte('Mentions légales',
+      '<div class="rowl" style="display:block"><div class="nm">Ce que nous sommes pour toi</div>'
+      + '<span class="sb"><b style="color:var(--color-ink)">' + esc(R.nom) + ' est grossiste</b> : nous <b style="color:var(--color-ink)">achetons</b> tes bons d’achat, avec une remise sur leur prix, à mesure que notre réseau de commerces les <b style="color:var(--color-ink)">achète</b> pour les remettre à tes clients. '
+      + 'Nous ne détenons à aucun moment les fonds de tes clients : nous te payons ce que nous t’achetons, et rien d’autre ne passe par nous. Tes documents le disent dans ces termes, et pas dans d’autres — <a href="10-compte.html?s=documents#documents" class="tk-go">les relire ›</a>.</span></div>'
+      + (soc ? '<div class="rowl" style="display:block"><div class="nm">Éditeur de la plateforme</div>'
+          + '<span class="sb">' + esc(soc.nom) + (soc.forme ? ', ' + esc(soc.forme) : '') + (soc.capital ? ' au capital de ' + esc(soc.capital) : '') + ' — marque ' + esc(R.nom) + '</span>'
+          + (soc.siege ? '<span class="sb">Siège social : ' + esc(soc.siege) + '</span>' : '')
+          + (soc.siren ? '<span class="sb">SIREN ' + esc(soc.siren) + (soc.rcs ? ' · RCS ' + esc(soc.rcs) : '') + (soc.tva ? ' · TVA ' + esc(soc.tva) : '') + '</span>' : '')
+          + (soc.presidente ? '<span class="sb">Direction de la publication : ' + esc(soc.presidente) + '</span>' : '')
+          + '</div>' : ''), 'mentions');
+
+    /* ⑦ LE CADRE JURIDIQUE — les textes cités, et ce que nous gardons.
+       (23/09, soir — audit) DEUX FONDEMENTS DU RÉFÉRENTIEL NE SONT PLUS LES NÔTRES : le mandat de représentation (art. 1984)
+       est parti avec le modèle d'intermédiaire, et « l'opérateur technique ne doit pas être propriétaire des bons » contredit
+       le grossiste que nous sommes — nous les achetons. Ils restent dans `ref.tech.fondement` (à corriger là-bas) ; l'écran
+       ne cite que ce qui nous fonde aujourd'hui. Les durées de conservation portent le nom de ce qu'elles couvrent : « 6 ans »
+       tout seul n'apprenait rien. */
+    var cons = J.conservation || {};
+    var CONS_LBL = { dossierVerification: 'Ton dossier de vérification', pieceIdentite: 'La copie de la pièce d’identité du dirigeant', facture: 'Les factures', journal: 'Le journal d’audit', video: 'La vidéo de vérification', compteInactif: 'Un compte sans connexion' };
+    /* le mandat de prélèvement est celui des commerces du réseau : une marque règle par carte (24/09) — il ne la concerne pas */
+    var CONS_HORS = { mandatSepa: true };
+    var FOND = ['exemption', 'validite'];
+    secCourante = 'juridique'; h += carte('Le cadre juridique', '<div style="font-size:12px;line-height:1.7;color:var(--color-muted)">'
+      + FOND.filter(function (k) { return typeof F[k] === 'string'; }).map(function (k) { return '<div style="margin-bottom:7px">' + esc(F[k]) + '</div>'; }).join('')
+      + '</div>'
+      + '<div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--color-sep);font-size:12px;line-height:1.7;color:var(--color-muted)">'
+      + '<b style="color:var(--color-ink)">Ce que nous conservons, et combien de temps.</b><br>'
+      + Object.keys(cons).filter(function (k) { return !CONS_HORS[k]; }).map(function (k) { return '· ' + esc(CONS_LBL[k] || k) + ' : ' + esc(cons[k]); }).join('<br>')
+      + '<br>· Base légale : ' + esc(((J.baseLegale || {}).contrat) || '') + ' et ' + esc(((J.baseLegale || {}).obligation) || '') + '.'
+      + '<br>· Droit applicable : ' + esc(J.droitApplicable || 'droit français') + '.'
+      + '</div>'
+      + (F.reserve ? '<p style="margin:10px 0 0;font-size:11px;line-height:1.6;color:var(--color-amber-text);background:var(--color-amber-well);border-radius:10px;padding:10px 12px">' + esc(F.reserve) + '</p>' : ''));
+
+    /* ══ LE RÉSUMÉ DE CHAQUE SECTION, DÉRIVÉ — c'est lui qui rend le menu utile : on sait où aller avant d'ouvrir. */
+    function resume(sec) {
+      try {
+        if (sec === 'identite') {
+          var e2 = (window.PEC_DOCS && PEC_DOCS.etat) ? PEC_DOCS.etat('marchand', a.id) : null, dg = D.techMarchandDirigeant(a), ky = dg ? D.techKycDirigeant(a.id) : null;
+          return D.techStatutLbl(a.statut) + ' · dirigeant : ' + (dg ? dg.nomComplet + (ky && ky.ok ? ' (identité vérifiée)' : ' (pièce à contrôler)') : 'à déclarer')
+            + (e2 ? ' · dossier ' + String(e2.libelle || e2.etat).replace(/^Dossier\s+/i, '').toLowerCase() : '');
+        }
+        if (sec === 'integration') { var k0 = D.techCleActive(a.id), rs = D.techMarchandReseauxGet(a.id); return (k0 ? 'clé d’API active' : 'aucune clé d’API') + ' · ' + (rs.length ? pl(rs.length, 'réseau', 'x') + ' relié' + (rs.length > 1 ? 's' : '') : 'aucun réseau relié'); }
+        if (sec === 'paiement') { var mo0 = D.techMarchandMode(a), rb0 = D.techMarchandRib(a); return mo0.libelle + ' · remise ' + pc(mo0.remisePct) + ' · ' + (rb0 ? 'RIB ' + (rb0.ibanMasque || '') : (men.iban && men.bic ? 'RIB contrôlé, à confirmer' : 'aucun RIB')); }
+        if (sec === 'abonnement') { var q0 = D.techQuota(a.id) || {}, n0 = q0.emisMois || 0, cb0 = D.techMarchandCarte(a), fo0 = D.techMarchandFormule(a); return (q0.formule ? q0.formule.nom : '') + ' · ' + pl(n0, 'bon') + ' édité' + (n0 > 1 ? 's' : '') + ' ce mois' + (q0.max != null ? ' sur ' + q0.max : '') + (fo0 && fo0.prix > 0 ? ' · ' + (cb0 ? 'carte •••• ' + cb0.fin4 : 'aucune carte') : ''); }
+        if (sec === 'documents') { var tv = D.techMarchandPeutTravailler(a.id), ed = D.documentsEtat('marchand', a.id); return tv.ok ? 'tout est en règle · ' + pl(ed.length, 'document') + ' lus et acceptés, contrat signé' : pl(tv.manque.length, 'point') + ' à faire avant de travailler avec nous'; }
+        if (sec === 'regles') { var q1 = D.techQuota(a.id) || {}; return String(q1.seuilPct || 0).replace('.', ',') + ' % du seuil ACPR · plafond par client ' + D.eur(D.bonsRef().plafondClientJour) + ' / jour'; }
+        if (sec === 'juridique') { var so = (window.PEC_DOCS && PEC_DOCS.societe) ? PEC_DOCS.societe() : null; return so ? so.nom + (so.rcs ? ' · RCS ' + so.rcs : '') : 'l’éditeur et les textes'; }
+      } catch (e) {}
+      return '';
+    }
+    function monterDossier() {
+      var z = $('tc-dossier'); if (!z || !window.PEC_DOCS || !PEC_DOCS.rendreDossier) return;
+      PEC_DOCS.rendreDossier(z, 'marchand', a.id, { par: a.id, onChange: function () { setTimeout(peindre, 30); } });
+    }
+    setTimeout(monterDossier, 0);
+    /* (24/09, soir) SUR BUREAU, LES SEPT SECTIONS SONT UN RAIL À GAUCHE (toujours visible, la courante marquée) et le contenu
+       à droite ; sur téléphone, le rail est le hub (sept lignes au résumé dérivé) et une section s'ouvre seule, avec ses onglets. */
+    var rail = '<nav class="tc-rail" aria-label="Sections du compte">'
+      + SECTIONS.map(function (x) {
+          var ici = !!(secDemandee && secDemandee[0] === x[0]);
+          return '<a class="lien tap" data-s="' + esc(x[0]) + '" href="10-compte.html?s=' + esc(x[0]) + '"' + (ici ? ' aria-current="page"' : '') + '>'
+            + '<span style="min-width:0;flex:1"><span class="nm">' + esc(x[1]) + '</span><span class="sb">' + esc(resume(x[0]) || x[2]) + '</span></span>'
+            + '<svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;color:var(--color-muted)"><use href="#i-chevron-right"/></svg></a>';
+        }).join('') + '</nav>';
+    if (secDemandee) {
+      $('tc-corps').innerHTML = '<div class="pec-cols pec-cols--panneau tc-mise"><div class="tc-rail-z">' + rail + '</div><div class="tc-contenu">' + h + (parts[secDemandee[0]] || '<p class="vide">Rien à afficher ici pour l’instant.</p>') + '</div></div>';
+      viserCarte();
+      return;
+    }
+    /* CE QUI BLOQUE, EN TÊTE, ET CHAQUE MANQUE MÈNE À SA CARTE (23/09, soir). Un compte en attente de vérification est
+       dit « inactif » : c'est ce qu'il est tant que le dossier n'est pas contrôlé. Le statut lui-même n'est pas un geste à
+       faire (c'est le nôtre) : il ne figure pas dans la liste, le titre le dit. Un compte suspendu lit son motif. */
+    var trav0 = D.techMarchandPeutTravailler(a.id), aFaire0 = trav0.manque.filter(function (x) { return x.cle !== 'statut'; });
+    var bloque = trav0.ok ? '' : '<div class="tk-vide" style="margin-top:0;background:var(--color-amber-well);color:var(--color-amber-text);display:block"><div style="display:flex;gap:11px;align-items:flex-start"><svg class="pec-ico" viewBox="0 0 24 24" style="flex:none;width:20px;height:20px;color:var(--color-amber-text)"><use href="#i-shield"/></svg><div><b>' + (a.statut === 'pending' ? 'Compte inactif' : a.statut === 'suspended' ? 'Compte suspendu' : 'Tu ne peux pas encore travailler avec nous') + '</b>'
+          + (a.statut === 'pending' ? ' — il s’active quand ton dossier est contrôlé.' + (aFaire0.length ? ' En attendant, avance :' : '')
+              : a.statut === 'suspended' ? (a.motifSuspension ? ' — ' + esc(a.motifSuspension) : '') + ' Contacte-nous.' : (aFaire0.length ? ' :' : '')) + '</div></div>'
+          + (aFaire0.length ? '<ul style="margin:8px 0 0;padding-left:31px;display:grid;gap:4px">' + aFaire0.map(function (x) { return '<li><a href="' + esc(x.href || '10-compte.html?s=documents') + '" style="color:inherit;text-decoration:none">' + esc(x.libelle) + ' <b>régler ›</b></a></li>'; }).join('') + '</ul>' : '') + '</div>';
+    /* le hub : le rail (sur téléphone, c'est lui la page) ; sur bureau, la première section s'ouvre à côté, sous ce qui bloque */
+    $('tc-corps').innerHTML = '<div class="pec-cols pec-cols--panneau tc-mise tc-hub"><div class="tc-rail-z">' + bloque + '<p class="pec-section-label tc-hub-titre">Mon compte</p>' + rail + '</div>'
+      + '<div class="tc-contenu tc-defaut">' + h + (parts[SECTIONS[0][0]] || '') + '</div></div>';
+  }
+
+  /* ══ LE LECTEUR — un document lu ICI, remis au format de l'app, et refermé sur la page (23/09, soir) ═══════════
+     Trois façons de le remplir, une seule fenêtre : un DOCUMENT par son adresse (celle du référentiel : on le charge, on
+     garde son corps, on laisse tomber sa mise en page de bureau — l'app a la sienne ; si le chargement échoue, le document
+     s'affiche tel quel dans un cadre) ; le CONTRAT-CADRE par son modèle (le texte que la signature dépose, rendu en HTML) ;
+     le CONTRAT SIGNÉ par le PDF du coffre. Le pied du lecteur porte le geste qui suit la lecture. */
+  /* L'ARRIVÉE PAR UN LIEN « régler › » (23/09, soir) : l'ancre nomme la carte, on y défile et elle se signale — une
+     seule fois par chargement, pas à chaque repeinte du bus. */
+  var cibleFaite = false;
+  function viserCarte() {
+    var ancre = (location.hash || '').replace('#', ''); if (!ancre) return;
+    var z = $('tc-corps').querySelector('[data-carte="' + ancre + '"]'); if (!z) return;
+    z.classList.add('tc-cible');                       // à chaque peinture : le bus repeint, la carte reste signalée
+    if (cibleFaite) return;
+    cibleFaite = true;
+    setTimeout(function () { try { z.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch (e) {} }, 60);
+  }
+  /* LE TITRE DU CONTRAT EST CELUI DE LA PIÈCE DU RÉFÉRENTIEL (PEC_DOCS.PIECES.marchand › contrat), jamais retapé. */
+  var PIECE_CONTRAT = (window.PEC_DOCS && PEC_DOCS.piecesDe) ? (PEC_DOCS.piecesDe('marchand').filter(function (p) { return p.id === 'contrat'; })[0] || {}) : {};
+  var TITRE_CONTRAT = PIECE_CONTRAT.label || 'Contrat-cadre d’achat et de distribution';
+  /* LE TEXTE DU CONTRAT-CADRE, tel que le coffre le génère (modèle contrat_marchand) : l'en-tête de la société, les
+     articles, le pied de signature — avec les conditions de CETTE marque (son offre, son site, son dirigeant). Le modèle
+     rend ses lignes (des phrases, des titres en gras, des sauts) ; on les regroupe en paragraphes, un titre devient un
+     intertitre. Si le modèle rend déjà `{ titre, lignes }` (en-tête et pied compris), on le prend tel quel. */
+  function contratHTML(m0) {
+    var M = (window.PEC_DOCS && PEC_DOCS.MODELES) ? PEC_DOCS.MODELES.contrat_marchand : null;
+    if (!M || !m0) return null;
+    var dir0 = D.techMarchandDirigeant(m0), mod = null;
+    try { mod = M({ id: m0.id, nom: m0.raisonSociale, siteUrl: m0.siteUrl, dirigeant: dir0 ? dir0.nomComplet : null }); } catch (e0) { return null; }
+    if (!mod) return null;
+    var lignes = mod.lignes || ((PEC_DOCS.enTete ? PEC_DOCS.enTete() : []).concat(mod.l || []).concat(PEC_DOCS.pied ? PEC_DOCS.pied('la Marque') : []));
+    var out = [], para = [];
+    var flush = function () { if (para.length) { out.push('<p>' + esc(para.join(' ')) + '</p>'); para = []; } };
+    lignes.forEach(function (l) {
+      if (l == null || l === '') return;
+      if (typeof l === 'string') { para.push(l); return; }
+      flush();
+      if (l.saut) { out.push('<div style="height:' + Math.min(18, +l.saut || 0) + 'px"></div>'); return; }
+      if (l.texte) out.push(l.gras ? '<h2>' + esc(l.texte) + '</h2>' : '<p>' + esc(l.texte) + '</p>');
+    });
+    flush();
+    return out.join('');
+  }
+  /* (23/09, soir — fondatrice : « le même procès pour signer un document sur l'app Solution que celui de l'utilisateur :
+     il défile et signe ») LA FIN DU TEXTE OUVRE LE GESTE. Le lecteur suit le défilement : tant que le bas du document
+     n'est pas atteint, le pied dit « fais défiler jusqu'au bout » ; à la fin, la consultation est notée (c'est elle,
+     et non l'ouverture, qui vaut lecture) et le bouton s'active — « j'ai lu et j'accepte » pour un document, la case
+     et « Signer » pour le contrat-cadre. Un texte plus court que l'écran compte comme lu dès l'affichage. */
+  var lecteurCle = null, lecteurContrat = false, finLue = false, lecteurCharge = false;
+  var FIN = '<p style="margin:18px 0 0;padding-top:10px;border-top:1px dashed var(--color-sep);font-size:11px;color:var(--color-muted);text-align:center">— fin du document —</p>';
+  function lecteurFin() {
+    var c = $('tc-lect-corps'); if (!c) return;
+    /* (23/09, nuit — DOC·549 en série) LA FIN NE SE MESURE QUE SUR UN TEXTE POSÉ. Fermer le lecteur vide son corps, et
+       le navigateur signale ce défilement à l'image suivante — sous charge, APRÈS l'ouverture du document suivant :
+       « Chargement du document… » tenait dans l'écran, la fin était « atteinte », la consultation notée avant lecture. */
+    if (!lecteurCharge || !c.clientHeight) return;
+    var bas = c.scrollTop + c.clientHeight >= c.scrollHeight - 24;
+    if (!bas || finLue) return;
+    finLue = true;
+    if (lecteurCle) D.documentConsulter('marchand', s.id, lecteurCle, s.id);
+    lecteurPied();
+    setTimeout(peindre, 30);
+  }
+  function lecteurOuvrir(o) {
+    var z = $('tc-lecteur'); if (!z) return;
+    lecteurCle = o.cle || null; lecteurContrat = !!o.contrat; finLue = false; lecteurCharge = false;
+    $('tc-lect-titre').textContent = o.titre || 'Document';
+    $('tc-lect-version').textContent = o.version ? 'v. ' + o.version : '';
+    var corps = $('tc-lect-corps'); corps.innerHTML = '<p style="color:var(--color-muted)">Chargement du document…</p>';
+    z.hidden = false;
+    lecteurPied();
+    var afficherCadre = function (src) { corps.innerHTML = ''; var f = document.createElement('iframe'); f.src = src; f.title = o.titre || 'Document'; f.style.cssText = 'width:100%;height:100%;min-height:60vh;border:0;background:#fff'; corps.appendChild(f); setTimeout(lecteurFin, 300); };
+    /* le texte est déjà là (le contrat, rendu de son modèle) : on le pose, la fin se détecte comme pour les autres */
+    if (o.html) { corps.innerHTML = o.html + FIN; corps.scrollTop = 0; lecteurCharge = true; setTimeout(lecteurFin, 120); return; }
+    /* le PDF signé du coffre : dans son cadre — c'est le document tel qu'il a été signé, pas une relecture du modèle */
+    if (o.iframeSrc) { afficherCadre(o.iframeSrc); return; }
+    var url = o.url;
+    try {
+      fetch(url, { cache: 'no-store' }).then(function (r) { if (!r.ok) throw new Error(r.status); return r.text(); }).then(function (html) {
+        var doc = new DOMParser().parseFromString(html, 'text/html');
+        var titre = doc.querySelector('header h1, h1');
+        var body = doc.querySelector('.sheet .body') || doc.querySelector('main') || doc.querySelector('article') || doc.body;
+        if (!body) { afficherCadre(url); return; }
+        ['script', 'style', 'link', '.toolbar', 'nav', 'header', '.toc'].forEach(function (sel) { [].forEach.call(body.querySelectorAll(sel), function (n) { n.remove(); }); });
+        [].forEach.call(body.querySelectorAll('a[href]'), function (n) { n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener'); });
+        var titreTxt = titre ? titre.innerHTML.replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim() : '';
+        corps.innerHTML = (titreTxt ? '<h1>' + esc(titreTxt) + '</h1>' : '') + body.innerHTML + FIN;
+        corps.scrollTop = 0; lecteurCharge = true;
+        setTimeout(lecteurFin, 120);   // un texte plus court que l'écran est lu d'emblée
+      }).catch(function () { afficherCadre(url); });
+    } catch (e0) { afficherCadre(url); }
+  }
+  $('tc-lect-corps').addEventListener('scroll', lecteurFin, { passive: true });
+  /* LE PIED DU LECTEUR SUIT L'ÉTAT RÉEL : le défilement, puis l'acceptation ou la signature posée par le data-layer. */
+  function lecteurPied() {
+    var p = $('tc-lect-pied'); if (!p) return;
+    p.hidden = false;
+    var aide = finLue ? '' : '<p class="s">Fais défiler le texte jusqu’au bout : c’est là que tu ' + (lecteurContrat ? 'signes' : 'acceptes') + '.</p>';
+    if (lecteurContrat) {
+      var mC = D.techMarchand(s.id) || {}, dirC = D.techMarchandDirigeant(mC), kycC = D.techKycDirigeant(s.id);
+      if (mC.contratSigneLe) { p.innerHTML = '<button type="button" class="pec-cta tap" id="tc-lect-retour">Signé le ' + esc(new Date(mC.contratSigneLe).toLocaleDateString('fr-FR')) + ' par ' + esc(mC.contratSignataire || '') + ' — revenir</button>'; return; }
+      p.innerHTML = (dirC
+          ? '<label style="display:flex;gap:8px;align-items:flex-start;font-size:11.5px;line-height:1.5;color:var(--color-muted)"><input type="checkbox" id="tc-contrat-ok" style="margin-top:2px;flex:none"' + (finLue ? '' : ' disabled') + '> <span>Moi, <b style="color:var(--color-ink)">' + esc(dirC.nomComplet) + '</b>, ' + esc(dirC.qualite) + ' de ' + esc(mC.raisonSociale) + ', j’ai lu le contrat-cadre et ses annexes, et je le signe au nom de ' + esc(mC.raisonSociale) + '.</span></label>'
+            + (kycC.ok ? '' : '<p class="s" style="color:var(--color-amber-text);text-align:left">' + esc(kycC.motif) + '</p>')
+          : '<p class="s" style="color:var(--color-amber-text)">Aucun dirigeant déclaré : déclare-le dans « Identité » — c’est lui qui signe.</p>')
+        + '<button type="button" class="pec-cta tap" id="tc-contrat-go" style="margin-top:9px"' + (finLue && dirC ? '' : ' disabled') + '>Signer le contrat-cadre</button>' + aide;
+      return;
+    }
+    if (!lecteurCle) { p.innerHTML = '<button type="button" class="pec-cta tap" id="tc-lect-retour">Revenir à mes documents</button>'; return; }
+    var ed = D.documentsEtat('marchand', s.id).filter(function (x) { return x.cle === lecteurCle; })[0];
+    if (!ed) { p.hidden = true; return; }
+    p.innerHTML = ed.aJour
+      ? '<button type="button" class="pec-cta tap" id="tc-lect-retour">' + (ed.information ? 'Lu le ' : 'Lu et accepté le ') + esc(new Date(ed.accepteLe).toLocaleDateString('fr-FR')) + ' — revenir</button>'
+      : '<button type="button" class="pec-cta tap" data-doc-ok="' + esc(ed.cle) + '"' + (finLue && ed.peutAccepter ? '' : ' disabled') + '>' + ed.bouton + ' (version ' + esc(ed.version) + ')</button>'
+        + (aide || '<p class="s">' + (ed.information ? 'Ta lecture est gardée' : 'Ton acceptation garde le document') + ', avec sa version, la date et ton identifiant.</p>');
+  }
+  function lecteurFermer() { var z = $('tc-lecteur'); if (z && !z.hidden) { z.hidden = true; lecteurCle = null; lecteurContrat = false; finLue = false; lecteurCharge = false; $('tc-lect-corps').innerHTML = ''; } }
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') lecteurFermer(); });
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.closest && (t.closest('#tc-lect-fermer') || t.closest('#tc-lect-retour'))) { lecteurFermer(); return; }
+    /* LIRE : le document s'ouvre dans le lecteur ; la consultation se note quand la fin est atteinte (lecteurFin). */
+    var dv = t.closest && t.closest('[data-doc-voir]');
+    if (dv) {
+      var cleV = dv.getAttribute('data-doc-voir');
+      var dd = D.documentsEtat('marchand', s.id).filter(function (x) { return x.cle === cleV; })[0];
+      if (dd) lecteurOuvrir({ cle: dd.cle, titre: dd.titre, version: dd.version, url: dd.url });
+      return;
+    }
+    /* LIRE LE CONTRAT-CADRE : signé, le PDF du coffre ; sinon, le texte du modèle — jamais un autre document. */
+    var lr = t.closest && t.closest('[data-lire-contrat]');
+    if (lr) {
+      var mL = D.techMarchand(s.id) || {}, dL = (window.PEC_DOCS && PEC_DOCS.get) ? PEC_DOCS.get('marchand', s.id, 'contrat') : null;
+      var oL = { cle: null, contrat: true, titre: TITRE_CONTRAT, version: (dL && dL.empreinte) ? 'empreinte ' + String(dL.empreinte).slice(0, 8) : '' };
+      if (dL && dL.data && PEC_DOCS.blob) { try { oL.iframeSrc = URL.createObjectURL(PEC_DOCS.blob(dL)); } catch (eB) {} }
+      if (!oL.iframeSrc) oL.html = contratHTML(mL) || '<p>Le coffre n’est pas chargé sur cet écran : le contrat ne peut pas s’afficher ici.</p>';
+      lecteurOuvrir(oL); return;
+    }
+    var dok = t.closest && t.closest('[data-doc-ok]');
+    if (dok) {
+      if (dok.disabled) return;
+      var ed0 = D.documentsEtat('marchand', s.id).filter(function (x) { return x.cle === dok.getAttribute('data-doc-ok'); })[0];
+      if (!ed0 || !ed0.peutAccepter) return;
+      D.acceptationsPoser('marchand', s.id, [ed0.cle], s.id);
+      peindre(); lecteurPied(); return;
+    }
+    var dgo = t.closest && t.closest('#tc-dossier-go');
+    if (dgo) {
+      var rs = (window.PEC_DOCS && PEC_DOCS.soumettre) ? PEC_DOCS.soumettre('marchand', s.id, {}) : { ok: false, motif: 'Coffre indisponible.' };
+      if (!rs.ok) { var ed1 = $('tc-dossier-err'); if (ed1) { ed1.hidden = false; ed1.textContent = rs.message || rs.motif; } return; }
+      peindre(); return;
+    }
+    /* LA DÉCLARATION « RÉSEAU LIMITÉ », déposée ou corrigée par le data-layer (techConformiteDeposer) : le refus se lit tel quel. */
+    var dcl = t.closest && t.closest('#tc-decl-go');
+    if (dcl) {
+      var rdc = D.techConformiteDeposer({ marchandId: s.id, usageDeclare: $('tc-decl-txt') ? $('tc-decl-txt').value : '' });
+      if (!rdc.ok) { var edc = $('tc-decl-err'); if (edc) { edc.hidden = false; edc.textContent = rdc.motif; } return; }
+      peindre(); return;
+    }
+    /* (24/09) LES DEUX RÉPONSES QUI QUALIFIENT LA TVA DES BONS : l'entreprise se ré-enregistre telle quelle avec les réponses — un seul contrôle (techMarchandEntrepriseSet). */
+    var tvg = t.closest && t.closest('#tc-tva-go');
+    if (tvg) {
+      var a0 = D.techMarchand(s.id) || {};
+      var rtv = D.techMarchandEntrepriseSet(s.id, { raisonSociale: a0.raisonSociale, siret: a0.siret, siteUrl: a0.siteUrl, sansSite: a0.sansSite, tel: a0.tel, formeJuridique: a0.formeJuridique, adresse: a0.adresse, naf: a0.naf,
+        tauxUnique: $('tc-tva-unique') ? $('tc-tva-unique').checked : null, franceSeule: $('tc-tva-france') ? $('tc-tva-france').checked : null }, s.id);
+      if (!rtv.ok) { var etv = $('tc-tva-err'); if (etv) { etv.hidden = false; etv.textContent = rtv.motif; } return; }
+      peindre(); return;
+    }
+    /* LE RIB CONTRÔLÉ DU DOSSIER, repris d'un geste : ce sont les mentions relevées par le contrôleur qui s'enregistrent. */
+    var rcf = t.closest && t.closest('#tc-rib-coffre');
+    if (rcf) {
+      var mn = (window.PEC_DOCS && PEC_DOCS.mentions) ? (PEC_DOCS.mentions('marchand', s.id) || {}) : {};
+      var rrc = D.techMarchandRibEnregistrer(s.id, { iban: mn.iban, bic: mn.bic, titulaire: mn.titulaire || (D.techMarchand(s.id) || {}).raisonSociale }, s.id);
+      if (!rrc.ok) { var erc = $('tc-rib-err0'); if (erc) { erc.hidden = false; erc.textContent = rrc.motif; } return; }
+      peindre(); return;
+    }
+    var cgo = t.closest && t.closest('#tc-contrat-go');
+    if (cgo) {
+      var m0c = D.techMarchand(s.id);
+      var okc = $('tc-contrat-ok');
+      var rc = D.techMarchandContratSigner(s.id, { accepte: !!(okc && okc.checked), par: s.id, ctx: { id: s.id, nom: m0c.raisonSociale, siteUrl: m0c.siteUrl } });
+      if (!rc.ok) {
+        var ec = $('tc-contrat-err'); if (ec) { ec.hidden = false; ec.textContent = rc.motif; }
+        var pc0 = $('tc-lect-pied'); if (pc0 && !$('tc-lecteur').hidden) { var ep = pc0.querySelector('.s.refus') || document.createElement('p'); ep.className = 's refus'; ep.style.color = '#8E2A1E'; ep.textContent = rc.motif; pc0.appendChild(ep); }
+        return;
+      }
+      peindre(); lecteurPied(); return;
+    }
+    /* LE DIRIGEANT — déclaré ou corrigé par le data-layer (techMarchandDirigeantSet) ; le refus nomme le champ. */
+    var dch = t.closest && t.closest('#tc-dir-chg, [data-dir-completer]');
+    if (dch) { e.preventDefault(); var fd0 = $('tc-dir-form'); if (fd0) { fd0.hidden = false; if ($('tc-dir-chg')) $('tc-dir-chg').hidden = true; $('tc-dir-prenom').focus(); } return; }
+    /* LA CIVILITÉ — un choix parmi celles du référentiel, rendu comme un groupe de boutons radio */
+    var dcv = t.closest && t.closest('#tc-dir-civilite [data-civ]');
+    if (dcv) {
+      [].forEach.call(document.querySelectorAll('#tc-dir-civilite [data-civ]'), function (b) { var on = b === dcv; b.setAttribute('aria-checked', String(on)); b.style.background = on ? 'var(--color-primary)' : ''; b.style.color = on ? '#fff' : ''; });
+      return;
+    }
+    var dgo0 = t.closest && t.closest('#tc-dir-go');
+    if (dgo0) {
+      var civSel = document.querySelector('#tc-dir-civilite [aria-checked="true"]');
+      var rd = D.techMarchandDirigeantSet(s.id, { civilite: civSel ? civSel.getAttribute('data-civ') : '', prenom: $('tc-dir-prenom').value, nom: $('tc-dir-nom').value,
+        nomNaissance: $('tc-dir-nom-naissance').value, dateNaissance: $('tc-dir-naissance').value, lieuNaissance: $('tc-dir-lieu').value, qualite: $('tc-dir-qualite').value }, s.id);
+      if (!rd.ok) {
+        var ed2 = $('tc-dir-err'); if (ed2) { ed2.hidden = false; ed2.textContent = rd.motif; }
+        var ch2 = { dirigeantPrenom: 'tc-dir-prenom', dirigeantNom: 'tc-dir-nom', dirigeantNaissance: 'tc-dir-naissance', dirigeantLieuNaissance: 'tc-dir-lieu', dirigeantQualite: 'tc-dir-qualite' }[rd.champ];
+        var cible = ch2 ? $(ch2) : (rd.champ === 'dirigeantCivilite' ? document.querySelector('#tc-dir-civilite [data-civ]') : null);
+        if (cible) cible.focus(); return;
+      }
+      peindre(); return;
+    }
+    var mo = t.closest && t.closest('[data-mode]');
+    if (mo) {
+      var rm = D.techMarchandModeChoisir(s.id, mo.getAttribute('data-mode'), s.id);
+      if (!rm.ok) { var ze = $('tc-mode-err'); if (ze) { ze.hidden = false; ze.textContent = rm.motif; } return; }
+      peindre(); return;
+    }
+    var rg0 = t.closest && t.closest('#tc-reseau-go');
+    if (rg0) {
+      var rs0 = D.techMarchandReseauSet(s.id, $('tc-reseau-k').value, $('tc-reseau-v').value, s.id);
+      if (!rs0.ok) { var er0 = $('tc-reseau-err'); if (er0) { er0.hidden = false; er0.textContent = rs0.motif; } return; }
+      peindre(); return;
+    }
+    var rr0 = t.closest && t.closest('[data-reseau-retirer]');
+    if (rr0) { D.techMarchandReseauRetirer(s.id, rr0.getAttribute('data-reseau-retirer'), s.id); peindre(); return; }
+    var fo2 = t.closest && t.closest('[data-formule]');
+    if (fo2) { D.techMarchandFormuleChoisir(s.id, fo2.getAttribute('data-formule'), s.id); peindre(); return; }
+    /* (24/09) LA CARTE DE L'ABONNEMENT : le formulaire s'ouvre, puis le data-layer contrôle (Luhn, expiration, titulaire) et ne
+       garde que le réseau et les quatre derniers chiffres. Le refus nomme le champ. */
+    var cch = t.closest && t.closest('#tc-carte-chg');
+    if (cch) { var fc = $('tc-carte-form'); if (fc) { fc.hidden = false; cch.hidden = true; $('tc-carte-num').focus(); } return; }
+    var cgo2 = t.closest && t.closest('#tc-carte-go');
+    if (cgo2) {
+      var ex = String($('tc-carte-exp').value || '').split(/[\/\s-]+/);
+      var rcb = D.techMarchandCarteEnregistrer(s.id, { numero: $('tc-carte-num').value, expMois: ex[0], expAnnee: ex[1], titulaire: $('tc-carte-tit').value }, s.id);
+      if (!rcb.ok) { var ecb = $('tc-carte-err'); if (ecb) { ecb.hidden = false; ecb.textContent = rcb.motif; } var ccb = { numero: 'tc-carte-num', expiration: 'tc-carte-exp', titulaire: 'tc-carte-tit' }[rcb.champ]; if (ccb && $(ccb)) $(ccb).focus(); return; }
+      peindre(); return;
+    }
+    var sg0 = t.closest && t.closest('#tc-site-go');
+    if (sg0) {
+      var rs1 = D.techMarchandSiteSet(s.id, { domaine: $('tc-site-dom').value, accroche: $('tc-site-acc').value, couleur: $('tc-site-col').value }, s.id);
+      if (!rs1.ok) { var es1 = $('tc-site-err'); if (es1) { es1.hidden = false; es1.textContent = rs1.motif; } return; }
+      peindre(); return;
+    }
+    var rc = t.closest && t.closest('#tc-rib-chg');
+    if (rc) { var f0 = $('tc-rib-form'); if (f0) { f0.hidden = false; rc.hidden = true; if (D.ibanSaisie) D.ibanSaisie($('tc-rib-iban')); if (D.bicSaisie) D.bicSaisie($('tc-rib-bic')); } return; }
+    var rg = t.closest && t.closest('#tc-rib-go');
+    if (rg) {
+      var rr = D.techMarchandRibEnregistrer(s.id, { iban: $('tc-rib-iban').value, bic: $('tc-rib-bic').value, titulaire: $('tc-rib-tit').value }, s.id);
+      if (!rr.ok) { var er = $('tc-rib-err'); if (er) { er.hidden = false; er.textContent = rr.motif; } return; }
+      peindre(); return;
+    }
+    var cg = t.closest && t.closest('#tc-cle-go');
+    if (cg) {
+      var b = cg, e1 = $('tc-cle-err'); if (e1) e1.hidden = true;
+      b.disabled = true; b.textContent = 'Génération…';
+      D.techCleGenerer(s.id, function (r) {
+        if (!r.ok) { var e2 = $('tc-cle-err'); if (e2) { e2.hidden = false; e2.textContent = r.motif; } peindre(); return; }
+        secretVu = r.secret;   /* montré une fois, et seulement ici */
+        peindre();
+      });
+      return;
+    }
+    /* (23/09) plus de révocation de mandat de représentation : il n'y a plus de mandat. */
+  });
+  /* SE DÉCONNECTER ferme les deux clés : l'espace de la marque ET la session de son compte (sans toucher à celle d'un
+     autre espace ouvert sur l'appareil — une session de Mes bons, par exemple, reste ouverte). */
+  $('tc-out').addEventListener('click', function (e) {
+    e.preventDefault(); T.deconnecter('marchand');
+    var ss = D.session(); if (ss && ss.espace === D.ESPACES_COMPTE.marque.sessionLabel) D.deconnecter();
+    location.href = '01-connexion.html';
+  });
+
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

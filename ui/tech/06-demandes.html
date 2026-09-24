@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash SOLUTION — Bons proposés</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-solution-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-solution-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<link rel="stylesheet" href="../assets/payencash-tech.css"><!-- (23/09) le look de l’espace des marques : en-tête léger, trois pas repliés, grands nombres, onglets -->
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-docs.js"></script><!-- (23/09) le coffre : la signature du contrat-cadre lit la pièce d’identité du dirigeant (KYC) -->
+<script src="../assets/payencash-qr.js"></script>
+<script src="../assets/payencash-tech.js"></script>
+<!-- LE BON PROPOSÉ (20/09, fondatrice : « je veux que le e-commerce puisse générer par lui-même un lien pour un
+     client avec le montant variable souhaité ; ça génère un ticket avec flashcode, pas d'encaissement ».
+     23/09 : « vérifie "demander une somme à un client" par la vente d'un bon — attention au vocabulaire juridique » ;
+     le soir : « enlève "ton client reçoit un lien" ; c'est du PARTAGE — nous, on fait savoir que tu as un réseau de
+     vente de bons ; respecte l'ACPR » ; « une fois que j'ai envoyé le lien du bon, crée une section "Liens transmis"
+     avec des onglets, qui respecte notre activité de grossiste, sur le suivi »).
+     ÇA S'APPELAIT « DEMANDE DE PAIEMENT », ET LE MOT ÉTAIT FAUX EN DROIT : nous ne demandons aucun paiement, nous ne
+     réglons rien, nous ne tenons pas de dette. Ce que la marque fait ici, c'est PROPOSER UN BON D'ACHAT d'un montant
+     précis — celui de sa commande, de son devis, sa référence à elle — et PARTAGER ce lien : ses clients savent qu'un
+     réseau de commerces vend ses bons, et où. Le bon s'achète au comptoir d'un commerce du réseau (nous l'achetons à la
+     marque à ce moment-là), puis il s'utilise chez la marque, et chez elle seule, depuis l'app Mes bons.
+     LE SUIVI AUX MOTS DU GROSSISTE : « Liens transmis », quatre onglets (en attente, entamés, couverts, fermés), et pour
+     chaque bon utilisé chez la marque, la chaîne DÉRIVÉE — le bon, le commerce qui l'a vendu, la vente qui nous l'a fait
+     acheter, ce que nous lui devons ou lui avons payé (techBon → techRevendeur → techVente). Rien n'est écrit ici.
+     CE QUE CET ÉCRAN NE FAIT JAMAIS : encaisser. Il ne crée ni panier, ni commande, ni paiement chez nous ; il fabrique
+     une page que le client ouvre, et cette page dit où acheter le bon et avec quoi l'utiliser. -->
+<style>
+  .rowl{display:flex;align-items:flex-start;gap:9px;padding:9px 0;border-bottom:1px solid var(--color-sep)}
+  .rowl:last-child{border-bottom:none}
+  .rowl .nm{font-size:12.5px;font-weight:800;color:var(--color-ink)}
+  .rowl .sb{display:block;font-size:11px;line-height:1.5;color:var(--color-muted);margin-top:1px}
+  .vide{padding:10px 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  /* (24/09, soir) l'échelle de bureau des lignes du suivi */
+  @media (min-width:1024px){ .rowl .nm{font-size:15px} .rowl .sb{font-size:13px} .vide{font-size:13.5px} .usage{font-size:12.5px} .pill{font-size:11px} .tk-onglets button{font-size:13px;padding:8px 14px} .tk-kpis{grid-template-columns:repeat(2,minmax(0,1fr));max-width:640px} }
+  .err{margin:9px 0 0;font-size:11.5px;font-weight:700;line-height:1.45;color:#8E2A1E}
+  .pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:10px;font-weight:800;letter-spacing:.04em}
+  .pill.att{background:var(--color-amber-well);color:var(--color-amber-text)}
+  .pill.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .pill.no{background:#FDECEA;color:#8E2A1E}
+  /* les onglets du suivi : le socle dessine des <a> ; ici ce sont des boutons (rôle tab), même dessin, même courant */
+  .tk-onglets button{flex:none;border:none;border-radius:999px;padding:6px 11px;font:inherit;font-size:11.5px;font-weight:800;background:var(--color-card);box-shadow:var(--shadow-card);color:var(--color-muted);cursor:pointer}
+  .tk-onglets button[aria-selected="true"]{background:var(--color-ink);color:#fff}
+  /* la chaîne d'un bon utilisé chez la marque : une ligne grise sous le lien, aux mots du grossiste */
+  .usage{display:block;margin-top:5px;padding:7px 9px;border-radius:10px;background:var(--color-bg);font-size:10.5px;line-height:1.5;color:var(--color-muted)}
+  .usage b{color:var(--color-ink)}
+  .acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+  .acts .pec-pill{font-weight:700;text-decoration:none}
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <!-- (20/09) LA MARQUE ET LE MENU viennent du socle (PEC_TECH.entete / PEC_TECH.menu). -->
+  <div class="pec-tech-entete" id="tk-entete"></div>
+
+  <div class="pec-body pec-body--scroll">
+    <div id="tk-hero"></div>
+
+    <div class="pec-info-body">
+      <div class="pec-card" id="td-garde" hidden style="padding:14px 15px">
+        <div style="font-weight:800;font-size:14px">Cet espace demande une session</div>
+        <p style="margin:6px 0 0;font-size:12.5px;line-height:1.55;color:var(--color-muted)">Connecte-toi avec l’identifiant de ton compte.</p>
+        <a class="pec-cta tap" href="01-connexion.html" style="display:block;text-align:center;margin-top:11px">Aller à la connexion</a>
+      </div>
+
+      <div id="td-corps" hidden>
+        <!-- (23/09, soir — audit) PLUS DE BANNIÈRE : elle répétait le haut de page et la note du bas — trois fois la même
+             chose sur un écran. Le haut de page dit le geste, la note du bas dit le reste, l'écran commence par ses chiffres. -->
+        <div class="tk-kpis">
+          <div class="tk-kpi"><div class="k">En attente</div><div class="v" id="td-k-att">—</div><div class="s" id="td-k-att-s">—</div></div>
+          <div class="tk-kpi"><div class="k">Couverts</div><div class="v" id="td-k-ok">—</div><div class="s" id="td-k-ok-s">—</div></div>
+        </div>
+
+        <!-- (24/09, soir) SUR BUREAU : proposer et partager à gauche, le suivi des liens à droite ; sur téléphone, l'un sous l'autre -->
+        <div class="pec-cols pec-cols--2" style="margin-top:6px">
+        <div class="pec-colonne">
+        <p class="pec-section-label" style="margin:12px 0 6px">Proposer un bon</p>
+        <div class="pec-card">
+          <div style="display:flex;gap:7px;align-items:flex-end">
+            <span style="flex:0 0 118px"><label class="pec-input-label" for="td-m">Montant du bon</label><input class="pec-input" id="td-m" type="text" inputmode="decimal" placeholder="49,90"></span>
+            <span style="flex:1;min-width:0"><label class="pec-input-label" for="td-ref">Ta référence</label><input class="pec-input" id="td-ref" type="text" placeholder="Commande 2026-114"></span>
+          </div>
+          <label class="pec-input-label" for="td-cli" style="margin-top:9px">Pour qui <span style="font-weight:600;color:var(--color-muted)">— ce que tu écris pour t’y retrouver</span></label>
+          <input class="pec-input" id="td-cli" type="text" placeholder="Mme Bakhti">
+          <p class="err" id="td-err" hidden></p>
+          <button type="button" class="pec-cta tap" id="td-go" style="margin-top:11px">Créer le lien à partager</button>
+          <p class="tk-note" id="td-aide">—</p>
+        </div>
+
+        <!-- LE LIEN À PARTAGER — le partage est commercial : on ouvre l'application choisie avec le lien déjà écrit, et c'est la
+             marque qui poste ; rien ne part d'ici. Le ticket porte le flashcode (l'ordre de vente : la marque et le montant). -->
+        <div id="td-neuf" hidden>
+          <p class="pec-section-label" style="margin:18px 0 6px">Le lien à partager</p>
+          <div class="pec-card">
+            <p class="tk-note" style="margin:0 0 8px" id="td-neuf-txt">—</p>
+            <div class="tk-snip" id="td-url" style="margin-top:0">—</div>
+            <div class="tk-part" id="td-part">
+              <a class="pp tap" id="td-wa" target="_blank" rel="noopener" href="#">WhatsApp</a>
+              <button type="button" class="pp tap" id="td-copier">Copier le lien</button>
+              <a class="pp tap" id="td-ouvrir" href="#" target="_blank" rel="noopener">Voir la page partagée</a>
+            </div>
+            <div id="td-ticket" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        </div>
+        <div class="pec-colonne">
+        <!-- ══ LIENS TRANSMIS — le suivi, par onglets d'état, aux mots du grossiste (23/09, soir — fondatrice) ═════════════ -->
+        <p class="pec-section-label" style="margin:12px 0 6px">Liens transmis</p>
+        <div class="pec-card">
+          <div class="tk-onglets" role="tablist" id="td-onglets" aria-label="Suivi des liens transmis" style="padding:0 0 8px"></div>
+          <div id="td-liste"></div>
+          <p class="tk-note" id="td-note">—</p>
+        </div>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav id="tk-menu"></nav>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, T = window.PEC_TECH, $ = function (i) { return document.getElementById(i); };
+  /* LE HAUT DE PAGE DIT LE GESTE AUX MOTS DE L'ACPR (23/09, soir — fondatrice) : proposer, partager, faire savoir — et face à
+     la marque, le réseau ACHÈTE ses bons (il ne « vend » pas pour elle) : c'est ce qu'il remet ensuite à ses clients. */
+  if (window.PEC_TECH) { PEC_TECH.entete('tk-entete'); PEC_TECH.menu('tk-menu', '09-outils.html'); PEC_TECH.hero('tk-hero', { teinte: 'demandes', ico: 'i-receipt', eyebrow: 'Bons proposés', titre: 'Proposer un bon d’achat d’un montant précis', idSub: 'td-sub', promesse: 'Tu le partages : tes clients savent qu’un réseau de commerces achète tes bons et les remet au comptoir — rien n’est encaissé ici.', etapes: ['Tu fixes le montant du bon et ta référence', 'Tu partages le lien et son flashcode : tes clients savent où acheter ton bon', 'Le bon s’achète au comptoir du réseau et s’utilise chez toi'] }); }
+  if (!D || !D.techLienCreer || !T) return;
+  var esc = function (v) { return D.esc(v); };
+  var s = T.session('marchand');
+  if (!s || !D.techMarchand(s.id)) { $('td-garde').hidden = false; return; }
+  $('td-corps').hidden = false;
+
+  var PILL = { open: 'att', partial: 'att', used: 'ok', cancelled: 'no', expired: 'no' };
+  /* LES ONGLETS DU SUIVI — quatre familles, dérivées de l'état vif du data-layer (techLien : ouvert, entamé, couvert,
+     annulé, expiré). L'onglet courant survit à la repeinte : le bus repeint à chaque geste. */
+  var ONGLETS = [
+    { cle: 'open',    lbl: 'En attente', etats: ['open'],                  vide: 'Aucun lien en attente — crée-en un ci-dessus.' },
+    { cle: 'partial', lbl: 'Entamés',    etats: ['partial'],               vide: 'Aucun lien entamé : un lien s’entame quand un premier bon y est utilisé chez toi.' },
+    { cle: 'used',    lbl: 'Couverts',   etats: ['used'],                  vide: 'Aucun lien couvert pour l’instant : un lien est couvert quand les bons utilisés chez toi atteignent le montant proposé.' },
+    { cle: 'ferme',   lbl: 'Fermés',     etats: ['cancelled', 'expired'],  vide: 'Aucun lien retiré ni expiré.' }
+  ];
+  var onglet = 'open';
+  var dateFr = function (ts) { return ts ? new Date(ts).toLocaleDateString('fr-FR') : ''; };
+  var pl = function (n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); };
+
+  /* LE SUIVI D'UN USAGE, AUX MOTS DU GROSSISTE — dérivé : l'usage (code, pris, quand) → le bon (édité à la vente, vendu par quel
+     commerce, quand) → la vente qui nous l'a fait acheter (prix d'achat, échéance, due ou payée). Les libellés du statut de
+     la marque sont ceux du référentiel (TECH_MARQUE_STATUTS) ; rien n'est écrit ici. */
+  function usageHTML(u) {
+    var b = D.techBon ? D.techBon(u.code) : null;
+    var v = (b && b.venteRef && D.techVente) ? D.techVente(b.venteRef) : null;
+    var rv = (b && b.revendeurId) ? D.techRevendeur(b.revendeurId) : null;
+    var h = 'Bon <b>' + esc(D.bonMasque ? D.bonMasque(u.code) : u.code) + '</b> — <b>' + esc(D.eur(u.pris)) + '</b> utilisés chez toi le ' + esc(dateFr(u.at));
+    if (b) h += ' · acheté à toi le ' + esc(dateFr(b.venduLe || b.emisLe)) + (rv ? ' par <b>' + esc(rv.raisonSociale) + '</b>, remis au client' : '');
+    else h += ' · bon inconnu de cet appareil';
+    if (v) {
+      var st = (D.TECH_MARQUE_STATUTS && D.TECH_MARQUE_STATUTS[v.marqueStatut]) ? D.TECH_MARQUE_STATUTS[v.marqueStatut][0] : v.marqueStatut;
+      if (v.marqueStatut === 'paye') h += ' · <b>' + esc(st) + '</b> ' + esc(D.eur(v.prixMarque)) + (v.reglementRef ? ' (' + esc(v.reglementRef) + ')' : '');
+      else if (v.marqueStatut === 'annule') h += ' · achat annulé';
+      else h += ' · <b>' + esc(st) + ' ' + esc(D.eur(v.prixMarque)) + '</b>' + (v.echeanceMarque ? ' le ' + esc(dateFr(v.echeanceMarque)) : ' à l’échéance de ton offre');
+    }
+    return '<span class="usage">' + h + '</span>';
+  }
+  function ligneHTML(x) {
+    var vif = x.etat === 'open' || x.etat === 'partial';
+    return '<div class="rowl"><span style="min-width:0;flex:1">'
+      + '<span class="nm">' + esc(D.eur(x.montant)) + (x.reference ? ' · ' + esc(x.reference) : '') + '</span>'
+      + '<span class="sb">' + (x.client ? esc(x.client) + ' · ' : '') + 'créé le ' + esc(dateFr(x.creeLe)) + ' · <span class="pill ' + PILL[x.etat] + '">' + esc(D.techLienEtatLbl(x.etat)) + '</span>'
+      + (vif && x.expireLe ? ' · valable jusqu’au ' + esc(dateFr(x.expireLe)) : '')
+      + (x.etat === 'partial' ? ' · ' + esc(D.eur(x.pris)) + ' déjà utilisés, ' + esc(D.eur(x.restant)) + ' manquent' : '')
+      + (x.etat === 'used' ? ' · couvert le ' + esc(dateFr(x.couvertLe)) + ' — ' + esc(pl((x.usages || []).length, 'bon')) : '')
+      + (x.etat === 'cancelled' ? ' · retiré le ' + esc(dateFr(x.annuleLe)) : '')
+      + (x.etat === 'expired' ? ' · expiré le ' + esc(dateFr(x.expireLe)) : '') + '</span>'
+      + (x.usages || []).map(usageHTML).join('')
+      + '<span class="acts">'
+      + (vif ? '<button type="button" class="pec-pill tap" data-copier="' + esc(x.slug) + '">Copier le lien</button>' : '')
+      + '<a class="pec-pill tap" href="07-lien.html?l=' + encodeURIComponent(x.slug) + '" target="_blank" rel="noopener">Voir la page partagée</a>'
+      + (vif ? '<button type="button" class="pec-pill tap" data-ann="' + esc(x.slug) + '">Annuler</button>' : '')
+      + '</span></span></div>';
+  }
+
+  function peindre() {
+    var m = D.techMarchand(s.id);
+    if (!m) { location.href = '01-connexion.html'; return; }
+    var R = D.techRef();
+    $('td-aide').textContent = 'Le montant de sa commande, de son devis, d’un cadeau — le lien reste valable ' + R.lienValiditeJours + ' jours ; au-delà il expire tout seul.';
+    $('td-note').innerHTML = 'Un lien transmis fait savoir que ton bon <b>' + esc(m.raisonSociale) + '</b> s’achète au comptoir d’un commerce du réseau ' + esc(R.nom) + ' — ou qu’un ' + esc(D.terme('nomade')) + ' l’apporte — et nous te l’achetons à ce moment-là. '
+      + 'Il s’utilise chez toi depuis l’app Mes bons, un seul bon ou plusieurs ; aucun fonds ne transite par la plateforme.';
+
+    var l = D.techLiens({ marchandId: m.id }).slice().sort(function (a, b) { return (b.creeLe || 0) - (a.creeLe || 0); });
+    var att = l.filter(function (x) { return x.etat === 'open' || x.etat === 'partial'; });
+    var ok = l.filter(function (x) { return x.etat === 'used'; });
+    $('td-k-att').textContent = att.length;
+    $('td-k-att-s').textContent = att.length ? D.eur(att.reduce(function (a, x) { return a + x.restant; }, 0)) + ' de bons à acheter au comptoir' : 'rien en attente';
+    $('td-k-ok').textContent = ok.length;
+    $('td-k-ok-s').textContent = ok.length ? D.eur(ok.reduce(function (a, x) { return a + x.montant; }, 0)) + ' de bons utilisés chez toi' : 'aucun encore';
+
+    /* LES ONGLETS, avec leur compte ; l'onglet courant ; la liste de cet onglet — vingt lignes, les plus récentes d'abord */
+    var comptes = {};
+    ONGLETS.forEach(function (o) { comptes[o.cle] = l.filter(function (x) { return o.etats.indexOf(x.etat) > -1; }).length; });
+    $('td-onglets').innerHTML = ONGLETS.map(function (o) {
+      return '<button type="button" role="tab" class="tap" data-onglet="' + o.cle + '" aria-selected="' + (o.cle === onglet ? 'true' : 'false') + '">' + esc(o.lbl) + ' · ' + comptes[o.cle] + '</button>';
+    }).join('');
+    var O = ONGLETS.filter(function (o) { return o.cle === onglet; })[0] || ONGLETS[0];
+    var vis = l.filter(function (x) { return O.etats.indexOf(x.etat) > -1; });
+    $('td-liste').innerHTML = vis.length
+      ? vis.slice(0, 20).map(ligneHTML).join('') + (vis.length > 20 ? '<p class="vide">' + (vis.length - 20) + ' de plus, plus anciens.</p>' : '')
+      : '<p class="vide">' + esc(O.vide) + '</p>';
+  }
+
+  /* CRÉER LE LIEN — par la porte du data-layer (techLienCreer : marque vérifiée, déclaration validée, montant) ; le refus se lit
+     tel quel. Puis le lien à partager, ses boutons, son ticket (le flashcode est l'ordre de vente : la marque + le montant) —
+     et la liste se repeint sur « En attente », la ligne neuve en tête. */
+  $('td-go').addEventListener('click', function () {
+    var e0 = $('td-err'); e0.hidden = true;
+    var m = D.techMarchand(s.id) || {};
+    var r = D.techLienCreer({ marchandId: s.id, montant: $('td-m').value, reference: $('td-ref').value, client: $('td-cli').value });
+    if (!r.ok) { e0.hidden = false; e0.textContent = r.motif; if (r.champ === 'montant') $('td-m').focus(); return; }
+    var url = D.techLienUrl(r.lien.slug);
+    $('td-neuf').hidden = false;
+    $('td-neuf-txt').innerHTML = 'Partage-le comme tu veux — message, réseaux, flashcode : celui qui l’ouvre voit le bon <b>' + esc(m.raisonSociale) + '</b> proposé, et où l’acheter.';
+    $('td-url').textContent = url;
+    $('td-wa').href = 'https://wa.me/?text=' + encodeURIComponent('Ton bon d’achat ' + m.raisonSociale + ' de ' + D.eur(r.lien.montant) + (r.lien.reference ? ' (' + r.lien.reference + ')' : '') + ' — où l’acheter : ' + url);
+    $('td-ouvrir').href = url;
+    $('td-ticket').innerHTML = D.techLienTicketHTML(r.lien, url);
+    $('td-m').value = ''; $('td-ref').value = ''; $('td-cli').value = '';
+    onglet = 'open';
+    peindre();
+    $('td-neuf').scrollIntoView({ block: 'center', behavior: 'smooth' });
+  });
+
+  /* COPIER — le lien neuf, ou celui d'une ligne du suivi ; le bouton le dit, puis reprend son mot. */
+  function copier(b, txt) {
+    try { navigator.clipboard.writeText(txt); } catch (e) {}
+    var avant = b.textContent; b.textContent = 'Lien copié'; setTimeout(function () { b.textContent = avant; }, 1600);
+  }
+  $('td-copier').addEventListener('click', function () { copier(this, $('td-url').textContent); });
+
+  document.addEventListener('click', function (e) {
+    var t = e.target;
+    var o = t.closest && t.closest('[data-onglet]');
+    if (o) { onglet = o.getAttribute('data-onglet'); peindre(); return; }
+    var c = t.closest && t.closest('[data-copier]');
+    if (c) { copier(c, D.techLienUrl(c.getAttribute('data-copier'))); return; }
+    var a = t.closest && t.closest('[data-ann]');
+    if (!a) return;
+    var r = D.techLienAnnuler(a.getAttribute('data-ann'), s.id);
+    if (!r.ok) { $('td-err').hidden = false; $('td-err').textContent = r.motif; return; }
+    peindre();
+  });
+
+  peindre();
+  window.addEventListener('pec-bus', peindre);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindre(); });
+})();
+</script>
+</body>
+</html>

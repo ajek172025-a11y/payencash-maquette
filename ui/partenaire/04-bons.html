@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Bons vendus</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-filters.js"></script><!-- recherche, tri par en-tête, pagination, état vide — par convention d'attributs -->
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<script src="../assets/payencash-qr.js"></script><!-- le flashcode du ticket réimprimé -->
+<!-- LES BONS DE MARQUE VENDUS PAR CE POINT (23/09 — le grossiste). POURQUOI : chaque bon émis au comptoir (techBons, filtré sur
+     la fiche de vente du point) vit ici avec son ÉTAT (techBonEtatLbl : acheté par le réseau, remis au client, utilisé chez la
+     marque, annulé — dérivé, jamais écrit), la marque, ce que le point nous doit dessus (la vente qui l'a fait naître :
+     prixPoint, et où en est son prélèvement — techVenteStatutLbl), et deux gestes :
+       · Réimprimer — le même ticket que la vente (techBonTicketHTML, une source) avec son flashcode ;
+       · Annuler — un bon émis par erreur : dans ref.tech.annulationMinutes, non utilisé, vente pas encore partie au prélèvement ;
+         motif obligatoire ; le data-layer (techBonAnnuler) tranche et son refus s'affiche tel quel. Une vente payée d'avance
+         recrédite l'avance du distributeur nomade ; une vente à prélever s'annule avec le bon.
+     CE QU'IL NOUS DOIT — en tête : l'encours du point (techEncours : vendu, pas encore réglé, et le plafond), et pour chaque
+     offre de marque en attente, l'arrêté qui l'emportera (techArrete). Un distributeur nomade lit son solde d'avance à la place.
+     Kit de listes : recherche (data-fsearch), tri par en-tête (data-fsortable), 10 par page (data-fpage), état vide (data-fvide).
+     (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : le cadre prend la grande largeur (pec-large) pour le
+     tableau ; en tête, les nombres du mois à gauche et « Ce que je dois » dans un panneau à droite ; la recherche, le tableau et
+     ses gestes à l'échelle de lecture d'un écran (lignes de 14 à 15 px). Sur téléphone, rien ne change : même ordre, mêmes
+     tailles, mêmes marges. -->
+<style>
+  .pt-garde{border-radius:16px;background:var(--color-amber-well);padding:14px;margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--color-amber-text)}
+  .pt-garde .s{margin-top:4px;font-size:12px}
+  .bl-tete{margin:0 0 14px}
+  .bl-h2{margin:0 0 8px}
+  .bl-kpi{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:0 0 12px}
+  .bl-kpi .pec-card{padding:10px 12px}
+  .bl-kpi .l{font-size:10.5px;color:var(--color-muted)}
+  .bl-kpi .v{font-weight:800;font-size:17px;margin-top:2px}
+  .bl-du{padding:10px 14px;margin:0 0 12px}
+  .bl-du .r{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
+  .bl-du .r:first-child{border-top:0}
+  .bl-du .r .l{min-width:0;color:var(--color-muted)}
+  .bl-du .r .v{white-space:nowrap;font-weight:800}
+  .bl-du .r.tot .v{color:var(--color-primary-dark)}
+  .bl-wrap{overflow-x:auto;margin-top:8px;border-radius:14px;background:var(--color-surface);box-shadow:var(--shadow-card)}
+  .bl-table{width:100%;border-collapse:collapse;font-size:11px}
+  .bl-table th{position:sticky;top:0;background:var(--color-card);text-align:left;font-size:10px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;color:var(--color-muted);padding:9px 8px;white-space:nowrap;cursor:pointer;user-select:none}
+  .bl-table th[aria-sort="ascending"]::after{content:" ↑"}.bl-table th[aria-sort="descending"]::after{content:" ↓"}
+  .bl-table td{padding:8px;border-top:1px solid var(--color-sep);vertical-align:top;line-height:1.35}
+  .bl-table td.n{text-align:right;white-space:nowrap;font-weight:700}
+  .bl-table .mono{font-family:var(--font-mono);font-size:10px;color:var(--color-muted)}
+  .bl-table .pec-pill{font-size:9.5px;padding:3px 8px}
+  .bl-act{display:flex;flex-direction:column;gap:4px}
+  .bl-act button{border:1px solid var(--color-sep);border-radius:8px;background:var(--color-surface);padding:5px 8px;font:inherit;font-size:10.5px;font-weight:700;color:var(--color-ink);cursor:pointer;white-space:nowrap}
+  .bl-act button[data-annuler]{color:#B3372B;border-color:rgba(179,55,43,.35)}
+  .bl-msg{margin:0 0 10px;padding:10px 12px;border-radius:12px;font-size:12px;font-weight:700;line-height:1.45}
+  .bl-msg.ko{background:rgba(179,55,43,.1);color:#B3372B}.bl-msg.ok{background:var(--color-mint);color:var(--color-primary-dark)}
+  .bl-panel{margin-top:12px;padding:14px}
+  .bl-panel textarea{width:100%;resize:vertical;margin-top:8px}
+  .bl-panel-h{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
+  .bl-panel-t{font-size:13.5px}
+  .bl-fermer{border:none;background:var(--color-card);border-radius:999px;width:30px;height:30px;font-size:16px;cursor:pointer}
+  .bl-imprimer{margin-top:12px}
+  .bl-motif-p{margin:4px 0 0}
+  .bl-motif-btns{display:flex;gap:8px;margin-top:10px}
+  .bl-motif-btns > *{flex:1}
+  .bl-motif-btns .pec-cta{background:#B3372B}
+  .bl-note{margin:14px 0 18px;line-height:1.55}
+  .meta{font-size:11.5px;color:var(--color-muted)}
+  /* sur téléphone, la grille du haut ne met aucun écart de plus : les marges d'avant font l'espacement */
+  @media (max-width:1023.98px){ .bl-haut{gap:0} }
+  /* ── LE BUREAU : les nombres et ce que je dois côte à côte, le tableau à l'échelle de lecture d'un écran ── */
+  @media (min-width:1024px){
+    .meta{font-size:13px}                                  /* d'abord : les classes propres (.bl-note, .bl-motif-p) la précisent */
+    .pt-garde{padding:18px 22px;font-size:15px} .pt-garde .s{font-size:13.5px}
+    .bl-tete{margin-bottom:24px}
+    .bl-h2{margin:0 0 10px}
+    .bl-kpi{gap:18px;margin:0}
+    .bl-kpi .pec-card{padding:18px 20px}
+    .bl-kpi .l{font-size:13px}
+    .bl-kpi .v{font-size:28px;letter-spacing:-.5px;margin-top:6px}
+    .bl-du{padding:12px 22px;margin:0}
+    .bl-du .r{font-size:14px;padding:9px 0}
+    .bl-msg{margin:22px 0 0;padding:12px 16px;font-size:14px}
+    .bl-recherche{max-width:520px;margin-top:26px}
+    .bl-wrap{margin-top:14px;border-radius:18px}
+    .bl-table{font-size:14px}
+    .bl-table th{font-size:11.5px;padding:13px 16px}
+    .bl-table td{padding:13px 16px;line-height:1.45}
+    .bl-table .mono{font-size:12.5px}
+    .bl-table .pec-pill{font-size:11.5px;padding:4px 10px}
+    .bl-act{flex-direction:row;flex-wrap:wrap;gap:6px}
+    .bl-act button{font-size:13px;padding:7px 12px}
+    .bl-wrap .pec-fpage{margin:0;padding:10px 12px 10px 16px;border:0;border-top:1px solid var(--color-sep);border-radius:0}
+    .bl-wrap .pec-fpage-info{font-size:13px}
+    .bl-wrap .pec-fpage-nav button{font-size:13.5px;min-width:34px;height:34px}
+    .bl-panel{max-width:640px;margin-top:22px;padding:22px 26px}
+    .bl-panel-t{font-size:16px}
+    .bl-imprimer{width:fit-content}
+    .bl-motif-p{font-size:13.5px;line-height:1.55}
+    .bl-motif-btns{justify-content:flex-end}
+    .bl-motif-btns > *{flex:0 0 auto}
+    .bl-note{margin:22px 0 0;font-size:13.5px;max-width:110ch}
+  }
+  @media print {
+    body * { visibility: hidden; }
+    #bl-ticket-html, #bl-ticket-html * { visibility: visible; }
+    #bl-ticket-html { position: absolute; left: 0; top: 0; }
+    .pec-scene, .pec-device, .pec-body { overflow: visible !important; height: auto !important; max-height: none !important; }
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device pec-large"><!-- (24/09, soir) pec-large : le tableau des bons prend la grande largeur de bureau -->
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+
+      <!-- (24/09, soir) L'EN-TÊTE DE PAGE : le titre, le point et le délai d'annulation (lu au référentiel) -->
+      <div class="pec-page-tete bl-tete">
+        <div class="tx">
+          <h1>Bons vendus</h1>
+          <p class="sous"><span id="bl-enseigne">—</span> · l’état de chaque bon de marque, réimpression, annulation au comptoir <span id="bl-delai">—</span></p>
+        </div>
+      </div>
+
+      <!-- GARDE (socle) : un point suspendu ou clos garde ses bons À VOIR (les clients les utilisent encore) ; seule la vente est fermée -->
+      <div id="pt-garde" class="pt-garde" hidden><b id="pt-garde-titre">—</b><div id="pt-garde-txt" class="s">—</div></div>
+
+      <!-- (24/09, soir) SUR BUREAU, LES NOMBRES DU MOIS À GAUCHE ET CE QUE JE DOIS DANS UN PANNEAU À DROITE ; sur téléphone, l'un
+           sous l'autre, dans l'ordre d'avant -->
+      <div class="pec-cols pec-cols--principal bl-haut">
+        <div class="pec-colonne">
+          <!-- Compteurs du mois — dérivés des ventes vives (techVentes du mois courant) -->
+          <div class="bl-kpi">
+            <div class="pec-card"><div class="l">Vendus ce mois</div><div class="v" id="bl-nb">0</div></div>
+            <div class="pec-card"><div class="l">Valeur ce mois</div><div class="v" id="bl-eur">0 €</div></div>
+            <div class="pec-card"><div class="l">Annulés ce mois</div><div class="v" id="bl-annules">0</div></div>
+          </div>
+        </div>
+        <div class="pec-colonne">
+          <!-- CE QUE JE DOIS — l'encours et les arrêtés à venir (sédentaire) ou le solde d'avance (nomade) -->
+          <h2 class="pec-h2 bl-h2" id="bl-du-titre">Ce que je dois</h2>
+          <div class="pec-card bl-du" id="bl-du"></div>
+        </div>
+      </div>
+
+      <div class="bl-msg" id="bl-msg" role="status" hidden></div>
+
+      <input class="pec-input bl-recherche" type="search" data-fsearch="#bl-rows > tr" placeholder="Code, marque, montant, date…" aria-label="Rechercher un bon">
+      <div class="meta" data-fvide="#bl-rows > tr" data-fvide-txt="Aucun bon ne correspond à « %q »." style="display:none;padding:10px 0 0"></div>
+
+      <div class="bl-wrap">
+        <table data-fsortable class="bl-table">
+          <thead><tr><th>Bon</th><th>Date</th><th>Montant</th><th>Je dois</th><th>État</th><th aria-hidden="true"></th></tr></thead>
+          <tbody id="bl-rows" data-fpage="10"></tbody>
+        </table>
+      </div>
+
+      <!-- RÉIMPRESSION — le même ticket (techBonTicketHTML) avec son flashcode, imprimable -->
+      <div class="pec-card pec-card--elevated bl-panel" id="bl-ticket" hidden>
+        <div class="bl-panel-h">
+          <b class="bl-panel-t" id="bl-ticket-titre">Ticket</b>
+          <button type="button" class="tap bl-fermer" id="bl-ticket-fermer" aria-label="Fermer">×</button>
+        </div>
+        <div id="bl-ticket-html"></div>
+        <button type="button" class="pec-cta pec-cta--tight tap bl-imprimer" id="bl-ticket-imprimer">Imprimer le ticket</button>
+      </div>
+
+      <!-- ANNULATION — motif obligatoire, le data-layer tranche (délai, bon non utilisé, vente pas encore prélevée) -->
+      <div class="pec-card pec-card--elevated bl-panel" id="bl-motif" hidden>
+        <b class="bl-panel-t" id="bl-motif-titre">Annuler le bon</b>
+        <p class="meta bl-motif-p" id="bl-motif-txt">—</p>
+        <textarea class="pec-input" id="bl-motif-txt-in" rows="2" placeholder="Motif obligatoire (erreur de montant, client reparti sans payer…)"></textarea>
+        <div class="bl-motif-btns">
+          <button type="button" class="pec-cta pec-cta--tight tap" id="bl-motif-ok">Annuler ce bon</button>
+          <button type="button" class="pec-btn-secondary tap" id="bl-motif-non">Garder</button>
+        </div>
+      </div>
+
+      <p class="meta bl-note" id="bl-note">—</p>
+
+    </div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, P = window.PEC_PART; if (!D || !P || !D.techBons) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function pad(n) { return String(n).padStart(2, '0'); }
+    /* LE CODE NE S'ÉCRIT EN ENTIER QUE SUR LE TICKET : à l'écran, les groupes du milieu sont voilés — le même masque que la
+       page du bon proposé. */
+    function masque(code) { return String(code || '').replace(/-[A-Z0-9]{4}(?=-)/g, '-••••'); }
+    var derniereEmpreinte = null, aAnnuler = null;
+
+    // GARDE (socle) : bandeau seulement — la liste reste lisible quel que soit l'état du point
+    P.garde({ desactiver: [] });
+
+    function message(txt, ok) { var m = $('bl-msg'); m.hidden = !txt; m.textContent = txt || ''; m.className = 'bl-msg ' + (ok ? 'ok' : 'ko'); }
+    function bonsDuPoint() { var r = P.revendeur(); return r ? D.techBons({ revendeurId: r.id }) : []; }
+    function trouver(code) { return bonsDuPoint().filter(function (b) { return b.code === code; })[0] || null; }
+    /* ANNULABLE ICI ? — la même règle que techBonAnnuler (non utilisé, dans le délai, vente pas partie au prélèvement) : le
+       bouton ne s'offre que quand le geste peut aboutir ; le data-layer reste seul juge au clic. */
+    function annulable(b, R) {
+      if (b.etat === 'cancelled' || b.etat === 'redeemed' || b.solde < b.montant) return false;
+      if ((Date.now() - (b.emisLe || 0)) >= R.annulationMinutes * 60000) return false;
+      var v = b.venteRef ? D.techVente(b.venteRef) : null;
+      if (v && v.paiement !== 'avance' && v.statut !== 'a_prelever') return false;
+      return true;
+    }
+    function resteMin(b, R) { return Math.max(0, Math.ceil((R.annulationMinutes * 60000 - (Date.now() - (b.emisLe || 0))) / 60000)); }
+    function pillEtat(b) {
+      var cls = b.etat === 'cancelled' ? 'pec-pill--off' : (b.etat === 'redeemed' ? 'pec-pill--done' : (b.etat === 'sold' ? 'pec-pill--live' : 'pec-pill--wait'));
+      return '<span class="pec-pill ' + cls + '">' + esc(D.techBonEtatLbl(b.etat)) + '</span>';
+    }
+
+    /* CE QUE JE DOIS — sédentaire : l'encours (techEncours) et, par offre de marque en attente, l'arrêté qui emportera ces
+       ventes (techArrete : la fin de fenêtre, l'échéance du prélèvement). Nomade : son solde d'avance et sa garantie. */
+    function pl(n, mot) { return n + ' ' + mot + (n > 1 ? 's' : ''); }
+    function rendreDu() {
+      var z = $('bl-du'), r = P.revendeur(), R = D.techRef();
+      if (!r) { z.innerHTML = '<div class="meta" style="padding:6px 0">Aucune fiche de vente rattachée à cette session.</div>'; return; }
+      if (D.techPaieParAvance(r)) {
+        var av = D.avanceSolde('revendeur', r.id);
+        $('bl-du-titre').textContent = 'Mon avance';
+        z.innerHTML = '<div class="r"><span class="l">Avance disponible pour de nouveaux bons</span><span class="v"' + (av.bas ? ' style="color:var(--color-amber-text)"' : '') + '>' + esc(D.eur(av.solde)) + '</span></div>'
+          + '<div class="r"><span class="l">Garantie versée (dépôt, restitué à ton départ)</span><span class="v">' + esc(D.eur(av.garantie)) + (av.garantieVersee ? '' : ' / ' + esc(D.eur(av.garantieDue))) + '</span></div>'
+          + '<div class="r"><span class="l">Chaque bon vendu débite ton avance de son prix réseau : rien ne reste dû.</span><span class="v"><a href="05-releves.html" class="pec-tap-confort" style="color:var(--color-primary-dark)">Mouvements ›</a></span></div>';
+        return;
+      }
+      $('bl-du-titre').textContent = 'Ce que je dois';
+      var enc = D.techEncours(r.id);
+      var attente = D.techVentes({ revendeurId: r.id, statut: 'a_prelever' }), parMode = {};
+      attente.forEach(function (v) { var g = parMode[v.modeId] || (parMode[v.modeId] = { n: 0, montant: 0 }); g.n++; g.montant = Math.round((g.montant + v.prixPoint) * 100) / 100; });
+      /* (24/09, soir) chaque ligne dit ce que porte son chiffre : le nombre de bons va avec l'encours, le reste avec le plafond */
+      var h = '<div class="r tot"><span class="l">Encours — ' + pl(enc.ventes, 'bon') + ' vendu' + (enc.ventes > 1 ? 's' : '') + ', pas encore réglé' + (enc.ventes > 1 ? 's' : '') + '</span><span class="v">' + esc(D.eur(enc.montant)) + '</span></div>'
+        + '<div class="r"><span class="l">Ventes encore possibles sous ton plafond d’encours de ' + esc(D.eur(enc.plafond)) + (enc.depasse ? ' — <b style="color:var(--color-amber-text)">dépassé</b>' : '') + '</span><span class="v">' + esc(D.eur(Math.max(0, enc.reste))) + '</span></div>';
+      Object.keys(parMode).forEach(function (mid) {
+        var a = D.techArrete(mid), g = parMode[mid];
+        h += '<div class="r"><span class="l">Offre « ' + esc(a.mode.libelle) + ' » — ' + g.n + ' bon' + (g.n > 1 ? 's' : '') + ' : arrêté ' + (a.du ? 'dû, prélèvement à préparer' : 'le ' + esc(D.dateHeure(a.prochaineFin))) + ', échéance ' + esc(D.dateHeure(a.echeance)) + '</span><span class="v">' + esc(D.eur(g.montant)) + '</span></div>';
+      });
+      if (enc.impayes) h += '<div class="r"><span class="l" style="color:var(--color-danger);font-weight:700">' + pl(enc.prelevementsImpayes || 1, 'prélèvement') + ' revenu' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' impayé' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' (' + pl(enc.impayes, 'bon') + ') — à régulariser avant de revendre</span><span class="v" style="color:var(--color-danger)">' + esc(D.eur(enc.impayeMontant)) + '</span></div>';
+      if (!attente.length && !enc.impayes) h += '<div class="r"><span class="l">Rien en attente : tout ce que tu as vendu est réglé, ou parti au prélèvement.</span><span class="v"><a href="05-releves.html" class="pec-tap-confort" style="color:var(--color-primary-dark)">Relevés ›</a></span></div>';
+      z.innerHTML = h;
+    }
+
+    function rendre() {
+      var p = P.point(), r = P.revendeur(), R = D.techRef(), tb = $('bl-rows');
+      if (!$('bl-enseigne')) return;
+      $('bl-enseigne').textContent = p ? p.enseigne : 'aucun point rattaché';
+      $('bl-delai').textContent = 'dans les ' + R.annulationMinutes + ' min';
+      /* (24/09, soir — relecture juridique) le distributeur nomade n'ACHÈTE pas le bon : il le vend pour notre compte, sur ce qu'il
+         a payé d'avance — la phrase suit le mode */
+      $('bl-note').textContent = 'Un bon de marque vaut ' + D.bonsRef().validiteMois + ' mois et s’utilise en une ou plusieurs fois, uniquement sur le site de la marque, depuis l’app Mes bons. '
+        + (r && D.techPaieParAvance(r)
+          ? 'Tu l’as vendu pour le compte de ' + R.nom + ' : son prix réseau s’est imputé sur ton avance — annuler le recrédite.'
+          : 'Tu l’as acheté à ' + R.nom + ' en le vendant : son prix réseau part au prélèvement de l’arrêté — annuler dans les ' + R.annulationMinutes + ' min retire la vente du prélèvement.')
+        + ' Un bon déjà utilisé ne s’annule plus : seule la marque peut encore rembourser.';
+      rendreDu();
+      if (!p || !r) {
+        $('bl-nb').textContent = '0'; $('bl-eur').textContent = '0 €'; $('bl-annules').textContent = '0';
+        tb.innerHTML = '<tr data-fvide-row><td colspan="6" class="meta" style="text-align:center;padding:18px">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</td></tr>';
+        return;
+      }
+      var mois = D.techVentes({ revendeurId: r.id, mois: D.techPeriodeCourante() });
+      var vives = mois.filter(function (v) { return v.statut !== 'annulee'; });
+      $('bl-nb').textContent = String(vives.length);
+      $('bl-eur').textContent = D.eur(vives.reduce(function (a, v) { return a + v.montant; }, 0));
+      $('bl-annules').textContent = String(mois.length - vives.length);
+      var tous = bonsDuPoint();
+      /* on ne redessine que si la liste a changé : un redessin perd le tri choisi par en-tête et la page courante — le bus
+         réveille l'écran bien plus souvent que la liste ne bouge */
+      var emp = tous.map(function (b) { var v = b.venteRef ? D.techVente(b.venteRef) : null; return b.code + '|' + b.etat + '|' + b.solde + '|' + (annulable(b, R) ? 1 : 0) + '|' + (v ? v.statut : '-'); }).join(';');
+      if (emp === derniereEmpreinte && tb.children.length) return;
+      derniereEmpreinte = emp;
+      if (!tous.length) {
+        tb.innerHTML = '<tr data-fvide-row><td colspan="6" class="meta" style="text-align:center;padding:18px">Aucun bon vendu pour l\'instant — la première vente se fait dans <a href="03-vendre.html" style="color:var(--color-primary-dark);font-weight:700">Vendre</a>.</td></tr>';
+        return;
+      }
+      tb.innerHTML = tous.map(function (b) {
+        var d = new Date(b.emisLe || 0), iso = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) + ' ' + pad(d.getHours()) + ':' + pad(d.getMinutes());
+        var ann = annulable(b, R), v = b.venteRef ? D.techVente(b.venteRef) : null;
+        var detail = b.etat === 'cancelled' ? (b.motifAnnulation ? 'motif : ' + b.motifAnnulation : '')
+          : b.etat === 'redeemed' ? (b.utiliseLe ? 'le ' + new Date(b.utiliseLe).toLocaleDateString('fr-FR') : '')
+          : (b.solde < b.montant ? 'reste ' + D.eur(b.solde) + ' à dépenser' : (b.expireLe ? 'jusqu\'au ' + new Date(b.expireLe).toLocaleDateString('fr-FR') : ''));
+        var pCell = v
+          ? esc(D.eur(v.prixPoint)) + '<br><span class="pec-pill ' + esc(D.techVenteStatutPill(v.statut)) + '">' + esc(D.techVenteStatutLbl(v.statut)) + '</span>'
+          : '<span class="mono">—</span>';
+        return '<tr data-code="' + esc(b.code) + '">' +
+          '<td><b>' + esc(masque(b.code)) + '</b><br><span class="mono">' + esc(b.marchand) + '</span></td>' +
+          '<td data-s="' + esc(iso) + '">' + esc(d.toLocaleDateString('fr-FR')) + '<br><span class="mono">' + esc(pad(d.getHours()) + ':' + pad(d.getMinutes())) + '</span></td>' +
+          '<td class="n" data-s="' + esc(b.montant) + '">' + esc(D.eur(b.montant)) + '</td>' +
+          '<td class="n" data-s="' + esc(v ? v.prixPoint : -1) + '">' + pCell + '</td>' +
+          '<td>' + pillEtat(b) + (detail ? '<br><span class="mono">' + esc(detail) + '</span>' : '') + '</td>' +
+          '<td><div class="bl-act">' +
+            (b.etat !== 'cancelled' ? '<button type="button" class="tap" data-reimprimer="' + esc(b.code) + '">Réimprimer</button>' : '') +
+            (ann ? '<button type="button" class="tap" data-annuler="' + esc(b.code) + '" title="encore ' + esc(resteMin(b, R)) + ' min">Annuler</button>' : '') +
+          '</div></td></tr>';
+      }).join('');
+    }
+
+    /* L'ADRESSE ABSOLUE DE L'APP MES BONS sur le ticket réimprimé — la même que celle du comptoir : la fiche du bon. */
+    function flashHTML(b) {
+      var base = location.href, i = base.indexOf('/ui/'), racine = i > -1 ? base.slice(0, i) + '/ui/bons/' : '../bons/';
+      var url = racine + '02-bon.html?code=' + encodeURIComponent(b.code);
+      var qr = (window.PEC_QR && PEC_QR.svg) ? PEC_QR.svg(url, { size: 112 }) : '';
+      return '<div class="pec-ordre" style="margin-top:10px"><div class="pec-ordre-qr">' + (qr || '<span>Flashcode indisponible sur cet appareil — le code suffit.</span>') + '</div>'
+        + '<div class="pec-ordre-txt"><b>À scanner avec l’app Mes bons</b><span>Le bon s’y range au nom de son utilisateur et s’utilise chez ' + esc(b.marchand) + '.</span><span class="ref">' + esc(b.code) + '</span></div></div>';
+    }
+
+    // RÉIMPRIMER — le même ticket que la vente
+    $('bl-rows').addEventListener('click', function (e) {
+      var r = e.target.closest('[data-reimprimer]'), a = e.target.closest('[data-annuler]');
+      if (r) {
+        var b = trouver(r.getAttribute('data-reimprimer')); if (!b) { message('Bon introuvable parmi les bons de ce point.', false); return; }
+        $('bl-motif').hidden = true; aAnnuler = null;
+        $('bl-ticket-titre').textContent = 'Ticket ' + b.code + ' — ' + D.eur(b.montant);
+        $('bl-ticket-html').innerHTML = D.techBonTicketHTML(b) + flashHTML(b);
+        $('bl-ticket').hidden = false; $('bl-ticket').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        message('', true);
+        return;
+      }
+      if (a) {
+        var b2 = trouver(a.getAttribute('data-annuler')); if (!b2) { message('Bon introuvable parmi les bons de ce point.', false); return; }
+        var v2 = b2.venteRef ? D.techVente(b2.venteRef) : null;
+        aAnnuler = b2.code;
+        $('bl-ticket').hidden = true;
+        $('bl-motif-titre').textContent = 'Annuler le bon ' + masque(b2.code) + ' — ' + D.eur(b2.montant);
+        $('bl-motif-txt').textContent = 'Émis le ' + new Date(b2.emisLe).toLocaleString('fr-FR') + ' · encore ' + resteMin(b2, D.techRef()) + ' min pour annuler au comptoir. Rembourse ton client : '
+          + (v2 ? (v2.paiement === 'avance' ? 'les ' + D.eur(v2.prixPoint) + ' débités de ton avance te sont recrédités.' : 'la vente ' + v2.reference + ' (' + D.eur(v2.prixPoint) + ') sort du prochain prélèvement.') : 'rien ne sera prélevé pour ce bon.');
+        $('bl-motif-txt-in').value = '';
+        $('bl-motif').hidden = false; $('bl-motif').scrollIntoView({ block: 'nearest', behavior: 'smooth' }); $('bl-motif-txt-in').focus();
+        message('', true);
+      }
+    });
+    $('bl-ticket-fermer').addEventListener('click', function () { $('bl-ticket').hidden = true; $('bl-ticket-html').innerHTML = ''; });
+    $('bl-ticket-imprimer').addEventListener('click', function () { window.print(); });
+    $('bl-motif-non').addEventListener('click', function () { $('bl-motif').hidden = true; aAnnuler = null; });
+    // ANNULER — techBonAnnuler(code, { motif, par }) : chaque refus (motif vide, déjà utilisé, délai, vente prélevée) s'affiche tel quel
+    $('bl-motif-ok').addEventListener('click', function () {
+      var b = aAnnuler ? trouver(aAnnuler) : null;
+      if (!b) { message('Aucun bon sélectionné.', false); return; }
+      var r = D.techBonAnnuler(b.code, { motif: $('bl-motif-txt-in').value, par: P.par() });
+      if (!r.ok) { message(r.motif, false); return; }
+      $('bl-motif').hidden = true; aAnnuler = null;
+      /* ce que l'annulation A FAIT, lu sur la vente rendue : recréditée, ou retirée du prélèvement — pas ce qu'on espère */
+      var v = r.vente;
+      message('✓ Bon ' + masque(b.code) + ' annulé (' + D.eur(b.montant) + ')' + (v ? (v.paiement === 'avance' ? ' — ' + D.eur(v.prixPoint) + ' recrédités sur ton avance.' : ' — la vente ' + v.reference + ' ne sera pas prélevée.') : '.') + ' Rembourse ton client.', true);
+      derniereEmpreinte = null; rendre();
+    });
+
+    rendre();
+    // (écran non sourd) une vente, une annulation, un bon utilisé chez la marque, un prélèvement réglé ou impayé : la liste se repeint
+    window.addEventListener('pec-bus', rendre);
+    window.addEventListener('storage', rendre);
+    setInterval(rendre, 60000);   // le délai d'annulation s'écoule : le bouton disparaît quand il expire
+  })();
+</script>
+</body>
+</html>

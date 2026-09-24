@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Notifications</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<!-- LE FIL DU POINT (18/09 ; 23/09 — le grossiste). POURQUOI : une pièce refusée au coffre, un contrat de distribution à signer,
+     l'activation du point, un document en vigueur à accepter, une suspension, une réponse de la hotline — le commerce l'apprenait
+     en butant dessus, ou pas du tout.
+     Rien n'est stocké ici : les faits sont DÉRIVÉS par PEC_DATA.filPro('partenaire', pointId) de leurs sources réelles
+     (coffre, référentiel partenaires, file hotline) ; seul lu / non-lu persiste, par COMPTE. Ce que la vente des bons de marque
+     lui doit encore (prélèvement revenu impayé, avance à compléter) se lit dans Mes relevés.
+     Le rendu est celui de PEC_FIL — le même pour les espaces professionnels, pour qu'ils ne divergent pas.
+     (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : une colonne de lecture de 760 px (pec-etroit) et
+     l'échelle d'un écran ; rien d'autre ne bouge, et le téléphone garde ses tailles. -->
+<style>
+  /* (24/09, soir) les styles en ligne sont partis dans ces classes : c'est la seule façon de leur donner deux échelles */
+  .nt-barre{display:flex;align-items:center;justify-content:space-between;gap:10px}
+  .nt-retour{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:999px;background:var(--color-mint);color:var(--color-primary-dark)}
+  .nt-retour .pec-ico{font-size:17px}
+  .nt-toutlu{width:auto;height:32px;padding:0 14px;font-size:12px;white-space:nowrap}
+  .nt-h1{margin:10px 0 2px;font-size:24px;font-weight:800}
+  .nt-sous{margin:0 0 14px;font-size:12.5px;color:var(--color-muted)}
+  .nt-note{margin:14px 0 18px;font-size:11px;color:var(--color-muted);line-height:1.55}
+  /* ── LE BUREAU : la même page, à l'échelle de lecture d'un écran. Les cartes du fil sont dessinées par PEC_FIL (feuille injectée
+     au rendu, après celle-ci) : on les vise sous #nt-liste pour que la règle de bureau l'emporte quel que soit l'ordre. ── */
+  @media (min-width:1024px){
+    .nt-retour{width:40px;height:40px}
+    .nt-retour .pec-ico{font-size:19px}
+    .nt-toutlu{min-width:0;height:40px;min-height:40px;padding:0 18px;font-size:13.5px}
+    .nt-h1{margin:14px 0 4px;font-size:30px;letter-spacing:-.8px}
+    .nt-sous{margin-bottom:22px;font-size:14.5px}
+    #nt-liste .pf-nt{padding:16px 20px;margin-bottom:12px;border-radius:16px}
+    #nt-liste .pf-nt .ic{width:38px;height:38px;border-radius:12px}
+    #nt-liste .pf-nt .t{font-size:15.5px}
+    #nt-liste .pf-nt p{margin-top:9px;font-size:14px}
+    #nt-liste .pf-nt .m{margin-top:8px;font-size:12.5px}
+    #nt-liste .pf-vide{padding:40px 20px;font-size:14px}
+    .nt-note{margin:22px 0 0;font-size:13px}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device pec-etroit"><!-- (24/09, soir) pec-etroit : sur bureau, une colonne de lecture de 760 px -->
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+
+      <div class="nt-barre">
+        <a href="02-accueil.html" class="tap nt-retour" aria-label="Retour à l'accueil">
+          <svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-chevron-left"/></svg>
+        </a>
+        <button class="pec-btn-secondary tap nt-toutlu" id="nt-tout-lu" type="button" hidden>Tout marquer comme lu</button>
+      </div>
+
+      <h1 class="nt-h1">Notifications</h1>
+      <p class="nt-sous" id="nt-sous">—</p>
+
+      <div id="nt-liste"></div>
+
+      <p class="nt-note">Ce fil se construit tout seul à partir de faits réels : ton dossier au coffre, ton contrat de distribution, l'état de ton point, les documents en vigueur à lire ou accepter et les réponses de la hotline. Rien n'y est écrit à la main.</p>
+    </div>
+  </div>
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+</div>
+</div>
+<script>
+  (function () {
+    if (window.PEC_PART && PEC_PART.brancher) PEC_PART.brancher();
+    var D = window.PEC_DATA; if (!D || !window.PEC_FIL) return;
+    var id = (window.PEC_PART && PEC_PART.pointId) ? PEC_PART.pointId() : null;
+    // PEC_FIL.rendre repeint le fil sur 'pec-bus' et 'storage' (écran non sourd) ; le sous-titre compte les non-lues
+    var peindre = PEC_FIL.rendre(document.getElementById('nt-liste'), 'partenaire', id, {
+      sousTitre: document.getElementById('nt-sous'),
+      toutLu: document.getElementById('nt-tout-lu')
+    });
+    // (écran non sourd) un fait nouveau — prélèvement refusé ou remboursé, point activé, pièce refusée — repeint le fil sans rechargement
+    window.addEventListener('pec-bus', peindre);
+    window.addEventListener('storage', peindre);
+  })();
+</script>
+</body>
+</html>

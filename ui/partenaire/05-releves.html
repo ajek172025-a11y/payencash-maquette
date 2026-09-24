@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Mes relevés</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<!-- MES RELEVÉS (23/09 — le grossiste). POURQUOI : ce que le commerce nous doit et ce qui a été réglé — la preuve, pas la dette.
+     COMMERCE SÉDENTAIRE : il vend d'abord, nous le prélevons ensuite. Ce qu'il nous doit est une créance commerciale ordinaire :
+     ses achats de bons (techVentes : prixPoint, figé au comptoir), arrêtés à l'heure dite et groupés par remise de prélèvements
+     (techRemises : la ligne de CE point — montant, échéance, statut du prélèvement, motif de la banque s'il revient impayé), les
+     pénalités que le contrat met à sa charge (techPenalites), son mandat SEPA (techSepaMandat) et son encours (techEncours).
+     DISTRIBUTEUR NOMADE : il paie d'AVANCE. Son avance (avanceSolde, avanceMouvements) tient la garantie, les virements d'avance
+     que nous constatons, les achats de bons débités à la vente, les remboursements d'annulation : rien ne reste dû.
+     Tout est CALCULÉ par le data-layer : totaux (techVentesTotaux), mois par mois (techVentes du mois, techPeriodeCourante).
+     Aucun montant n'est recalculé ici. La part du commerce lui appartient : nous la lisons sur la vente, nous ne la facturons pas.
+     (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : deux colonnes — le mois à gauche (la part gardée ou
+     la commission, le calcul), l'argent qui bouge à droite (prélèvements ou avance, pénalités, puis mois par mois). Sur
+     téléphone, les deux colonnes s'empilent dans l'ordre d'avant, avec les mêmes marges.
+     (24/09, soir — relecture juridique) la valeur faciale est le PRIX CONSEILLÉ au client (le commerce revend au prix qu'il
+     affiche) ; le nomade paie d'avance la valeur des bons à revendre — il n'« avance » rien qu'on lui « rembourserait ». -->
+<style>
+  .rv-kv{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--color-sep);font-size:12.5px}
+  .rv-kv:first-child{border-top:0}
+  .rv-kv .l{color:var(--color-muted);min-width:0}
+  .rv-kv .v{white-space:nowrap;font-weight:700}
+  .rv-kv.tot{font-weight:800;color:var(--color-primary-dark)}
+  .rv-h{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid var(--color-sep);font-size:12px;line-height:1.45}
+  .rv-h:first-child{border-top:0}
+  .rv-h .m{font-weight:800}
+  .rv-h .pec-pill{font-size:9.5px;padding:3px 8px}
+  .rv-p{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-top:1px solid var(--color-sep);font-size:12px;line-height:1.45}
+  .rv-p:first-child{border-top:0}
+  .rv-p .mono{font-family:var(--font-mono);font-size:10.5px;color:var(--color-muted)}
+  .rv-p .pec-pill{font-size:9.5px;padding:3px 8px}
+  .rv-p .n{white-space:nowrap;font-weight:800;text-align:right}
+  .meta{font-size:11.5px;color:var(--color-muted)}
+  .pec-dark-banner .sub#rv-sous{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.4;margin-top:4px}
+  /* (24/09, soir) les classes de la page — les styles en ligne sont partis ici, pour avoir deux échelles */
+  .pt-garde{border-radius:16px;background:var(--color-amber-well);padding:14px;margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--color-amber-text)}
+  .pt-garde .s{margin-top:4px;font-size:12px}
+  .rv-tete{margin:0 0 14px}
+  .rv-mois-tx{min-width:0}
+  .rv-statut{align-self:center;flex:none}
+  .rv-calc-carte{margin-top:10px}
+  .rv-titre{font-weight:700;font-size:13.5px;margin-bottom:4px}
+  .rv-h2{margin:16px 0 8px}
+  .rv-note{margin:8px 0 0;line-height:1.5}
+  .rv-solde{margin-bottom:18px}
+  /* TÉLÉPHONE ET TABLETTE : les marges intérieures serrées d'avant, et pas d'écart de grille en plus des marges des sections.
+     Sur bureau, la feuille partagée donne la marge intérieure des cartes. */
+  @media (max-width:1023.98px){
+    .rv-cols{gap:0}
+    .rv-calc-carte{padding:10px 14px}
+    .rv-liste{padding:4px 14px}
+  }
+  /* ── LE BUREAU : le mois à gauche, l'argent qui bouge à droite, l'échelle de lecture d'un écran ── */
+  @media (min-width:1024px){
+    .meta{font-size:13px}                                  /* d'abord : les classes propres (.rv-note) la précisent */
+    .pt-garde{padding:18px 22px;font-size:15px} .pt-garde .s{font-size:13.5px}
+    .rv-tete{margin-bottom:24px}
+    .pec-dark-banner.rv-mois{padding:22px 24px;border-radius:18px;align-items:flex-start}
+    .rv-mois .lbl{font-size:15px}
+    .rv-mois .sub{font-size:13.5px}
+    .pec-dark-banner .sub#rv-sous{margin-top:8px}
+    .rv-mois .amt{margin-top:8px}
+    .rv-mois .amt .n{font-size:38px;letter-spacing:-1px}
+    .rv-mois .amt .e{font-size:22px}
+    .rv-statut{align-self:flex-start;font-size:12px}
+    .rv-calc-carte{margin-top:18px}
+    .rv-titre{font-size:16px;margin-bottom:8px}
+    .rv-kv{font-size:14px;padding:10px 0}
+    .rv-h,.rv-p{font-size:14px;padding:12px 0;gap:14px}
+    .rv-p .mono{font-size:12.5px}
+    .rv-h .pec-pill,.rv-p .pec-pill{font-size:11.5px;padding:4px 10px}
+    .rv-h2{margin:26px 0 10px}
+    .pec-colonne > .rv-h2:first-child{margin-top:0}
+    .rv-liste{padding:8px 24px}
+    .rv-note{margin-top:10px;font-size:13.5px}
+    .rv-solde{margin-bottom:0}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+
+      <!-- (24/09, soir) L'EN-TÊTE DE PAGE : le titre, le mois courant et le point -->
+      <div class="pec-page-tete rv-tete">
+        <div class="tx">
+          <h1>Mes relevés</h1>
+          <p class="sous"><span id="rv-mois">—</span> · <span id="rv-enseigne">—</span></p>
+        </div>
+      </div>
+
+      <!-- GARDE (socle) : un point suspendu ou clos garde ses relevés À VOIR — ce qui a été vendu reste lisible -->
+      <div id="pt-garde" class="pt-garde" hidden><b id="pt-garde-titre">—</b><div id="pt-garde-txt" class="s">—</div></div>
+
+      <!-- (24/09, soir) DEUX COLONNES SUR BUREAU : le mois à gauche, l'argent qui bouge à droite ; sur téléphone, dans cet ordre -->
+      <div class="pec-cols pec-cols--2 rv-cols">
+        <div class="pec-colonne">
+
+          <!-- LE MOIS COURANT — ce que le commerce a gardé (sa part) sur les bons vendus ; sédentaire : ce qu'il doit, nomade : son solde -->
+          <div class="pec-dark-banner pec-dark-banner--md rv-mois">
+            <div class="rv-mois-tx">
+              <div class="lbl" id="rv-lbl">Ta part gardée ce mois-ci</div>
+              <div class="sub"><span id="rv-nb">0</span> <span id="rv-nb-mot">bon vendu</span> · <span id="rv-ventes">0 €</span><span id="rv-annules"></span></div>
+              <div class="amt"><span class="n" id="rv-gagne">—</span><span class="e">€</span></div>
+              <div class="sub" id="rv-sous">—</div>
+            </div>
+            <span id="rv-statut" class="pec-pill rv-statut">—</span>
+          </div>
+
+          <!-- LE CALCUL DU MOIS, EN CLAIR — chaque ligne vient des ventes du mois -->
+          <div class="pec-card rv-calc-carte">
+            <div class="rv-titre">Le calcul du mois</div>
+            <div id="rv-calc"></div>
+            <p class="meta rv-note" id="rv-calc-txt">—</p>
+          </div>
+
+        </div>
+        <div class="pec-colonne">
+
+          <!-- SÉDENTAIRE : le mandat SEPA, l'encours, les prélèvements · NOMADE : l'avance -->
+          <h2 class="pec-h2 rv-h2" id="rv-arg-titre">Mes prélèvements</h2>
+          <div class="pec-card rv-liste" id="rv-arg"></div>
+          <p class="meta rv-note" id="rv-arg-note">—</p>
+
+          <!-- LES PÉNALITÉS — ce que le contrat met à la charge du point (impayé, représentation), prélevées sur la remise suivante -->
+          <div id="rv-pen-z" hidden>
+            <h2 class="pec-h2 rv-h2">Pénalités</h2>
+            <div class="pec-card rv-liste" id="rv-pen"></div>
+          </div>
+
+          <!-- MOIS PAR MOIS — les ventes du point, douze mois en arrière -->
+          <h2 class="pec-h2 rv-h2">Mois par mois</h2>
+          <div class="pec-card rv-liste" id="rv-histo"></div>
+          <p class="meta rv-note rv-solde" id="rv-solde">—</p>
+
+        </div>
+      </div>
+
+    </div>
+  </div><!-- /pec-body -->
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" aria-current="page" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+
+</div>
+</div>
+<script>
+  (function () {
+    var D = window.PEC_DATA, P = window.PEC_PART; if (!D || !P || !D.techVentes) return;
+    function $(id) { return document.getElementById(id); }
+    function esc(v) { return D.esc(v); }
+    function pct(x) { var n = +x; return (n % 1 ? String(Math.round(n * 100) / 100) : String(n)).replace('.', ',') + ' %'; }
+    function r2(x) { return Math.round(x * 100) / 100; }
+    // le libellé d'un mois « AAAA-MM » — par periodeCourante (une seule table des mois, dans le data-layer)
+    function moisLabel(m) { return D.periodeCourante(new Date(+String(m).slice(0, 4), +String(m).slice(5, 7) - 1, 1)).label; }
+    function kv(l, v, cls) { return '<div class="rv-kv' + (cls ? ' ' + cls : '') + '"><span class="l">' + l + '</span><span class="v">' + v + '</span></div>'; }
+    function somme(l, k) { return r2(l.reduce(function (a, v) { return a + (v[k] || 0); }, 0)); }
+
+    // GARDE (socle) : bandeau seulement — le relevé reste lisible quel que soit l'état du point
+    P.garde({ desactiver: [] });
+
+    /* LE MOIS — les ventes vives du mois courant : valeur, part gardée, prix réseau dû ou débité. */
+    function rendreMois(r, nomade) {
+      var per = D.techPeriodeCourante(), l = D.techVentes({ revendeurId: r.id, mois: per });
+      var vives = l.filter(function (v) { return v.statut !== 'annulee'; }), ann = l.length - vives.length;
+      var valeur = somme(vives, 'montant'), part = somme(vives, 'partPoint'), prix = somme(vives, 'prixPoint');
+      $('rv-mois').textContent = moisLabel(per);
+      $('rv-lbl').textContent = nomade ? 'Ta commission ce mois-ci' : 'Ta part gardée ce mois-ci';
+      $('rv-nb').textContent = String(vives.length);
+      $('rv-nb-mot').textContent = vives.length > 1 ? 'bons vendus' : 'bon vendu';   // (24/09, nuit) accordé — plus « bon(s) vendu(s) »
+      $('rv-annules').textContent = ann ? ' · ' + ann + ' annulé' + (ann > 1 ? 's' : '') : '';
+      $('rv-ventes').textContent = D.eur(valeur);
+      $('rv-gagne').textContent = D.eur(part).replace(/\s?€$/, '');
+      var regle = somme(vives.filter(function (v) { return v.statut === 'regle'; }), 'prixPoint');
+      var attente = somme(vives.filter(function (v) { return v.statut === 'a_prelever' || v.statut === 'en_prelevement'; }), 'prixPoint');
+      var impaye = somme(vives.filter(function (v) { return v.statut === 'impaye'; }), 'prixPoint');
+      /* (24/09, soir) L'ÉTAT DU MOIS AUX MOTS DU DATA-LAYER (TECH_VENTE_STATUTS : libellé et couleur) — la page n'en écrit plus un */
+      var st = $('rv-statut'), etMois = impaye > 0 ? 'impaye' : (attente > 0 ? 'a_prelever' : 'regle');
+      st.textContent = !vives.length ? 'Aucune vente' : D.techVenteStatutLbl(etMois);
+      st.className = 'pec-pill rv-statut ' + (!vives.length ? 'pec-pill--off' : D.techVenteStatutPill(etMois));
+      $('rv-sous').textContent = !vives.length ? 'Aucune vente ce mois-ci.'
+        : (nomade ? D.eur(prix) + ' débités de ton avance à la vente — rien ne reste dû'
+          : D.eur(prix) + ' de bons achetés à ' + D.techRef().nom + (attente > 0 ? ' · ' + D.eur(attente) + ' en attente de prélèvement' : '') + (impaye > 0 ? ' · ' + D.eur(impaye) + ' impayés' : ''));
+      /* (24/09, soir — relecture juridique) la valeur faciale est le prix CONSEILLÉ : le commerce revend au prix qu'il affiche */
+      $('rv-calc').innerHTML = kv('Bons vendus (' + vives.length + ', annulés exclus) — valeur faciale, prix conseillé au client', esc(D.eur(valeur)))
+        + kv(nomade ? 'Ta commission (la part de chaque offre de marque)' : 'Ta part, gardée (la part de chaque offre de marque)', '− ' + esc(D.eur(part)), 'tot')
+        + kv(nomade ? 'Prix réseau, débité de ton avance' : 'Prix réseau, que tu nous dois', esc(D.eur(prix)))
+        + (nomade ? '' : kv('Dont réglé', esc(D.eur(regle))) + kv('Dont en attente de prélèvement', esc(D.eur(attente))) + (impaye > 0 ? kv('Dont impayé', esc(D.eur(impaye))) : ''));
+      $('rv-calc-txt').textContent = vives.length
+        ? 'Chaque bon porte la répartition de l’offre de sa marque au moment de la vente : ce mois-ci, tu as gardé ' + D.eur(part) + ' sur ' + D.eur(valeur) + ' vendus' + (valeur > 0 ? ' (' + pct(r2(part / valeur * 100)) + ')' : '') + '.'
+        : 'Chaque bon vendu ce mois-ci s’ajoutera ici, annulés exclus. Ta part est celle de l’offre choisie par chaque marque : elle se lit avant la vente.';
+    }
+
+    /* SÉDENTAIRE : le mandat, l'encours et les lignes de prélèvement de CE point dans chaque remise. */
+    function rendrePrelevements(r) {
+      var z = $('rv-arg'), R = D.techRef(), mdt = D.techSepaMandat('revendeur', r.id), enc = D.techEncours(r.id);
+      $('rv-arg-titre').textContent = 'Mes prélèvements';
+      var h = '<div class="rv-p"><span style="min-width:0"><b>Mandat de prélèvement SEPA</b><br><span class="mono">' + (mdt ? esc(mdt.rum) + ' · ' + esc(mdt.ibanMasque) + ' · signé le ' + esc(D.dateHeure(mdt.signeLe)) : 'aucun mandat SEPA actif — <a href="07-mon-point.html#sepa" style="color:var(--color-primary-dark);font-weight:800">le signer dans Mon point</a>') + '</span></span>'
+        + '<span style="flex:none"><span class="pec-pill ' + (mdt ? 'pec-pill--done' : 'pec-pill--off') + '">' + (mdt ? 'Actif' : 'Absent') + '</span></span></div>'
+        + '<div class="rv-p"><span style="min-width:0"><b>Encours</b> — vendu, pas encore réglé<br><span class="mono">plafond ' + esc(D.eur(enc.plafond)) + ' · ' + esc(D.eur(enc.reste)) + ' disponible' + (enc.impayes ? ' · ' + (enc.prelevementsImpayes || 1) + ' prélèvement' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' impayé' + ((enc.prelevementsImpayes || 1) > 1 ? 's' : '') + ' (' + esc(D.eur(enc.impayeMontant)) + ')' : '') + '</span></span>'
+        + '<span class="n">' + esc(D.eur(enc.montant)) + '</span></div>';
+      var lignes = [];
+      D.techRemises({}).forEach(function (rem) {
+        (rem.lignes || []).forEach(function (li) { if (li.debiteurType === 'revendeur' && li.debiteurId === r.id) lignes.push({ rem: rem, li: li }); });
+      });
+      if (!lignes.length) h += '<div class="meta" style="padding:10px 0">Aucun prélèvement pour l’instant — le premier naît à l’arrêté de ' + esc(R.paiement.arreteHeure) + ' qui suit ta première vente.</div>';
+      lignes.forEach(function (x) {
+        var rem = x.rem, li = x.li;
+        h += '<div class="rv-p"><span style="min-width:0"><b>' + esc(rem.reference) + '</b> · ' + esc(rem.modeLbl || '') + '<br>'
+          + '<span class="mono">' + (rem.deposeLe ? 'remis à ' + esc(rem.banque) + ' le ' + esc(D.dateHeure(rem.deposeLe)) : 'préparé le ' + esc(D.dateHeure(rem.at))) + ' · échéance ' + esc(D.dateHeure(rem.echeance)) + '</span><br>'
+          + '<span class="meta">' + esc(String((li.ventes || []).length)) + ' bon' + ((li.ventes || []).length > 1 ? 's' : '') + ((li.penalites || []).length ? ' + ' + (li.penalites || []).length + ' pénalité' + ((li.penalites || []).length > 1 ? 's' : '') : '')
+          + (li.statut === 'ecartee' && li.motif ? ' — ' + esc(li.motif) : '') + (li.statut === 'impaye' && (li.motifBanqueLbl || li.motifBanque) ? ' — ' + esc(li.motifBanqueLbl || li.motifBanque) : '') + (li.represente ? ' · représenté le ' + esc(D.dateHeure(li.represente)) : '') + '</span></span>'
+          + '<span style="flex:none;text-align:right"><span class="n">' + esc(D.eur(li.montant)) + '</span><br><span class="pec-pill ' + esc(D.techLigneStatutPill(li.statut)) + '">' + esc(D.techLigneStatutLbl(li.statut)) + '</span></span></div>';
+      });
+      z.innerHTML = h;
+      $('rv-arg-note').textContent = 'Tes achats de bons sont arrêtés à ' + R.paiement.arreteHeure + ', groupés par offre de marque, et prélevés en une fois sur ton mandat SEPA à l’échéance (au moins ' + R.paiement.remiseJoursOuvresAvant + ' jour ouvré après le dépôt — règle SEPA). Un prélèvement impayé ferme la vente jusqu’à sa régularisation' + (R.paiement.penaliteImpaye > 0 ? ', et le contrat met ' + D.eur(R.paiement.penaliteImpaye) + ' de pénalité à ta charge' : '') + '.';
+      var pen = D.techPenalites({ revendeurId: r.id });
+      $('rv-pen-z').hidden = !pen.length;
+      $('rv-pen').innerHTML = pen.map(function (p) {
+        return '<div class="rv-p"><span style="min-width:0"><b>' + esc(p.reference) + '</b><br><span class="meta">' + esc(p.motif) + ' · ' + esc(D.dateHeure(p.at)) + (p.remiseRef ? ' · remise ' + esc(p.remiseRef) : '') + '</span></span>'
+          + '<span style="flex:none;text-align:right"><span class="n">' + esc(D.eur(p.montant)) + '</span><br><span class="pec-pill ' + esc(D.techVenteStatutPill(p.statut)) + '">' + esc(D.techVenteStatutLbl(p.statut)) + '</span></span></div>';
+      }).join('');
+    }
+
+    /* NOMADE : l'avance — ce qui reste disponible, la garantie, les mouvements. Rien n'est dû : il a payé avant de vendre. */
+    function rendreAvance(r) {
+      var z = $('rv-arg'), R = D.techRef(), av = D.avanceSolde('revendeur', r.id), mv = D.avanceMouvements('revendeur', r.id);
+      $('rv-arg-titre').textContent = 'Mon avance';
+      var h = '<div class="rv-p"><span style="min-width:0"><b>Avance disponible</b><br><span class="mono">' + (av.bas ? 'sous le seuil d’alerte de ' + esc(D.eur(R.avance.soldeAlerte)) : 'de quoi éditer des bons') + '</span></span><span class="n"' + (av.bas ? ' style="color:var(--color-amber-text)"' : '') + '>' + esc(D.eur(av.solde)) + '</span></div>'
+        + '<div class="rv-p"><span style="min-width:0"><b>Garantie</b> — un dépôt, restitué intégralement à ton départ<br><span class="mono">' + (av.garantieVersee ? 'versée' : 'à verser : ' + esc(D.eur(av.garantieDue)) + ' — <a href="07-mon-point.html#avance" style="color:var(--color-primary-dark);font-weight:800">comment</a>') + '</span></span><span class="n">' + esc(D.eur(av.garantie)) + '</span></div>';
+      if (!mv.length) h += '<div class="meta" style="padding:10px 0">Aucun mouvement pour l’instant.</div>';
+      mv.forEach(function (m) {
+        h += '<div class="rv-p"><span style="min-width:0"><b>' + esc(D.AVANCE_TYPES[m.type] || m.type) + '</b><br><span class="mono">' + esc(m.reference) + ' · ' + esc(D.dateHeure(m.at)) + (m.motif ? ' · ' + esc(m.motif) : '') + '</span></span>'
+          + '<span class="n" style="color:' + (m.montant < 0 ? 'var(--color-ink)' : 'var(--color-primary-dark)') + '">' + (m.montant > 0 ? '+' : '') + esc(D.eur(m.montant)) + '</span></div>';
+      });
+      z.innerHTML = h;
+      /* (24/09, soir — relecture juridique) il paie d'avance la valeur des bons à revendre : jamais « tu avances », « te rembourse » */
+      $('rv-arg-note').textContent = 'Tu es commissionnaire : tu paies d’avance la valeur des bons à revendre ; ce paiement anticipé s’impute, sans intérêt, sur chaque bon édité, de son prix réseau — ta part est ta commission. Tes virements d’avance sont constatés à l’arrivée des fonds, jamais avant.';
+      $('rv-pen-z').hidden = true;
+    }
+
+    /* MOIS PAR MOIS — douze mois en arrière, ceux où quelque chose s'est vendu. */
+    function rendreHisto(r, nomade) {
+      var z = $('rv-histo'), s = $('rv-solde'), out = [], d0 = new Date();
+      for (var k = 0; k < 12; k++) {
+        var d = new Date(d0.getFullYear(), d0.getMonth() - k, 1), per = D.techPeriodeCourante(d);
+        var l = D.techVentes({ revendeurId: r.id, mois: per }), vives = l.filter(function (v) { return v.statut !== 'annulee'; });
+        if (!l.length) continue;
+        out.push({ per: per, nb: vives.length, ann: l.length - vives.length, valeur: somme(vives, 'montant'), part: somme(vives, 'partPoint'), prix: somme(vives, 'prixPoint'),
+          /* l'état du mois, dit par les mots du data-layer : un impayé l'emporte, puis ce qui reste à prélever */
+          etat: vives.some(function (v) { return v.statut === 'impaye'; }) ? 'impaye' : (vives.some(function (v) { return v.statut === 'a_prelever' || v.statut === 'en_prelevement'; }) ? 'a_prelever' : 'regle') });
+      }
+      if (!out.length) { z.innerHTML = '<div class="meta" style="padding:10px 0">Aucun mois avec des ventes pour l’instant — le premier relevé naît à la première vente.</div>'; s.textContent = ''; return; }
+      z.innerHTML = out.map(function (l) {
+        return '<div class="rv-h"><span style="min-width:0"><span class="m">' + esc(moisLabel(l.per)) + '</span> · ' + esc(String(l.nb)) + ' bon' + (l.nb > 1 ? 's' : '') + ' · ' + esc(D.eur(l.valeur)) + ' vendus' + (l.ann ? ' · ' + l.ann + ' annulé' + (l.ann > 1 ? 's' : '') : '') + '<br>'
+          + '<span class="meta">' + (nomade ? 'commission ' : 'ta part ') + esc(D.eur(l.part)) + ' · prix réseau ' + esc(D.eur(l.prix)) + '</span></span>'
+          + '<span class="pec-pill ' + esc(D.techVenteStatutPill(l.etat)) + '" style="align-self:flex-start">' + esc(D.techVenteStatutLbl(l.etat)) + (nomade && l.etat === 'regle' ? ' d’avance' : '') + '</span></div>';
+      }).join('');
+      var tot = D.techVentesTotaux({ revendeurId: r.id });
+      s.textContent = 'Depuis l’ouverture : ' + D.eur(tot.valeur) + ' de bons vendus (' + tot.ventes + '), ' + D.eur(r2(tot.valeur - tot.prixPoint)) + ' ' + (nomade ? 'de commission' : 'de marge gardée') + ', ' + D.eur(tot.prixPoint) + ' de bons achetés à ' + D.techRef().nom + (tot.impaye > 0 ? ' — dont ' + D.eur(tot.impaye) + ' impayés' : '') + '.';
+    }
+
+    function rendre() {
+      var p = P.point(), r = P.revendeur();
+      if (!$('rv-enseigne')) return;
+      $('rv-enseigne').textContent = p ? p.enseigne : 'aucun point rattaché';
+      if (!p || !r) {
+        $('rv-mois').textContent = moisLabel(D.techPeriodeCourante());
+        ['rv-calc', 'rv-arg', 'rv-histo'].forEach(function (id) { $(id).innerHTML = '<div class="meta" style="padding:10px 0">' + (p ? 'Aucune fiche de vente rattachée à ce point.' : 'Aucun point rattaché à cette session.') + '</div>'; });
+        $('rv-calc-txt').textContent = ''; $('rv-arg-note').textContent = ''; $('rv-solde').textContent = ''; $('rv-pen-z').hidden = true;
+        return;
+      }
+      var nomade = D.techPaieParAvance(r);
+      rendreMois(r, nomade);
+      if (nomade) rendreAvance(r); else rendrePrelevements(r);
+      rendreHisto(r, nomade);
+    }
+
+    rendre();
+    // (écran non sourd) une vente, un arrêté préparé, un retour de banque importé, un virement d'avance constaté : l'écran se repeint
+    window.addEventListener('pec-bus', rendre);
+    window.addEventListener('storage', rendre);
+  })();
+</script>
+</body>
+</html>

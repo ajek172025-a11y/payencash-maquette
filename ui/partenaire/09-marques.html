@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PayEnCash PARTENAIRE — Marques</title>
+<link rel="icon" type="image/png" sizes="64x64" href="../assets/logos/payencash-partenaire-blanc-64.png">
+<link rel="apple-touch-icon" href="../assets/logos/payencash-partenaire-blanc-180.png">
+<link rel="stylesheet" href="../assets/payencash-v2.css">
+<script src="../assets/payencash-icons.js"></script>
+<script src="../assets/payencash-data.js"></script>
+<script src="../assets/payencash-docs.js"></script>
+<script src="../assets/payencash-garde.js"></script>
+<script src="../assets/payencash-bus.js"></script>
+<script src="../assets/payencash-partenaire.js"></script>
+<script src="../assets/payencash-fil.js"></script>
+<!--
+  LES MARQUES DU RÉSEAU (23/09 — le grossiste ; fondatrice : « l'app PayEnCash Solution s'adresse aux marques ; nos
+  partenaires ont leur propre app » · « app partenaire : logique sédentaire, logique réseau nomade, plus de clarté
+  juridique »).
+  CE QUE CET ÉCRAN DIT : quelles marques vendent leurs bons dans le réseau (techMarchands validées, prêtes à travailler —
+  techMarchandPeutTravailler), à quelle offre (techMarchandMode : ce que le point garde sur chaque bon), et où en est leur
+  forfait d'édition (techQuota : un forfait épuisé ferme la vente de CETTE marque jusqu'au mois suivant). Le comptoir, lui,
+  est sur « Vendre » (03) : un lien y mène avec la marque déjà choisie.
+  L'ORDRE DE VENTE — le flashcode qu'un client présente (techOrdreVenteUrl mène ici, ?vendre=<slug>) — OUVRE LE COMPTOIR :
+  cette page le fait suivre à 03-vendre avec sa référence, elle ne vend pas elle-même. Un client qui n'a pas de flashcode
+  peut dicter la référence de son bon proposé : le champ ci-dessous l'accepte, ou l'adresse entière.
+  LES RENCONTRES — pour le DISTRIBUTEUR NOMADE seulement : un client d'une marque peut demander qu'un distributeur nomade se
+  déplace (techRencontreDemander, depuis la page du bon proposé). La demande arrive ici, chez les nomades de sa commune
+  (techRencontresRevendeur) : il la prend (techRencontreAccepter), il appelle, il y va, il la sert depuis le comptoir
+  (03-vendre?rdv=… → techRencontreServir), ou il l'annule (techRencontreAnnuler). Un commerce ne se déplace pas.
+  DEUX QUALIFICATIONS JURIDIQUES, ET CE NE SONT PAS DEUX VARIANTES D'AFFICHAGE :
+    ① le POINT PHYSIQUE (sédentaire) est REVENDEUR POUR SON PROPRE COMPTE : il nous achète le bon au moment où il le vend,
+       à la valeur faciale diminuée de sa part, et le revend au prix qu'il affiche (la valeur faciale est le prix conseillé)
+       — ce qu'il nous doit est une créance commerciale ordinaire, prélevée après l'arrêté du soir ; sa marge est la sienne,
+       et elle figure sur son autofacture mensuelle ;
+    ② le DISTRIBUTEUR NOMADE est COMMISSIONNAIRE (art. L132-1 C. com.) : il vend pour le compte de PayEnCash, en exécution
+       d'un contrat de commission écrit et préalable, et il paie d'avance la valeur des bons à revendre (le paiement anticipé
+       s'impute, sans intérêt, sur chaque bon édité ; le solde non imputé lui revient à la fin du contrat) ; sa rémunération
+       est une COMMISSION, seul chiffre d'affaires qu'il déclare ; il ne détient jamais de fonds d'autrui.
+  (24/09, soir — relecture juridique) plus un mot du mandat pour le nomade, plus aucune citation des art. 1999 et 1993 du
+  code civil : il ne fait pas d'avance de fonds qu'on lui rembourserait, il paie d'avance ce qu'il revend. Les articles cités
+  à l'écran sont LUS au référentiel (techRef().seuils, glossaire ref.parties) : aucun n'est écrit ici.
+  (24/09, soir — fondatrice : « le design n'a pas été repris ») LE BUREAU : un principal et un panneau. À gauche, les marques
+  en grille de cartes (nom, site, offre de paiement, ta part, « Vendre ») puis le cadre juridique ; dans le panneau, ce qui se
+  fait au comptoir — le bon proposé qu'un client présente (le champ et « Ouvrir » sur une ligne) et, pour le nomade, ses
+  rencontres. Sur téléphone, le panneau passe en tête et la liste des marques redevient une carte à lignes : l'ordre et le
+  rendu d'avant.
+  TOUT EST DÉRIVÉ : taux, délais, plafonds, garantie, articles de loi viennent du data-layer ; rien n'est écrit ici.
+-->
+<style>
+  /* LES LIGNES ET LES CARTES DE LA PAGE — l'échelle du téléphone ici ; celle du bureau dans le bloc @media (min-width:1024px) */
+  .rowl{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;padding:9px 0;border-bottom:1px solid var(--color-sep)}
+  .rowl:last-child{border-bottom:none}
+  .rowl .tx,.mq-m-tx{min-width:0;flex:1}
+  .rowl .nm,.mq-m .nm{font-size:12.5px;font-weight:800;color:var(--color-ink)}
+  .rowl .sb,.mq-m .sb{display:block;font-size:11px;line-height:1.45;color:var(--color-muted);margin-top:1px;overflow-wrap:anywhere}
+  .mq-m .sb.mq-alerte{color:var(--color-amber-text);font-weight:700}
+  .vide{padding:10px 0;font-size:11.5px;line-height:1.55;color:var(--color-muted)}
+  .err{margin:9px 0 0;font-size:11.5px;font-weight:700;line-height:1.45;color:#8E2A1E}
+  .droit{border-left:3px solid var(--color-primary-dark);background:var(--color-mint);border-radius:0 12px 12px 0;padding:12px 14px;margin-top:10px;font-size:11.5px;line-height:1.65;color:var(--color-ink)}
+  .droit b{font-weight:800}
+  .droit .art{color:var(--color-primary-dark);font-weight:800}
+  .pt-garde{border-radius:16px;background:var(--color-amber-well);padding:14px;margin:0 0 18px;font-size:13px;line-height:1.55;color:var(--color-amber-text)}
+  .pt-garde .s{margin-top:4px;font-size:12px}
+  .mq-sec{margin:18px 0 6px}
+  .mq-aide{margin:0;font-size:12px;line-height:1.6;color:var(--color-muted)}
+  /* LE BON PROPOSÉ DICTÉ (24/09, soir) : le champ était écrasé à zéro par un « Ouvrir » qui prenait toute la ligne (un .pec-cta
+     vaut 100 % de large, et flex:none l'empêchait de céder). Ils s'empilent sur téléphone, ils partagent la ligne sur bureau. */
+  .mq-ordre-l{display:grid;gap:8px;margin-top:9px}
+  .mq-pill{flex:none;font-size:9.5px;padding:3px 8px}
+  .mq-geste{flex:none;font-weight:800;text-decoration:none}
+  .mq-rdv-pris{display:block}
+  .mq-lieu{font-size:12px;color:var(--color-ink);margin-top:4px}
+  .mq-appel{display:inline-block;margin-top:8px}
+  .mq-servir{margin-top:9px}
+  .mq-annuler{width:100%;margin-top:7px;font-weight:700}
+  .mq-m-pied{flex:none}
+  .mq-part{display:none}
+  /* TÉLÉPHONE ET TABLETTE : la mise en page d'avant — les marges des sections font l'espacement (pas d'écart de grille), la
+     liste des marques est UNE carte à lignes, les cartes gardent leur marge intérieure serrée. Sur bureau, la feuille
+     partagée donne la sienne. */
+  @media (max-width:1023.98px){
+    .mq-tete{margin:0}
+    .mq-cols{gap:0}
+    .mq-carte{padding:13px 15px}
+    .mq-marques{display:block;background:var(--color-surface);border-radius:var(--radius-card);box-shadow:var(--shadow-card);padding:13px 15px}
+    .mq-m{display:flex;align-items:flex-start;justify-content:space-between;gap:9px;padding:9px 0;border-bottom:1px solid var(--color-sep)}
+    .mq-m:last-child{border-bottom:none}
+  }
+  /* ── LE BUREAU : l'échelle de lecture d'un écran, une carte par marque, le champ et son bouton sur une ligne ── */
+  @media (min-width:1024px){
+    .mq-tete{margin:0 0 24px}
+    .pt-garde{padding:18px 22px;font-size:15px} .pt-garde .s{font-size:13.5px}
+    .mq-sec{margin:26px 0 10px}
+    .pec-colonne > .mq-sec:first-child{margin-top:0}
+    .mq-aide{font-size:14px;line-height:1.55}
+    .mq-ordre-l{grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;margin-top:14px}
+    .mq-ordre-l .pec-cta{width:auto;min-width:0;height:52px;padding:0 22px;font-size:14px}
+    .rowl{gap:14px;padding:14px 0}
+    .rowl .nm,.mq-m .nm{font-size:15px}
+    .rowl .sb,.mq-m .sb{font-size:13px;line-height:1.5;margin-top:3px}
+    .vide{font-size:14px}
+    .err{font-size:13.5px}
+    .mq-pill{font-size:12px;padding:5px 12px}
+    .mq-geste{padding:8px 16px;font-size:13px;background:var(--color-mint);color:var(--color-primary-dark)}
+    .mq-lieu{font-size:14px;line-height:1.5}
+    .mq-appel{margin-top:10px}
+    .mq-servir,.mq-annuler{width:100%;min-width:0}
+    .mq-servir{height:48px;margin-top:12px;font-size:14px}
+    .mq-m{display:flex;flex-direction:column;gap:12px;padding:20px 22px;border-radius:18px;background:var(--color-surface);box-shadow:var(--shadow-card)}
+    .mq-m .nm{font-size:17px;letter-spacing:-.01em}
+    .mq-m-pied{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:auto;padding-top:12px;border-top:1px solid var(--color-sep)}
+    .mq-part{display:flex;flex-direction:column;font-size:12px;color:var(--color-muted)}
+    .mq-part b{font-size:24px;line-height:1.1;font-weight:800;letter-spacing:-.5px;color:var(--color-primary-dark)}
+    .droit{margin-top:0;padding:18px 22px;font-size:14px;line-height:1.7}
+  }
+</style>
+<script src="../assets/payencash-coque.js"></script><!-- (24/09) sur bureau, la colonne de navigation reçoit la marque et le compte connecté -->
+</head>
+<body>
+<div class="pec-scene">
+<div class="pec-device">
+
+  <div class="pec-statusbar">
+    <span class="pec-sb-time">9:41</span>
+    <span class="pec-sb-icons"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-signal"/></svg></span>
+  </div>
+
+  <div class="pec-body pec-body--scroll">
+    <div class="pec-info-body" style="padding-top:14px">
+
+      <!-- (24/09, soir) L'EN-TÊTE DE PAGE : le titre, et ce que le point EST face à ces marques (le sous-titre dépend du mode) -->
+      <div class="pec-page-tete mq-tete">
+        <div class="tx">
+          <h1 id="mq-titre">Les marques du réseau</h1>
+          <p class="sous" id="mq-sous">—</p>
+        </div>
+      </div>
+
+      <div id="pt-garde" class="pt-garde" hidden><b id="pt-garde-titre">—</b><div id="pt-garde-txt" class="s">—</div></div>
+
+      <div id="mq-corps"></div>
+    </div>
+  </div>
+
+  <nav class="pec-tabbar" aria-label="Navigation principale" data-app="PayEnCash Partenaire">
+    <a class="pec-tab" href="02-accueil.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-home"/></svg>Accueil</a>
+    <a class="pec-tab" href="03-vendre.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-ticket"/></svg>Vendre</a>
+    <a class="pec-tab" aria-current="page" href="09-marques.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-tag"/></svg>Marques</a>
+    <a class="pec-tab" href="05-releves.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-banknote"/></svg>Mes relevés</a>
+    <a class="pec-tab" href="07-mon-point.html"><svg class="pec-ico" viewBox="0 0 24 24"><use href="#i-store"/></svg>Mon point</a>
+  </nav>
+
+</div>
+</div>
+<script>
+(function () {
+  'use strict';
+  var D = window.PEC_DATA, P = window.PEC_PART, $ = function (i) { return document.getElementById(i); };
+  if (!D || !P || !D.techRef) return;
+  var esc = function (v) { return D.esc(v); };
+  var pc = function (x) { return String(x).replace('.', ',') + ' %'; };
+
+  /* L'ORDRE DE VENTE MÈNE AU COMPTOIR. Le flashcode d'un bon proposé (techOrdreVenteUrl) arrive sur cette page avec son
+     slug : c'est « Vendre » qui le sert — la marque et le montant y sont posés et verrouillés. On le fait suivre tel quel,
+     sans rien relire ici : un même ordre lu à deux endroits finirait par être lu de deux façons. */
+  var slug0 = (new URLSearchParams(location.search)).get('vendre');
+  if (slug0) { location.replace('03-vendre.html?vendre=' + encodeURIComponent(slug0)); return; }
+
+  /* Ce qui survit au repeint du bus : le refus qu'on vient de lire sous une rencontre, ou sous la référence dictée. */
+  var rdvErreur = null, ordreErreur = null;
+  /* Le canal que le client préfère, dit en clair. Le data-layer ne porte que les clés (techRencontreDemander : appel, whatsapp,
+     facetime) : leurs libellés restent ici tant qu'il ne les porte pas. */
+  var CANAUX = { appel: 'un appel', whatsapp: 'WhatsApp', facetime: 'la visio' };
+
+  /* (24/09, soir) une section = un titre et une carte ; la marge intérieure n'est posée que sur téléphone (.mq-carte) —
+     sur bureau, la feuille partagée donne la sienne */
+  function carte(titre, corps) {
+    return '<p class="pec-section-label mq-sec">' + titre + '</p><div class="pec-card mq-carte">' + corps + '</div>';
+  }
+  function pill(t, cls) { return '<span class="pec-pill mq-pill ' + cls + '">' + esc(t) + '</span>'; }
+  /* LA RÉFÉRENCE D'UN ARTICLE DE LOI — sortie de la phrase de fondement du référentiel (refArticle), le texte entier en
+     infobulle : le jour où l'avocat fait bouger un mot, il bouge au référentiel et cet écran suit. */
+  function art(src) {
+    if (!src) return '';
+    var court = String(D.refArticle ? D.refArticle(src) : src).split(' (')[0].trim();
+    return '<span class="art" title="' + esc(src) + '">' + esc(court) + '</span>';
+  }
+
+  /* UNE RENCONTRE, TELLE QUE LE DISTRIBUTEUR NOMADE LA LIT : avant de la prendre, la commune, le montant, la rue — le numéro
+     et l'étage ne se découvrent qu'en acceptant (règle du data-layer). Prise : le client à appeler, le canal qu'il préfère,
+     la porte du comptoir pour la servir, et « je ne peux pas y aller ». */
+  function rdvLigne(x, r) {
+    var mien = x.revendeurId === r.id, min = x.expireTs ? Math.max(0, Math.round((x.expireTs - Date.now()) / 60000)) : null;
+    var tete = '<span class="nm">' + esc(x.ref) + ' · ' + esc(D.eur(x.montant)) + ' · ' + esc(x.marchand) + '</span>';
+    var err = rdvErreur && rdvErreur.id === x.id ? '<div class="err">' + esc(rdvErreur.txt) + '</div>' : '';
+    if (!mien) return '<div class="rowl"><span class="tx">' + tete
+      + '<span class="sb">' + esc([x.adresse.voie, [x.adresse.cp, x.adresse.ville].filter(Boolean).join(' ')].filter(Boolean).join(', '))
+      + (min != null ? ' · expire dans ' + min + ' min' : '') + '</span>' + err + '</span>'
+      + '<button type="button" class="pec-pill tap mq-geste" data-rdv-ok="' + esc(x.id) + '">Accepter</button></div>';
+    if (x.statut === 'acceptee') {
+      return '<div class="rowl mq-rdv-pris"><div>' + tete + '</div>'
+        + '<div class="sb mq-lieu"><b>' + esc(x.lieu) + '</b>' + (x.aide ? '<br>' + esc(x.aide) : '') + (x.note ? '<br>« ' + esc(x.note) + ' »' : '') + '</div>'
+        + '<a class="pec-pill tap mq-geste mq-appel" href="tel:' + esc(x.tel || '') + '">Appeler le client · ' + esc(D.telFrLbl(x.tel)) + '</a>'
+        + '<span class="sb">Il préfère : ' + esc(CANAUX[x.canal] || CANAUX.appel) + '. Appelle-le pour convenir du moment avant de partir.</span>'
+        + '<a class="pec-cta tap mq-servir" href="03-vendre.html?rdv=' + encodeURIComponent(x.id) + '">Servir — émettre le bon de ' + esc(D.eur(x.montant)) + '</a>'
+        + '<button type="button" class="pec-btn-secondary tap mq-annuler" data-rdv-annuler="' + esc(x.id) + '">Je ne peux pas y aller — annuler</button>'
+        + err + '</div>';
+    }
+    return '<div class="rowl"><span class="tx">' + tete + '<span class="sb">' + esc(D.rencontreStatutLbl(x.statut))
+      + (x.codes && x.codes.length ? ' · bon ' + esc(x.codes[0]) : '') + '</span></span></div>';
+  }
+
+  /* UNE MARQUE, UNE CARTE (24/09, soir) — son nom, son site, son offre de paiement, TA part et le geste : sur bureau, une carte
+     de la grille (la part en grand, « Vendre » au pied) ; sur téléphone, la même carte redevient une ligne de la liste. Validée
+     et prête (documents acceptés, contrat-cadre signé, déclaration validée), elle se vend ; sinon l'écran dit ce qui la ferme. */
+  function marqueCarte(m, nomade, R) {
+    var prete = D.techMarchandPeutTravailler(m.id).ok, mo = D.techMarchandMode(m), q = D.techQuota(m.id) || {};
+    var epuise = !!(q.reste != null && q.reste <= 0), seuil = !!q.seuilAtteint, site = String(m.siteUrl || '').replace(/^https?:\/\//, '');
+    /* (24/09, nuit) deux cas à ne pas confondre : une marque qui n'a jamais vendu (inscription pas terminée → « Bientôt ») et une
+       marque déjà ouverte que ferme une mise à jour (nouvelle version d'un document à relire → « Fermée », momentanément) */
+    var ouverteAvant = m.statut === 'validated' && !!m.contratSigneLe;
+    var alerte = !prete ? (ouverteAvant ? 'Momentanément fermée à la vente — la marque met à jour ses documents chez ' + esc(R.nom) + '.' : 'Pas encore prête à vendre — son inscription chez ' + esc(R.nom) + ' n’est pas terminée.')
+      : seuil ? 'Seuil légal atteint : aucun bon ne s’émet avant sa déclaration à l’ACPR.'
+      : epuise ? 'Forfait du mois épuisé (' + esc(String(q.max)) + ' bons) : la vente reprend le mois prochain, ou sur un forfait supérieur.' : '';
+    return '<div class="mq-m"><div class="mq-m-tx"><div class="nm">' + esc(m.raisonSociale) + '</div>'
+      + '<span class="sb">' + [site ? esc(site) : '', 'offre « ' + esc(mo.libelle) + ' » : sur 100 € de bons, tu ' + (nomade ? 'perçois ' : 'gardes ') + esc(D.eur(mo.partPointPct))].filter(Boolean).join(' · ') + '</span>'
+      + (alerte ? '<span class="sb mq-alerte">' + alerte + '</span>' : '')
+      + '</div><div class="mq-m-pied"><span class="mq-part"><b>' + esc(pc(mo.partPointPct)) + '</b>' + (nomade ? 'ta commission' : 'ta part') + '</span>'
+      + (prete && !epuise && !seuil ? '<a class="pec-pill tap mq-geste" href="03-vendre.html?marque=' + encodeURIComponent(m.id) + '">Vendre</a>' : pill(prete || ouverteAvant ? 'Fermée' : 'Bientôt', 'pec-pill--off'))
+      + '</div></div>';
+  }
+
+  /* LE SLUG D'UN ORDRE DE VENTE, dicté ou collé : la référence seule, ou l'adresse entière du flashcode (?vendre=) ou de la
+     page partagée (?l=). On n'en relit rien de plus : « Vendre » lit l'ordre lui-même. */
+  function slugDe(saisie) {
+    var s = String(saisie || '').trim(); if (!s) return '';
+    var m = /[?&](?:vendre|l)=([^&#\s]+)/.exec(s);
+    return decodeURIComponent(m ? m[1] : s.replace(/^.*\//, ''));
+  }
+
+  function peindre() {
+    var pt = P.point(), R = D.techRef(), r = P.revendeur(), nomade = P.nomade();
+    /* (24/09, soir — relecture juridique) le nomade vend en exécution de son contrat de commission et paie d'avance la valeur des
+       bons ; le commerce revend au prix qu'il affiche, la valeur faciale n'étant que le prix conseillé */
+    $('mq-sous').textContent = nomade
+      ? 'Tu vends les bons de ces marques pour le compte de ' + R.nom + ', en exécution de ton contrat de commission : tu paies d’avance la valeur des bons à revendre, et ta commission est ta part sur chaque bon.'
+      : 'Tu achètes les bons de ces marques à ' + R.nom + ' au moment où tu les vends, et tu les revends au prix que tu affiches — la valeur faciale est le prix conseillé. Ce que tu nous dois est prélevé après l’arrêté de ' + R.paiement.arreteHeure + '.';
+    if (!pt) {
+      $('mq-corps').innerHTML = carte('Le réseau', '<p class="vide">Aucun point rattaché à cette session : connecte-toi avec l’identifiant de ton commerce.</p>');
+      return;
+    }
+    /* la référence qu'on était en train de taper survit au repeint (le bus repeint la page à chaque geste, ailleurs compris) */
+    var saisie = $('mq-ordre'), gardee = saisie ? saisie.value : '', focus = !!(saisie && document.activeElement === saisie);
+
+    /* ① LE PANNEAU — ce qui se fait au comptoir : l'ordre de vente dicté, puis (nomade) les rencontres */
+    var panneau = carte('Un client te présente un bon proposé ?', '<p class="mq-aide">Scanne son flashcode — il ouvre le comptoir avec la marque et le montant. Sans scanner, saisis la référence du bon proposé qu’il te dicte, ou colle l’adresse.</p>'
+      + '<div class="mq-ordre-l"><input class="pec-input" id="mq-ordre" type="text" autocomplete="off" placeholder="boutique-…-a1b2c3" aria-label="Référence ou adresse du bon proposé"><button type="button" class="pec-cta pec-cta--tight tap" id="mq-ordre-go">Ouvrir</button></div>'
+      + (ordreErreur ? '<p class="err">' + esc(ordreErreur) + '</p>' : ''));
+    if (nomade && r) {
+      var rl = D.techRencontresRevendeur(r.id).filter(function (x) { return x.statut === 'demandee' || x.statut === 'acceptee' || (x.revendeurId === r.id && x.statut === 'servie' && (x.servieTs || 0) > Date.now() - 86400000); });
+      panneau += carte('Rencontres demandées', rl.length
+        ? rl.map(function (x) { return rdvLigne(x, r); }).join('')
+        : '<p class="vide">Aucune demande pour l’instant. Quand un client d’une marque demande qu’un ' + esc(D.terme('nomade')) + ' se déplace' + (r.ville ? ' à ' + esc(r.ville) : '') + ', elle arrive ici — tu la prends, tu l’appelles, tu y vas, tu la sers depuis « Vendre ».</p>');
+    }
+
+    /* ② LES MARQUES — validées ; celles qui ne sont pas prêtes sont dites « Bientôt », elles ne s'ouvrent pas */
+    var toutes = D.techMarchands({ statut: 'validated' }).sort(function (a, b) { return String(a.raisonSociale).localeCompare(String(b.raisonSociale), 'fr'); });
+    var principal = toutes.length
+      ? '<p class="pec-section-label mq-sec">Les marques dont tu vends les bons</p><div class="mq-marques pec-grille-cartes">' + toutes.map(function (m) { return marqueCarte(m, nomade, R); }).join('') + '</div>'
+      : carte('Les marques dont tu vends les bons', '<p class="vide">Aucune marque n’a encore rejoint le réseau. Dès qu’une marque est vérifiée par ' + esc(R.nom) + ', ses bons se vendent ici — tu n’as rien à faire.</p>');
+
+    /* ③ LE CADRE — ce qu'il est, en droit, et ce que ça change */
+    principal += carte('Ce que je suis, en droit', blocDroit(nomade, R));
+
+    $('mq-corps').innerHTML = '<div class="pec-cols pec-cols--principal mq-cols"><div class="pec-colonne">' + principal + '</div>'
+      + '<aside class="pec-colonne pec-avant-mobile">' + panneau + '</aside></div>';
+    if (gardee || focus) { var s2 = $('mq-ordre'); if (s2) { s2.value = gardee; if (focus) s2.focus(); } }
+  }
+
+  /* LE CADRE JURIDIQUE, DIT AVEC PRÉCISION — c'est ce qui distingue les deux modes d'exercice, et c'est ce qu'un contrôle
+     regarde. Les articles viennent du référentiel (glossaire ref.parties pour le commissionnaire, techRef().seuils pour le
+     réseau limité et les espèces) ; rien n'est paraphrasé au point de perdre son sens.
+     (24/09, soir — relecture juridique) le nomade : un contrat de commission écrit et préalable, un paiement d'avance qui
+     s'impute sur chaque bon édité — plus d'« avance de fonds » remboursée, plus d'art. 1999 ni 1993 du code civil ; le
+     commerce : le prix qu'il affiche (la valeur faciale est le prix conseillé), sa marge sur son autofacture mensuelle. */
+  function blocDroit(nomade, R) {
+    var S = R.seuils || {};
+    if (nomade) {
+      var jur = /\((art\.[^)]*)\)/.exec(D.terme('nomade', 'juridique') || '');
+      return '<div class="droit"><b>Tu es commissionnaire</b> : tu vends en ton nom, mais <b>pour le compte</b> de ' + esc(R.nom) + ', en exécution d’un contrat de commission écrit et préalable' + (jur ? ' (' + art(jur[1]) + ')' : '') + '.'
+        + '<br><br>· <b>Tu paies d’avance la valeur des bons à revendre</b> : ce paiement anticipé s’impute, sans intérêt, sur chaque bon édité, et le solde non imputé te revient à la fin du contrat. Tu ne détiens <b>jamais</b> les fonds d’autrui.'
+        + '<br>· <b>Ta rémunération est une commission</b> : ta part sur chaque bon vendu, selon l’offre de la marque. C’est elle, et elle seule, qui constitue ton chiffre d’affaires — pas la valeur des bons.'
+        + '<br>· <b>Tu ne supportes aucun risque de mévente</b> : un bon n’est édité qu’à la vente, au montant demandé.'
+        + '<br>· <b>Tu rends compte</b> de chaque vente : l’application le fait pour toi, opération par opération.'
+        + '<br>· <b>Ta garantie est un dépôt</b>, restitué intégralement à ton départ — jamais une sanction.'
+        + '<br><br><b>Tu restes indépendant :</b> tu acceptes ou refuses ce que tu veux, tu travailles pour qui tu veux, et personne ici ne te donne d’ordre.</div>';
+    }
+    return '<div class="droit"><b>Tu es revendeur pour ton propre compte.</b> Tu achètes le bon au moment où tu le vends, à la valeur faciale diminuée de ta part, et tu le revends à ton client au prix que tu affiches — la valeur faciale est le prix conseillé.'
+      + '<br><br>· <b>Ce que tu nous dois est une créance commerciale ordinaire</b>, réglée par prélèvement SEPA après l’arrêté de ' + esc(R.paiement.arreteHeure) + ' — pas un encaissement pour notre compte.'
+      + '<br>· <b>Ta marge t’appartient</b> : nous n’y prélevons rien ; elle figure sur ton autofacture mensuelle (TVA selon le régime du bon).'
+      + '<br>· <b>Le bon ne vaut que chez la marque qui l’a émis</b>' + (S.reseauLimiteSource ? ' (' + art(S.reseauLimiteSource) + ', exclusion « réseau limité »)' : '') + ' : les réseaux ne se mélangent jamais.'
+      + '<br>· <b>Comment ton client te règle ne nous regarde pas</b> : c’est une vente de ton commerce à ton client. Seul le plafond légal des espèces s’impose à toi' + (S.especesSource ? ' (' + art(S.especesSource) + ')' : '') + '.</div>';
+  }
+
+  document.addEventListener('click', function (e) {
+    var el = e.target.closest ? e.target.closest('#mq-ordre-go,[data-rdv-ok],[data-rdv-annuler]') : null;
+    if (!el) return;
+    var r = P.revendeur();
+    if (el.id === 'mq-ordre-go') {
+      var s = slugDe(($('mq-ordre') || {}).value);
+      ordreErreur = null;
+      if (!s) { ordreErreur = 'Saisis la référence du bon proposé, ou colle son adresse.'; peindreEtGarder(); return; }
+      if (!D.techOrdreVente(s)) { ordreErreur = 'Aucun bon proposé ne porte cette référence sur cet appareil — vérifie ce que le client te dicte.'; peindreEtGarder(); return; }
+      location.href = '03-vendre.html?vendre=' + encodeURIComponent(s); return;
+    }
+    if (!r) return;
+    /* LES GESTES D'UNE RENCONTRE — la couche de données tient les règles (distributeur nomade, demande encore ouverte) et son
+       refus s'affiche sous la ligne, tel quel. */
+    if (el.hasAttribute('data-rdv-ok')) {
+      var i1 = el.getAttribute('data-rdv-ok'), x1 = D.techRencontreAccepter(i1, r.id);
+      rdvErreur = x1.ok ? null : { id: i1, txt: x1.motif }; peindreEtGarder(); return;
+    }
+    if (el.hasAttribute('data-rdv-annuler')) {
+      /* le motif est journalisé et lu par la hotline : le mot du glossaire (24/09, soir) */
+      var i3 = el.getAttribute('data-rdv-annuler'), x3 = D.techRencontreAnnuler(i3, 'le ' + D.terme('nomade') + ' ne peut pas s’y rendre', r.id);
+      rdvErreur = x3.ok ? null : { id: i3, txt: x3.motif }; peindreEtGarder(); return;
+    }
+  });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Enter' && e.target && e.target.id === 'mq-ordre') { var b = $('mq-ordre-go'); if (b) b.click(); } });
+
+  /* LA GARDE DU SOCLE — un point suspendu, en intégration ou sans session lit le bandeau ; le corps est refait à chaque
+     peinture, la garde se rappelle après (elle ne s'empile pas). */
+  function garder() { P.garde({ desactiver: ['mq-ordre-go'] }); }
+  function peindreEtGarder() { peindre(); garder(); }
+
+  peindreEtGarder();
+  window.addEventListener('pec-bus', peindreEtGarder);
+  window.addEventListener('storage', function (e) { if (!e.key || /^pec/.test(e.key)) peindreEtGarder(); });
+})();
+</script>
+</body>
+</html>
